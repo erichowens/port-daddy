@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Database
+*.db
+*.db-wal
+*.db-shm
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Test coverage
+coverage/
+
+# Environment
+.env
+.env.local
