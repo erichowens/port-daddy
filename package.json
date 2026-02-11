@@ -1,6 +1,6 @@
 {
   "name": "port-daddy",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Authoritative port assignment service for multi-Claude environments",
   "main": "server.js",
   "type": "module",
