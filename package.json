@@ -4,6 +4,13 @@
   "description": "Authoritative port assignment service for multi-Claude environments",
   "main": "server.js",
   "type": "module",
+  "bin": {
+    "port-daddy": "./bin/port-daddy.js",
+    "get-port": "./bin/get-port.js",
+    "release-port": "./bin/release-port.js",
+    "list-ports": "./bin/list-ports.js",
+    "system-ports": "./bin/system-ports.js"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
@@ -12,6 +19,37 @@
     "test:watch": "npm test -- --watch",
     "test:coverage": "npm test -- --coverage"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/erichowens/port-daddy.git"
+  },
+  "author": "Erich Owens <erich@curiositech.com> (https://curiositech.com)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/erichowens/port-daddy/issues"
+  },
+  "homepage": "https://github.com/erichowens/port-daddy#readme",
+  "keywords": [
+    "port",
+    "port-management",
+    "development",
+    "dev-server",
+    "multi-agent",
+    "claude",
+    "ai-development",
+    "daemon",
+    "macos"
+  ],
+  "files": [
+    "server.js",
+    "install-daemon.js",
+    "bin/",
+    "public/",
+    "config.json",
+    "completions/",
+    "LICENSE",
+    "README.md"
+  ],
   "dependencies": {
     "better-sqlite3": "^9.2.2",
     "cors": "^2.8.5",
