@@ -1,23 +1,21 @@
 {
   "name": "port-daddy",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "Authoritative port assignment service for multi-Claude environments",
   "main": "server.js",
   "type": "module",
   "bin": {
-    "port-daddy": "./bin/port-daddy.js",
-    "get-port": "./bin/get-port.js",
-    "release-port": "./bin/release-port.js",
-    "list-ports": "./bin/list-ports.js",
-    "system-ports": "./bin/system-ports.js"
+    "port-daddy": "./bin/port-daddy-cli.js"
   },
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js",
+    "dev": "node bin/port-daddy-cli.js dev",
     "install-daemon": "node install-daemon.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "npm test -- --watch",
-    "test:coverage": "npm test -- --coverage"
+    "test:coverage": "npm test -- --coverage",
+    "test:ci": "node bin/port-daddy-cli.js ci-gate && npm test",
+    "pretest": "node bin/port-daddy-cli.js restart 2>/dev/null || node bin/port-daddy-cli.js start"
   },
   "repository": {
     "type": "git",
