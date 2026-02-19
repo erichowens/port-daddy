@@ -15,7 +15,7 @@ import Database from 'better-sqlite3';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { readFileSync, existsSync, readdirSync } from 'fs';
+import { readFileSync, existsSync, readdirSync, unlinkSync } from 'fs';
 import { createHash } from 'crypto';
 import winston from 'winston';
 import rateLimit from 'express-rate-limit';
@@ -86,14 +86,17 @@ const STARTED_AT = Date.now();
 // LOGGING
 // =============================================================================
 
+const isSilent = process.env.PORT_DADDY_SILENT === '1';
+
 const logger = winston.createLogger({
-  level: config.logging.level,
+  level: isSilent ? 'error' : config.logging.level,
+  silent: isSilent,
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.json()
   ),
   defaultMeta: { service: 'port-daddy', version: VERSION },
-  transports: [
+  transports: isSilent ? [] : [
     new winston.transports.File({
       filename: join(__dirname, config.logging.error_file),
       level: 'error'
@@ -104,7 +107,7 @@ const logger = winston.createLogger({
   ]
 });
 
-if (process.env.NODE_ENV !== 'production') {
+if (!isSilent && process.env.NODE_ENV !== 'production') {
   logger.add(new winston.transports.Console({
     format: winston.format.combine(
       winston.format.colorize(),
@@ -117,8 +120,10 @@ if (process.env.NODE_ENV !== 'production') {
 // DATABASE
 // =============================================================================
 
-const DB_PATH = join(__dirname, 'port-registry.db');
-const PORT = config.service.port;
+const DB_PATH = process.env.PORT_DADDY_DB || join(__dirname, 'port-registry.db');
+const PORT = parseInt(process.env.PORT_DADDY_PORT, 10) || config.service.port;
+const SOCK_PATH = process.env.PORT_DADDY_SOCK || '/tmp/port-daddy.sock';
+const DISABLE_TCP = process.env.PORT_DADDY_NO_TCP === '1';
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 
@@ -313,29 +318,42 @@ function shutdown(signal) {
     });
   } catch {}
   db.close();
+  // Clean up socket file
+  try { unlinkSync(SOCK_PATH); } catch {}
   process.exit(0);
 }
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
-app.listen(PORT, config.service.host, () => {
-  logger.info('server_started', { port: PORT, host: config.service.host, version: VERSION });
-
+function onReady() {
   activityLog.log(ActivityType.DAEMON_START, {
     details: `Port Daddy v${VERSION} started`,
-    metadata: { port: PORT, pid: process.pid, codeHash: CODE_HASH }
+    metadata: { port: PORT, pid: process.pid, codeHash: CODE_HASH, socket: SOCK_PATH }
   });
 
   webhooks.trigger(WebhookEvent.DAEMON_START, {
     version: VERSION, port: PORT, pid: process.pid
   });
   webhooks.retryPending();
+}
 
-  console.log(`
+// Primary listener: Unix domain socket (no port needed)
+try { unlinkSync(SOCK_PATH); } catch {}
+app.listen(SOCK_PATH, () => {
+  logger.info('socket_started', { socket: SOCK_PATH, version: VERSION });
+
+  // Also listen on TCP for dashboard/browser access (unless disabled)
+  if (!DISABLE_TCP) {
+    app.listen(PORT, config.service.host, () => {
+      logger.info('tcp_started', { port: PORT, host: config.service.host, version: VERSION });
+      onReady();
+
+      if (!isSilent) {
+        console.log(`
   Port Daddy v${VERSION}
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Service:    http://${config.service.host}:${PORT}
+  Socket:     ${SOCK_PATH}
   Dashboard:  http://${config.service.host}:${PORT}/
   Database:   ${DB_PATH}
   Port range: ${config.ports.range_start}-${config.ports.range_end}
@@ -351,5 +369,14 @@ app.listen(PORT, config.service.host, () => {
     POST   /webhooks          Register webhook
 
   Ready to assign ports!
-  `);
+        `);
+      }
+    });
+  } else {
+    // Socket-only mode (used by ephemeral test daemons)
+    onReady();
+    if (!isSilent) {
+      console.log(`Port Daddy v${VERSION} listening on ${SOCK_PATH}`);
+    }
+  }
 });

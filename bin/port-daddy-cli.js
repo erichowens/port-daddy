@@ -11,6 +11,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import http from 'node:http';
 import { readFileSync, readdirSync, writeFileSync as fsWriteFileSync, existsSync, unlinkSync, watch } from 'node:fs';
 import { discoverServices, suggestNames, mergeWithConfig } from '../lib/discover.js';
 import { loadConfig } from '../lib/config.js';
@@ -23,6 +24,83 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT_DADDY_URL = process.env.PORT_DADDY_URL || 'http://localhost:9876';
+
+// Default Unix socket path — the primary transport for CLI→daemon communication.
+// Falls back to TCP (PORT_DADDY_URL) if socket doesn't exist.
+const DEFAULT_SOCK = '/tmp/port-daddy.sock';
+const SOCK_PATH = process.env.PORT_DADDY_SOCK || DEFAULT_SOCK;
+
+/**
+ * Resolve connection target: Unix socket or TCP.
+ */
+function resolveTarget() {
+  // Explicit TCP URL overrides socket
+  if (process.env.PORT_DADDY_URL) {
+    const url = new URL(process.env.PORT_DADDY_URL);
+    return { host: url.hostname, port: parseInt(url.port, 10) || 9876 };
+  }
+  // Use socket if it exists
+  if (existsSync(SOCK_PATH)) {
+    return { socketPath: SOCK_PATH };
+  }
+  // Fallback to TCP
+  return { host: 'localhost', port: 9876 };
+}
+
+/**
+ * Drop-in replacement for fetch() that routes through Unix socket when available.
+ * Returns an object matching the subset of the fetch Response API that the CLI uses:
+ *   .ok, .status, .json(), .text(), .headers
+ */
+function pdFetch(urlOrPath, options = {}) {
+  // Extract just the path from a full URL or use as-is if already a path
+  let path;
+  if (urlOrPath.startsWith('/')) {
+    path = urlOrPath;
+  } else {
+    try { path = new URL(urlOrPath).pathname + (new URL(urlOrPath).search || ''); }
+    catch { path = urlOrPath; }
+  }
+
+  const target = resolveTarget();
+  const { method = 'GET', headers = {}, body = null } = options;
+
+  const reqHeaders = { ...headers };
+  if (body && !reqHeaders['Content-Length']) {
+    reqHeaders['Content-Length'] = Buffer.byteLength(body);
+  }
+
+  return new Promise((resolve, reject) => {
+    const reqOpts = {
+      method,
+      path,
+      headers: reqHeaders,
+      timeout: 10000,
+      ...(target.socketPath ? { socketPath: target.socketPath } : { host: target.host, port: target.port })
+    };
+
+    const req = http.request(reqOpts, (res) => {
+      const chunks = [];
+      res.on('data', chunk => chunks.push(chunk));
+      res.on('end', () => {
+        const text = Buffer.concat(chunks).toString();
+        resolve({
+          ok: res.statusCode >= 200 && res.statusCode < 300,
+          status: res.statusCode,
+          headers: res.headers,
+          json: async () => JSON.parse(text),
+          text: async () => text
+        });
+      });
+    });
+
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Request timed out')); });
+
+    if (body) req.write(body);
+    req.end();
+  });
+}
 
 // Calculate local code hash to compare with daemon
 function getLocalCodeHash() {
@@ -48,7 +126,7 @@ function getLocalCodeHash() {
 // Returns true if daemon was restarted
 async function checkDaemonFreshness(autoRestart = true) {
   try {
-    const res = await fetch(`${PORT_DADDY_URL}/version`);
+    const res = await pdFetch(`${PORT_DADDY_URL}/version`);
     if (!res.ok) return false;
 
     const data = await res.json();
@@ -83,7 +161,7 @@ async function checkDaemonFreshness(autoRestart = true) {
         for (let i = 0; i < 30; i++) {
           await new Promise(r => setTimeout(r, 100));
           try {
-            const healthRes = await fetch(`${PORT_DADDY_URL}/health`);
+            const healthRes = await pdFetch(`${PORT_DADDY_URL}/health`);
             if (healthRes.ok) {
               console.error('   ✓ Daemon restarted with fresh code');
               console.error('');
@@ -109,7 +187,7 @@ async function checkDaemonFreshness(autoRestart = true) {
 // CI mode: fail hard if daemon is stale
 async function ciGateCheck() {
   try {
-    const res = await fetch(`${PORT_DADDY_URL}/version`);
+    const res = await pdFetch(`${PORT_DADDY_URL}/version`);
     if (!res.ok) {
       console.error('CI GATE FAILED: Daemon not running');
       process.exit(1);
@@ -547,7 +625,7 @@ async function handleClaim(id, options) {
   if (options.pair) body.pair = options.pair;
   if (options.cmd) body.cmd = options.cmd;
 
-  const res = await fetch(`${PORT_DADDY_URL}/claim`, {
+  const res = await pdFetch(`${PORT_DADDY_URL}/claim`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -592,7 +670,7 @@ async function handleRelease(id, options) {
     body.id = id;
   }
 
-  const res = await fetch(`${PORT_DADDY_URL}/release`, {
+  const res = await pdFetch(`${PORT_DADDY_URL}/release`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -622,7 +700,7 @@ async function handleFind(pattern, options) {
   if (options.expired) params.append('expired', 'true');
 
   const url = `${PORT_DADDY_URL}/services${params.toString() ? '?' + params : ''}`;
-  const res = await fetch(url);
+  const res = await pdFetch(url);
   const data = await res.json();
 
   if (!res.ok) {
@@ -676,7 +754,7 @@ async function handleUrl(id, options) {
   }
 
   const env = options.env || 'local';
-  const res = await fetch(`${PORT_DADDY_URL}/services/${encodeURIComponent(id)}`);
+  const res = await pdFetch(`${PORT_DADDY_URL}/services/${encodeURIComponent(id)}`);
   const data = await res.json();
 
   if (!res.ok) {
@@ -703,7 +781,7 @@ async function handleEnv(id, options) {
   const params = new URLSearchParams();
   if (id) params.append('pattern', id);
 
-  const res = await fetch(`${PORT_DADDY_URL}/services?${params}`);
+  const res = await pdFetch(`${PORT_DADDY_URL}/services?${params}`);
   const data = await res.json();
 
   if (!res.ok) {
@@ -750,7 +828,7 @@ async function handlePub(channel, message, options) {
     payload = message || '';
   }
 
-  const res = await fetch(`${PORT_DADDY_URL}/msg/${encodeURIComponent(channel)}`, {
+  const res = await pdFetch(`${PORT_DADDY_URL}/msg/${encodeURIComponent(channel)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ payload, sender: options.sender })
@@ -778,40 +856,58 @@ async function handleSub(channel, options) {
 
   console.error(`Subscribing to ${channel}... (Ctrl+C to exit)`);
 
-  const res = await fetch(`${PORT_DADDY_URL}/msg/${encodeURIComponent(channel)}/subscribe`);
+  // SSE requires raw streaming — can't use pdFetch which buffers the full response
+  const target = resolveTarget();
+  const path = `/msg/${encodeURIComponent(channel)}/subscribe`;
 
-  if (!res.ok) {
-    console.error('Failed to subscribe');
-    process.exit(1);
-  }
+  const reqOpts = {
+    method: 'GET',
+    path,
+    headers: { 'Accept': 'text/event-stream' },
+    ...(target.socketPath ? { socketPath: target.socketPath } : { host: target.host, port: target.port })
+  };
 
-  // Handle SSE stream
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
+  const req = http.request(reqOpts, (res) => {
+    if (res.statusCode !== 200) {
+      console.error('Failed to subscribe');
+      process.exit(1);
+    }
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    const text = decoder.decode(value);
-    const lines = text.split('\n');
-
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        const data = line.slice(6);
-        if (options.json) {
-          console.log(data);
-        } else {
-          try {
-            const msg = JSON.parse(data);
-            console.log(`[${new Date(msg.createdAt).toISOString()}] ${JSON.stringify(msg.payload)}`);
-          } catch {
+    res.setEncoding('utf8');
+    res.on('data', (chunk) => {
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (options.json) {
             console.log(data);
+          } else {
+            try {
+              const msg = JSON.parse(data);
+              console.log(`[${new Date(msg.createdAt).toISOString()}] ${JSON.stringify(msg.payload)}`);
+            } catch {
+              console.log(data);
+            }
           }
         }
       }
-    }
-  }
+    });
+
+    res.on('end', () => {
+      console.error('Subscription ended');
+      process.exit(0);
+    });
+  });
+
+  req.on('error', (err) => {
+    console.error(`Connection error: ${err.message}`);
+    process.exit(1);
+  });
+
+  req.end();
+
+  // Keep process alive until Ctrl+C
+  await new Promise(() => {});
 }
 
 // =============================================================================
@@ -832,7 +928,7 @@ async function handleWait(serviceIds, options) {
   if (serviceIds.length === 1) {
     // Single service wait
     const url = `${PORT_DADDY_URL}/wait/${encodeURIComponent(serviceIds[0])}?timeout=${timeout}`;
-    const res = await fetch(url);
+    const res = await pdFetch(url);
     const data = await res.json();
 
     if (!res.ok) {
@@ -847,7 +943,7 @@ async function handleWait(serviceIds, options) {
     }
   } else {
     // Multiple services wait
-    const res = await fetch(`${PORT_DADDY_URL}/wait`, {
+    const res = await pdFetch(`${PORT_DADDY_URL}/wait`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ services: serviceIds, timeout })
@@ -884,7 +980,7 @@ async function handleLock(name, options) {
     ttl: options.ttl ? parseInt(options.ttl, 10) : 300000
   };
 
-  const res = await fetch(`${PORT_DADDY_URL}/locks/${encodeURIComponent(name)}`, {
+  const res = await pdFetch(`${PORT_DADDY_URL}/locks/${encodeURIComponent(name)}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -933,7 +1029,7 @@ async function handleUnlock(name, options) {
     force: options.force === true
   };
 
-  const res = await fetch(`${PORT_DADDY_URL}/locks/${encodeURIComponent(name)}`, {
+  const res = await pdFetch(`${PORT_DADDY_URL}/locks/${encodeURIComponent(name)}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -962,7 +1058,7 @@ async function handleLocks(options) {
   if (options.owner) params.append('owner', options.owner);
 
   const url = `${PORT_DADDY_URL}/locks${params.toString() ? '?' + params : ''}`;
-  const res = await fetch(url);
+  const res = await pdFetch(url);
   const data = await res.json();
 
   if (!res.ok) {
@@ -1013,7 +1109,7 @@ async function handleUp(positional, options) {
 
   // Ensure daemon is running
   try {
-    const healthRes = await fetch(`${PORT_DADDY_URL}/health`);
+    const healthRes = await pdFetch(`${PORT_DADDY_URL}/health`);
     if (!healthRes.ok) throw new Error('unhealthy');
   } catch {
     console.error('Port Daddy daemon is not running.');
@@ -1039,7 +1135,7 @@ async function handleUp(positional, options) {
     console.error('  No config found. Scanning...');
     console.error('');
     try {
-      const scanRes = await fetch(`${PORT_DADDY_URL}/scan`, {
+      const scanRes = await pdFetch(`${PORT_DADDY_URL}/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dir, save: true, useBranch: options.branch === true })
@@ -1279,7 +1375,7 @@ function removePidFile() {
 // =============================================================================
 
 async function handleDetect(options) {
-  const res = await fetch(`${PORT_DADDY_URL}/detect`, {
+  const res = await pdFetch(`${PORT_DADDY_URL}/detect`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ dir: options.dir || process.cwd() })
@@ -1314,7 +1410,7 @@ async function handleDetect(options) {
 async function handleInit(options) {
   const save = !options.dry;
 
-  const res = await fetch(`${PORT_DADDY_URL}/init`, {
+  const res = await pdFetch(`${PORT_DADDY_URL}/init`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ dir: options.dir || process.cwd(), save })
@@ -1353,7 +1449,7 @@ async function handleScan(dir, options) {
   const dryRun = options['dry-run'] === true;
   const useBranch = options.branch === true;
 
-  const res = await fetch(`${PORT_DADDY_URL}/scan`, {
+  const res = await pdFetch(`${PORT_DADDY_URL}/scan`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ dir: targetDir, save: !dryRun, dryRun, useBranch })
@@ -1437,7 +1533,7 @@ async function handleProjects(subcommand, args, options) {
       process.exit(1);
     }
 
-    const res = await fetch(`${PORT_DADDY_URL}/projects/${encodeURIComponent(projectId)}`, {
+    const res = await pdFetch(`${PORT_DADDY_URL}/projects/${encodeURIComponent(projectId)}`, {
       method: 'DELETE'
     });
 
@@ -1458,7 +1554,7 @@ async function handleProjects(subcommand, args, options) {
 
   // Handle "projects <id>" — get specific project
   if (subcommand && subcommand !== 'list') {
-    const res = await fetch(`${PORT_DADDY_URL}/projects/${encodeURIComponent(subcommand)}`);
+    const res = await pdFetch(`${PORT_DADDY_URL}/projects/${encodeURIComponent(subcommand)}`);
     const data = await res.json();
 
     if (!res.ok) {
@@ -1493,7 +1589,7 @@ async function handleProjects(subcommand, args, options) {
   }
 
   // Default: list all projects
-  const res = await fetch(`${PORT_DADDY_URL}/projects`);
+  const res = await pdFetch(`${PORT_DADDY_URL}/projects`);
   const data = await res.json();
 
   if (!res.ok) {
@@ -1560,7 +1656,7 @@ async function handleAgent(subcommand, args, options) {
         maxLocks: options.maxLocks ? parseInt(options.maxLocks, 10) : undefined
       };
 
-      const res = await fetch(`${PORT_DADDY_URL}/agents`, {
+      const res = await pdFetch(`${PORT_DADDY_URL}/agents`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1585,7 +1681,7 @@ async function handleAgent(subcommand, args, options) {
     }
 
     case 'heartbeat': {
-      const res = await fetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(agentId)}/heartbeat`, {
+      const res = await pdFetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(agentId)}/heartbeat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1609,7 +1705,7 @@ async function handleAgent(subcommand, args, options) {
     }
 
     case 'unregister': {
-      const res = await fetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(agentId)}`, {
+      const res = await pdFetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(agentId)}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -1631,7 +1727,7 @@ async function handleAgent(subcommand, args, options) {
 
     default: {
       // Treat as agent ID lookup
-      const res = await fetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(subcommand)}`);
+      const res = await pdFetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(subcommand)}`);
       const data = await res.json();
 
       if (!res.ok) {
@@ -1661,7 +1757,7 @@ async function handleAgents(options) {
   if (options.active) params.append('active', 'true');
 
   const url = `${PORT_DADDY_URL}/agents${params.toString() ? '?' + params : ''}`;
-  const res = await fetch(url);
+  const res = await pdFetch(url);
   const data = await res.json();
 
   if (!res.ok) {
@@ -1707,7 +1803,7 @@ async function handleLog(subcommand, options) {
     const params = new URLSearchParams();
     if (options.since) params.append('since', options.since);
 
-    const res = await fetch(`${PORT_DADDY_URL}/activity/summary${params.toString() ? '?' + params : ''}`);
+    const res = await pdFetch(`${PORT_DADDY_URL}/activity/summary${params.toString() ? '?' + params : ''}`);
     const data = await res.json();
 
     if (!res.ok) {
@@ -1738,7 +1834,7 @@ async function handleLog(subcommand, options) {
   }
 
   if (subcommand === 'stats') {
-    const res = await fetch(`${PORT_DADDY_URL}/activity/stats`);
+    const res = await pdFetch(`${PORT_DADDY_URL}/activity/stats`);
     const data = await res.json();
 
     if (!res.ok) {
@@ -1776,7 +1872,7 @@ async function handleLog(subcommand, options) {
   if (options.target) params.append('target', options.target);
   if (subcommand && subcommand !== 'recent') params.append('type', subcommand);
 
-  const res = await fetch(`${PORT_DADDY_URL}/activity${params.toString() ? '?' + params : ''}`);
+  const res = await pdFetch(`${PORT_DADDY_URL}/activity${params.toString() ? '?' + params : ''}`);
   const data = await res.json();
 
   if (!res.ok) {
@@ -1824,7 +1920,7 @@ async function handleDaemon(action) {
     case 'start': {
       // Check if already running
       try {
-        const res = await fetch(`${PORT_DADDY_URL}/health`);
+        const res = await pdFetch(`${PORT_DADDY_URL}/health`);
         if (res.ok) {
           console.log('Port Daddy is already running');
           return;
@@ -1842,7 +1938,7 @@ async function handleDaemon(action) {
       for (let i = 0; i < 30; i++) {
         await new Promise(r => setTimeout(r, 100));
         try {
-          const res = await fetch(`${PORT_DADDY_URL}/health`);
+          const res = await pdFetch(`${PORT_DADDY_URL}/health`);
           if (res.ok) {
             console.log('Port Daddy daemon started');
             return;
@@ -1856,7 +1952,7 @@ async function handleDaemon(action) {
 
     case 'stop': {
       try {
-        const res = await fetch(`${PORT_DADDY_URL}/health`);
+        const res = await pdFetch(`${PORT_DADDY_URL}/health`);
         const data = await res.json();
         process.kill(data.pid, 'SIGTERM');
         console.log('Port Daddy daemon stopped');
@@ -1889,7 +1985,7 @@ async function handleDaemon(action) {
 
 async function handleStatus() {
   try {
-    const res = await fetch(`${PORT_DADDY_URL}/health`);
+    const res = await pdFetch(`${PORT_DADDY_URL}/health`);
     const data = await res.json();
 
     console.log(`Port Daddy is running`);
@@ -1907,7 +2003,7 @@ async function handleStatus() {
 
 async function handleVersion() {
   try {
-    const res = await fetch(`${PORT_DADDY_URL}/version`);
+    const res = await pdFetch(`${PORT_DADDY_URL}/version`);
     const data = await res.json();
     console.log(`Port Daddy ${data.version}`);
     console.log(`Code hash: ${data.codeHash}`);
@@ -2010,7 +2106,7 @@ async function handleDoctor() {
   let daemonRunning = false;
 
   try {
-    const res = await fetch(`${PORT_DADDY_URL}/health`);
+    const res = await pdFetch(`${PORT_DADDY_URL}/health`);
     if (res.ok) {
       daemonData = await res.json();
       daemonRunning = true;
@@ -2036,7 +2132,7 @@ async function handleDoctor() {
   // -------------------------------------------------------------------------
   try {
     if (daemonRunning) {
-      const versionRes = await fetch(`${PORT_DADDY_URL}/version`);
+      const versionRes = await pdFetch(`${PORT_DADDY_URL}/version`);
       if (versionRes.ok) {
         const versionData = await versionRes.json();
         const localHash = getLocalCodeHash();
@@ -2158,7 +2254,7 @@ async function handleDoctor() {
   // -------------------------------------------------------------------------
   try {
     if (daemonRunning) {
-      const servicesRes = await fetch(`${PORT_DADDY_URL}/services`);
+      const servicesRes = await pdFetch(`${PORT_DADDY_URL}/services`);
       if (servicesRes.ok) {
         const servicesData = await servicesRes.json();
         let staleCount = 0;
@@ -2261,7 +2357,7 @@ async function handleDev() {
 
         // Kill current daemon
         try {
-          const res = await fetch(`${PORT_DADDY_URL}/health`);
+          const res = await pdFetch(`${PORT_DADDY_URL}/health`);
           const data = await res.json();
           process.kill(data.pid, 'SIGTERM');
         } catch {}
@@ -2280,7 +2376,7 @@ async function handleDev() {
         for (let i = 0; i < 30; i++) {
           await new Promise(r => setTimeout(r, 100));
           try {
-            const healthRes = await fetch(`${PORT_DADDY_URL}/health`);
+            const healthRes = await pdFetch(`${PORT_DADDY_URL}/health`);
             if (healthRes.ok) {
               console.log(`[${new Date().toLocaleTimeString()}] ✓ Daemon restarted (hash: ${newHash})`);
               return;

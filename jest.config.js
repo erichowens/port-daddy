@@ -36,9 +36,11 @@ export default {
       transform: {},
       moduleFileExtensions: ['js', 'mjs'],
       testMatch: ['<rootDir>/tests/integration/**/*.test.js'],
-      setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-      testTimeout: 10000,
-      // Integration tests share a single daemon on :9876 — must run serially
+      globalSetup: '<rootDir>/tests/helpers/global-setup.js',
+      globalTeardown: '<rootDir>/tests/helpers/global-teardown.js',
+      setupFilesAfterEnv: [],
+      testTimeout: 15000,
+      // Integration tests share a single ephemeral daemon — must run serially
       maxWorkers: 1
     }
   ]

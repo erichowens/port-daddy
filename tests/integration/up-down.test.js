@@ -4,20 +4,19 @@
  * Spawns the CLI with a temp .portdaddyrc containing two minimal HTTP servers,
  * verifies ports are claimed, services respond, env vars are injected,
  * then sends SIGTERM and verifies ports are released.
+ *
+ * Uses the ephemeral test daemon (started by Jest globalSetup).
  */
 
 import { spawn, spawnSync } from 'node:child_process';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import {
   mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync
 } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
+import { request, getDaemonState } from '../helpers/integration-setup.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const CLI_PATH = join(__dirname, '../../bin/port-daddy-cli.js');
-const SERVER_PATH = join(__dirname, '../../server.js');
-
+const CLI_PATH = join(import.meta.dirname, '../../bin/port-daddy-cli.js');
 const UP_PID_FILE = join(homedir(), '.port-daddy-up.pid');
 
 // Inline server script that reads PORT from env and responds with JSON
@@ -50,33 +49,15 @@ server.listen(PORT, () => {
 });
 `;
 
-// Helper: ensure daemon is running (robust — handles parallel test workers)
-async function ensureDaemonRunning() {
-  // First check: already running?
-  for (let i = 0; i < 5; i++) {
-    try {
-      const res = await fetch('http://localhost:9876/health');
-      if (res.ok) return true;
-    } catch { /* not running */ }
-    await new Promise(r => setTimeout(r, 200));
-  }
-
-  // Try to start it
-  const child = spawn('node', [SERVER_PATH], {
-    stdio: 'ignore',
-    detached: true
-  });
-  child.unref();
-
-  // Wait for it to be ready (longer timeout — another worker might be starting it)
-  for (let i = 0; i < 50; i++) {
-    await new Promise(r => setTimeout(r, 200));
-    try {
-      const res = await fetch('http://localhost:9876/health');
-      if (res.ok) return true;
-    } catch { /* not ready */ }
-  }
-  throw new Error('Failed to start daemon after 10s');
+// Helper: get claimed services from the ephemeral daemon
+async function getClaimedServices() {
+  try {
+    const res = await request('/services');
+    if (res.ok) {
+      return res.data.services || [];
+    }
+  } catch { /* daemon unreachable */ }
+  return [];
 }
 
 // Helper: wait for a condition with timeout
@@ -115,18 +96,6 @@ function waitForOutput(child, pattern, timeoutMs = 30000) {
   });
 }
 
-// Helper: check if a port is claimed in daemon
-async function getClaimedServices() {
-  try {
-    const res = await fetch('http://localhost:9876/services');
-    if (res.ok) {
-      const data = await res.json();
-      return data.services || [];
-    }
-  } catch { /* daemon unreachable */ }
-  return [];
-}
-
 // Helper: try to fetch from a local port
 async function fetchLocal(port, path = '/health', retries = 3) {
   for (let i = 0; i < retries; i++) {
@@ -158,12 +127,23 @@ function killAndWait(child, signal = 'SIGTERM', timeoutMs = 10000) {
   });
 }
 
+/**
+ * Build the env for spawned CLI processes — routes through ephemeral daemon's socket.
+ */
+function cliEnv() {
+  const { sockPath } = getDaemonState();
+  return {
+    ...process.env,
+    PORT_DADDY_SOCK: sockPath,
+    PORT_DADDY_URL: ''
+  };
+}
+
 describe('port-daddy up/down Integration', () => {
   let tempDir;
   let upProcess;
 
-  beforeEach(async () => {
-    await ensureDaemonRunning();
+  beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'pd-up-'));
   });
 
@@ -230,7 +210,7 @@ describe('port-daddy up/down Integration', () => {
 
     // Spawn `port-daddy up`
     upProcess = spawn('node', [CLI_PATH, 'up', '--dir', tempDir], {
-      env: { ...process.env, PORT_DADDY_URL: 'http://localhost:9876' },
+      env: cliEnv(),
       stdio: ['ignore', 'pipe', 'pipe']
     });
 
@@ -329,7 +309,7 @@ createServer((req, res) => {
     }));
 
     upProcess = spawn('node', [CLI_PATH, 'up', '--no-health', '--dir', tempDir], {
-      env: { ...process.env, PORT_DADDY_URL: 'http://localhost:9876' },
+      env: cliEnv(),
       stdio: ['ignore', 'pipe', 'pipe']
     });
 
@@ -353,7 +333,7 @@ createServer((req, res) => {
     const result = spawnSync('node', [CLI_PATH, 'up', '--dir', tempDir], {
       encoding: 'utf-8',
       timeout: 15000,
-      env: { ...process.env, PORT_DADDY_URL: 'http://localhost:9876' }
+      env: cliEnv()
     });
 
     expect(result.status).not.toBe(0);
@@ -376,7 +356,8 @@ createServer((req, res) => {
 
     const result = spawnSync('node', [CLI_PATH, 'down'], {
       encoding: 'utf-8',
-      timeout: 10000
+      timeout: 10000,
+      env: cliEnv()
     });
 
     expect(result.status).not.toBe(0);
@@ -432,7 +413,7 @@ createServer((req, res) => {
     upProcess = spawn('node', [
       CLI_PATH, 'up', '--service', 'frontend', '--dir', tempDir
     ], {
-      env: { ...process.env, PORT_DADDY_URL: 'http://localhost:9876' },
+      env: cliEnv(),
       stdio: ['ignore', 'pipe', 'pipe']
     });
 
@@ -497,7 +478,7 @@ createServer((req, res) => {
     }));
 
     upProcess = spawn('node', [CLI_PATH, 'up', '--no-health', '--dir', tempDir], {
-      env: { ...process.env, PORT_DADDY_URL: 'http://localhost:9876' },
+      env: cliEnv(),
       stdio: ['ignore', 'pipe', 'pipe']
     });
 

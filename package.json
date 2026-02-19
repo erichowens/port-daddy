@@ -18,8 +18,7 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "npm test -- --watch",
     "test:coverage": "npm test -- --coverage",
-    "test:ci": "node bin/port-daddy-cli.js ci-gate && npm test",
-    "pretest": "node bin/port-daddy-cli.js restart 2>/dev/null || node bin/port-daddy-cli.js start"
+    "test:ci": "npm test"
   },
   "repository": {
     "type": "git",
