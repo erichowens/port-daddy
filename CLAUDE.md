@@ -22,16 +22,30 @@ lib/
   activity.js       # Activity logging
   webhooks.js       # Webhook subscriptions
   identity.js       # Semantic ID parsing
-  detect.js         # Framework detection
+  detect.js         # Framework detection (22 frameworks)
+  scan.js           # Deep recursive project scanner
+  projects.js       # Project registry (CRUD against SQLite)
+  discover.js       # Monorepo/workspace discovery
+  orchestrator.js   # Service orchestration (up/down)
   config.js         # Configuration loading
   health.js         # Health check utilities
+  client.js         # JavaScript SDK (PortDaddy class)
+  log-prefix.js     # Color-coded log prefixes for orchestrator
   utils.js          # Common utilities
+routes/
+  index.js          # Route registration
+  projects.js       # /scan, /projects endpoints
 bin/
   port-daddy-cli.js # CLI entry point
 public/
   index.html        # Dashboard UI
+completions/
+  port-daddy.bash   # Bash tab completion
+  port-daddy.zsh    # Zsh tab completion
 tests/
-  integration/      # Integration tests
+  setup-unit.js     # In-memory SQLite factory for unit tests
+  unit/             # Unit tests (17 suites, 1042 tests)
+  integration/      # Integration tests (require live daemon)
 examples/
   agent-coordination.js  # Multi-agent example
 ```
@@ -77,28 +91,36 @@ Server has built-in rate limiting:
 
 ## Testing
 
-Tests require a running daemon. The test harness:
-1. Restarts daemon with fresh code
-2. Verifies code hash matches
-3. Runs integration tests against live daemon
+Two test tiers:
 
+**Unit tests** (no daemon required):
 ```bash
-# Run specific test file
-npm test -- tests/integration/api.test.js
+# All unit tests
+NODE_OPTIONS="--experimental-vm-modules" npx jest tests/unit/ --no-coverage
 
-# Run with verbose output
-npm test -- --verbose
+# Single file
+NODE_OPTIONS="--experimental-vm-modules" npx jest tests/unit/scan.test.js
+```
+
+**Integration tests** (require a running daemon):
+```bash
+# Restarts daemon, verifies code hash, then runs
+npm test
+
+# Specific file
+npm test -- tests/integration/cli.test.js
 ```
 
 ## Adding New Features
 
 1. Add module to `lib/`
 2. Export from module and import in `server.js`
-3. Add routes in `server.js`
+3. Add routes in `routes/` and register in `routes/index.js`
 4. Add to code hash list in `server.js` and `cli.test.js`
 5. Update dashboard in `public/index.html`
-6. Write integration tests
-7. Update README.md
+6. Write unit tests in `tests/unit/` and integration tests in `tests/integration/`
+7. Update completions in `completions/`
+8. Update README.md
 
 ## API Endpoints Summary
 
@@ -114,6 +136,9 @@ npm test -- --verbose
 | `/agents/:id` | POST/DELETE | Register/unregister agent |
 | `/agents/:id/heartbeat` | PUT | Agent heartbeat |
 | `/webhooks` | POST/GET | Manage webhooks |
+| `/scan` | POST | Deep-scan directory, register project |
+| `/projects` | GET | List registered projects |
+| `/projects/:id` | GET/DELETE | Get or remove a project |
 | `/activity` | GET | Activity log |
 | `/health` | GET | Health check |
 | `/version` | GET | Version and code hash |

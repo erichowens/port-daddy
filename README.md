@@ -1,8 +1,108 @@
-# Port Daddy 👔
+# Port Daddy
 
-**The authoritative port manager for multi-agent development.**
+[![npm version](https://img.shields.io/npm/v/port-daddy.svg)](https://npmjs.com/package/port-daddy)
+[![license](https://img.shields.io/npm/l/port-daddy.svg)](LICENSE)
+[![CI](https://github.com/curiositech/port-daddy/actions/workflows/ci.yml/badge.svg)](https://github.com/curiositech/port-daddy/actions/workflows/ci.yml)
+[![tests](https://img.shields.io/badge/tests-1042%20unit%20%2B%20integration-brightgreen)](https://github.com/curiositech/port-daddy)
+[![node](https://img.shields.io/node/v/port-daddy.svg)](package.json)
+[![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-plugin-blueviolet)](https://github.com/curiositech/port-daddy/tree/main/skills/port-daddy-cli)
+[![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)](package.json)
 
-When you have multiple Claude sessions, AI agents, or dev servers all fighting for ports on your machine, Port Daddy brings order to the chaos. It's a small daemon that runs locally and answers one simple question: *"What port should I use?"*
+**Authoritative port management, service orchestration, pub/sub messaging, distributed locks, and agent coordination for local development.**
+
+Port Daddy is a lightweight daemon that runs on `localhost:9876` and solves port conflicts, service orchestration, and multi-process coordination in a single tool. It assigns ports atomically, starts your entire stack with `port-daddy up`, brokers messages between processes, manages distributed locks, and tracks agent lifecycles -- all backed by SQLite for persistence and zero race conditions.
+
+```bash
+port-daddy up                    # Start your whole stack (detects frameworks automatically)
+port-daddy down                  # Graceful shutdown, all services
+
+port-daddy claim myapp:frontend  # Or manage ports individually
+# → myapp:frontend → port 3100
+
+port-daddy pub build:ready '{"services":["frontend","api"]}'
+port-daddy lock db-migrations
+```
+
+---
+
+## Table of Contents
+
+- [The Problem](#the-problem)
+  - [Why Port Daddy?](#why-port-daddy)
+- [Quick Start](#quick-start)
+- [Service Orchestration](#service-orchestration)
+- [Semantic Identities](#semantic-identities)
+- [Agent Coordination](#agent-coordination)
+  - [Pub/Sub Messaging](#pubsub-messaging)
+  - [Distributed Locks](#distributed-locks)
+  - [Channel Patterns](#channel-patterns)
+- [Agent Registry](#agent-registry)
+- [JavaScript SDK](#javascript-sdk)
+- [Webhooks](#webhooks)
+- [Activity Log](#activity-log)
+- [Dashboard](#dashboard)
+- [Claude Code Plugin](#claude-code-plugin)
+- [CLI Reference](#cli-reference)
+  - [Shell Completions](#shell-completions)
+- [API Reference](#api-reference)
+- [How It Works](#how-it-works)
+- [Configuration](#configuration)
+  - [Project Config (.portdaddyrc)](#project-config-portdaddyrc)
+  - [Auto-Detection (port-daddy scan)](#auto-detection-port-daddy-scan)
+  - [Daemon Config (config.json)](#daemon-config-configjson)
+- [Examples](#examples)
+- [License](#license)
+
+---
+
+## The Problem
+
+Port conflicts and process coordination failures waste real time across three common scenarios:
+
+**Solo developers** hit "Something is already running on port 3000" constantly. You restart your terminal, kill a stale process, restart again -- and waste 5 minutes before you can even start coding. Every web developer has been there.
+
+**Microservice developers** running 5-10 services locally hit port collisions constantly. You start a frontend on 3000, an API on 3001, a worker on 3002 -- then restart one and discover something else grabbed its port. Docker Compose helps in containers, but local development outside containers is a free-for-all.
+
+**CI/CD pipelines** with parallel test runners need deterministic port assignment. When multiple test suites run concurrently, each spinning up servers on hardcoded ports, you get flaky failures that are impossible to reproduce locally. The workaround -- random ports with retry loops -- adds complexity and still races.
+
+**Multi-agent AI development** multiplies the problem. Multiple autonomous agent sessions launch dev servers simultaneously, each unaware of the others. No human is watching to resolve conflicts, and every port collision wastes an agent cycle figuring out what went wrong.
+
+Port Daddy solves all four with a single daemon: atomic port assignment, semantic service naming, pub/sub messaging for coordination, distributed locks for mutual exclusion, and an agent registry for lifecycle tracking.
+
+### Why Port Daddy?
+
+Existing tools solve fragments of the problem. Port Daddy solves the whole thing.
+
+| | [get-port](https://npmjs.com/package/get-port) | [portfinder](https://npmjs.com/package/portfinder) | [kill-port](https://npmjs.com/package/kill-port) | [Portless](https://portless.app) | **Port Daddy** |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Find a free port | ✅ | ✅ | — | — | ✅ |
+| Kill port processes | — | — | ✅ | ✅ | ✅ |
+| Persistent assignment (same project → same port) | — | — | — | — | ✅ |
+| Named services (`myapp:api:main`) | — | — | — | — | ✅ |
+| Multi-process coordination | — | — | — | — | ✅ |
+| Pub/sub messaging | — | — | — | — | ✅ |
+| Distributed locks | — | — | — | — | ✅ |
+| Agent lifecycle tracking | — | — | — | — | ✅ |
+| Webhooks | — | — | — | — | ✅ |
+| Service orchestration (`up`/`down`) | — | — | — | — | ✅ |
+| Framework auto-detection (22 frameworks) | — | — | — | — | ✅ |
+| Activity audit log | — | — | — | — | ✅ |
+| Dashboard UI | — | — | — | ✅ | ✅ |
+| AI agent plugin | — | — | — | — | ✅ |
+| Works as CLI and SDK | Library only | Library only | CLI only | GUI only | **CLI + SDK + HTTP** |
+
+`get-port` and `portfinder` are libraries — they find a free port and hand it back. No persistence, no naming, no coordination. Next time you run your app, you get a different port. Port Daddy remembers.
+
+---
+
+## Quick Start
+
+```bash
+npm install -g port-daddy
+port-daddy start
+```
+
+That's it. Now claim ports:
 
 ```bash
 port-daddy claim myapp:frontend
@@ -10,64 +110,111 @@ port-daddy claim myapp:frontend
 
 port-daddy claim myapp:api
 # → myapp:api → port 3101
+
+# Use it with any dev server
+PORT=$(port-daddy claim myproject -q) npm run dev -- --port $PORT
 ```
 
-No conflicts. No coordination. No wasted time.
+Ports persist — `myapp:frontend` always gets port 3100 on this machine, even across restarts.
 
----
-
-## Why Port Daddy?
-
-### The Problem
-
-You're deep in a coding session. You spin up a frontend on port 3000. Then an API on 3001. Then another Claude session starts a different project and—*conflict*. Port already in use.
-
-You check what's running. Kill something. Pick a new port. Update your config. And by then you've lost your flow.
-
-Multiply this by five agents working in parallel, each unaware of the others, and you have a coordination nightmare.
-
-### The Solution
-
-Port Daddy runs as a local daemon and provides:
-
-- **Atomic port assignment** — No race conditions, ever
-- **Semantic naming** — `myapp:frontend:main` instead of "port 3247"
-- **Agent coordination** — Pub/sub messaging, locks, and event webhooks
-- **Agent registry** — Track who's active, enforce resource limits
-- **Activity logging** — Full audit trail of all operations
-- **Auto-cleanup** — Dead processes release their ports automatically
-- **Zero config** — Works immediately, defaults make sense
-
----
-
-## Quick Start
+### Auto-start on login (optional)
 
 ```bash
-# Clone and install
-git clone https://github.com/erichowens/port-daddy.git
-cd port-daddy
-npm install
+port-daddy install   # macOS (LaunchAgent) or Linux (systemd)
+```
 
-# Install as system service (auto-starts on login)
-port-daddy install
+### Scan your project (optional)
 
-# Or just start it manually
+```bash
+cd your-project/
+port-daddy scan
+# → Scanning /path/to/your-project...
+# → Discovered 3 services:
+#     api         Express    :3000
+#     web         Next.js    :3001
+#     worker      Workers    :8787
+# → Saved .portdaddyrc
+# → Next: port-daddy up
+```
+
+Port Daddy deep-scans your project recursively, detecting 22 frameworks (Next.js, Vite, Express, FastAPI, Django, Go, Rust, Cloudflare Workers, Docker, and more). It handles monorepos, npm workspaces, and nested services automatically. See [Auto-Detection](#auto-detection-port-daddy-scan) for the full list.
+
+### Install from source
+
+```bash
+git clone https://github.com/curiositech/port-daddy.git
+cd port-daddy && npm install
 port-daddy start
 ```
 
-Now you're ready:
+---
+
+## Service Orchestration
+
+Start your entire stack with a single command. Port Daddy reads your `.portdaddyrc` (or auto-detects your framework), resolves service dependencies via topological sort, claims ports, injects environment variables, and streams color-coded logs -- like `docker-compose up` for local development.
 
 ```bash
-# Claim a port
-port-daddy claim myapp
-# → myapp → port 3100
+# Start everything defined in .portdaddyrc (or auto-detected)
+port-daddy up
 
-# See what's running
-port-daddy ps
+# Start one service and its dependencies
+port-daddy up --service frontend
 
-# Release when done
-port-daddy release myapp
+# Use git branch in the semantic identity (e.g., myapp:api:feature-auth)
+port-daddy up --branch
+
+# Skip health checks for faster startup
+port-daddy up --no-health
+
+# Graceful shutdown of all services started by `up`
+port-daddy down
 ```
+
+### How `up` works
+
+1. **Detect** -- reads `.portdaddyrc`, or auto-discovers services via framework detection
+2. **Sort** -- topological sort on `needs` graph (cycles are caught with a clear error)
+3. **Claim** -- requests ports from the daemon atomically
+4. **Inject** -- sets `PORT`, `PORT_<SERVICE>`, and any custom `env` vars per service
+5. **Spawn** -- launches each service's `cmd` with colored, prefixed log output
+6. **Health check** -- polls each service's `healthPath` (configurable timeout)
+7. **Signal** -- Ctrl+C sends `SIGTERM` to all children in reverse dependency order
+
+### Example `.portdaddyrc`
+
+```json
+{
+  "project": "myapp",
+  "services": {
+    "api": {
+      "cmd": "npm run dev:api",
+      "port": 3001,
+      "healthPath": "/health",
+      "env": { "DATABASE_URL": "postgresql://localhost:5432/myapp" }
+    },
+    "frontend": {
+      "cmd": "npm run dev -- --port ${PORT}",
+      "port": 3000,
+      "healthPath": "/",
+      "needs": ["api"]
+    },
+    "worker": {
+      "cmd": "npm run worker",
+      "needs": ["api"],
+      "noPort": true
+    }
+  }
+}
+```
+
+### Environment diagnostics
+
+```bash
+# Check your environment for common issues
+port-daddy doctor
+```
+
+`doctor` verifies: daemon connectivity, port range availability, `.portdaddyrc` validity, Node.js version, and system port conflicts.
 
 ---
 
@@ -104,21 +251,11 @@ port-daddy release myapp:*:feature-auth
 
 ## Agent Coordination
 
-Here's where Port Daddy shines for multi-agent workflows.
-
-### The Coordination Problem
-
-Imagine three Claude sessions working on the same project:
-
-- **Agent A** is building the API
-- **Agent B** is building the frontend
-- **Agent C** is running integration tests
-
-Agent C needs to know when A and B are ready before running tests. Without coordination, C either polls constantly, guesses, or waits for human input.
+Port Daddy includes built-in primitives for multi-process and multi-agent coordination. No external message broker or lock service required.
 
 ### Pub/Sub Messaging
 
-Port Daddy includes a message broker. Agents publish events and subscribe to channels:
+Agents and processes publish events and subscribe to channels:
 
 ```bash
 # Agent A finishes the API
@@ -129,17 +266,17 @@ port-daddy pub build:frontend '{"status":"ready","port":3101}'
 
 # Agent C subscribes and waits
 port-daddy sub build:*
-# [2024-01-15T10:30:00Z] {"status":"ready","port":3100}
-# [2024-01-15T10:30:05Z] {"status":"ready","port":3101}
+# [2025-01-15T10:30:00Z] {"status":"ready","port":3100}
+# [2025-01-15T10:30:05Z] {"status":"ready","port":3101}
 # Now C knows both services are ready for integration tests
 ```
 
 ### Distributed Locks
 
-Prevent conflicting operations across agents:
+Prevent conflicting operations across agents and processes:
 
 ```bash
-# Agent A: Exclusive access to database
+# Agent A: Exclusive access to database migrations
 port-daddy lock db-migrations
 npx prisma migrate dev
 port-daddy unlock db-migrations
@@ -162,22 +299,20 @@ port-daddy lock db-migrations || echo "Lock held, skipping"
 
 ## Agent Registry
 
-Agents can formally register with Port Daddy for better coordination and resource management:
+Agents can formally register with Port Daddy for lifecycle tracking and resource management:
 
 ```bash
 # Register an agent
-curl -X POST http://localhost:9876/agents/claude-session-1 \
-  -H 'Content-Type: application/json' \
-  -d '{"name": "API Builder", "type": "claude"}'
+port-daddy agent register --agent builder-1 --type cli
 
 # Send heartbeats (keeps agent marked as active)
-curl -X PUT http://localhost:9876/agents/claude-session-1/heartbeat
+port-daddy agent heartbeat --agent builder-1
 
 # See all active agents
-curl http://localhost:9876/agents
+port-daddy agents
 
-# Check agent status
-curl http://localhost:9876/agents/claude-session-1
+# Check a specific agent
+port-daddy agent builder-1
 ```
 
 ### Resource Limits
@@ -191,11 +326,128 @@ Each agent can have resource limits enforced:
 }
 ```
 
-When an agent exceeds its limits, further claims/locks are rejected until resources are released.
+When an agent exceeds its limits, further claims and locks are rejected until resources are released.
 
 ### Auto-Cleanup
 
-Agents that stop sending heartbeats for 2+ minutes are marked stale. Their services and locks are automatically released, preventing resource leakage from crashed agents.
+Agents that stop sending heartbeats for 2+ minutes are marked stale. Their services and locks are automatically released, preventing resource leakage from crashed processes.
+
+---
+
+## JavaScript SDK
+
+Port Daddy ships with a built-in client SDK. No REST boilerplate required.
+
+```bash
+npm install port-daddy
+```
+
+```javascript
+import { PortDaddy } from 'port-daddy/client';
+
+const pd = new PortDaddy();
+
+// Claim a port
+const { port } = await pd.claim('myapp:api');
+console.log(`API running on port ${port}`);
+
+// Release when done
+await pd.release('myapp:api');
+```
+
+### Services
+
+```javascript
+// Request a specific port
+const { port } = await pd.claim('myapp:frontend', { port: 3000 });
+
+// Find services by pattern
+const { services } = await pd.listServices({ pattern: 'myapp:*' });
+
+// Set endpoint URLs for service discovery
+await pd.setEndpoint('myapp:api', 'local', `http://localhost:${port}`);
+await pd.setEndpoint('myapp:api', 'prod', 'https://api.myapp.com');
+
+// Release everything for a project
+await pd.release('myapp:*');
+```
+
+### Pub/Sub Messaging
+
+```javascript
+// Publish
+await pd.publish('builds', { status: 'complete', artifact: 'dist.tar.gz' });
+
+// Read messages
+const { messages } = await pd.getMessages('builds', { limit: 10 });
+
+// Subscribe to real-time updates
+const sub = pd.subscribe('deployments');
+sub.on('message', (data) => console.log('Deploy event:', data));
+
+// Long-poll for next message
+const { message } = await pd.poll('builds');
+```
+
+### Distributed Locks
+
+```javascript
+// Manual lock/unlock
+await pd.lock('db-migrations');
+try {
+  await runMigrations();
+} finally {
+  await pd.unlock('db-migrations');
+}
+
+// Or use the convenience wrapper
+await pd.withLock('deploy-prod', async () => {
+  await deployToProduction();
+});
+```
+
+### Agent Lifecycle
+
+```javascript
+const pd = new PortDaddy({ agentId: 'build-agent-1' });
+
+// Register and start heartbeats
+await pd.register({ name: 'Build Agent', type: 'ci' });
+const hb = pd.startHeartbeat(30000); // Every 30s
+
+// ... do work ...
+
+// Cleanup
+hb.stop();
+await pd.unregister();
+```
+
+### Configuration
+
+```javascript
+const pd = new PortDaddy({
+  url: 'http://localhost:9876',   // Daemon URL (or set PORT_DADDY_URL env)
+  agentId: 'my-agent',           // Agent ID for tracking (or PORT_DADDY_AGENT env)
+  pid: process.pid,              // Process ID for ownership
+  timeout: 5000,                 // Request timeout in ms
+});
+```
+
+### Error Handling
+
+```javascript
+import { PortDaddy, PortDaddyError, ConnectionError } from 'port-daddy/client';
+
+try {
+  await pd.claim('myapp:api');
+} catch (err) {
+  if (err instanceof ConnectionError) {
+    console.error('Daemon not running. Start with: port-daddy start');
+  } else if (err instanceof PortDaddyError) {
+    console.error(`API error (${err.status}): ${err.message}`);
+  }
+}
+```
 
 ---
 
@@ -267,6 +519,9 @@ Every operation in Port Daddy is logged with full context:
 
 ```bash
 # View recent activity
+port-daddy log
+
+# Or query the API directly
 curl http://localhost:9876/activity?limit=20
 
 # Filter by action type
@@ -312,6 +567,37 @@ Port Daddy includes a web dashboard at `http://localhost:9876`:
 
 ---
 
+## Claude Code Plugin
+
+Port Daddy ships as a [Claude Code plugin](https://github.com/curiositech/port-daddy/tree/main/skills/port-daddy-cli) and is compatible with 40+ AI coding agents via the [Vercel Labs Agent Skills](https://github.com/vercel-labs/skills) format.
+
+### Install the Skill
+
+```bash
+# Claude Code (via npx)
+npx skills add curiositech/port-daddy
+
+# Or add directly to your project's .claude/settings.json
+```
+
+### What the Skill Provides
+
+When an AI agent has the Port Daddy skill installed, it knows how to:
+
+- **Claim ports** using semantic identities instead of hardcoded numbers
+- **Coordinate with other agents** via pub/sub and distributed locks
+- **Generate `.portdaddyrc`** configs with `port-daddy init`
+- **Use the SDK** instead of raw HTTP calls
+- **Avoid common mistakes** like manual port numbers, flat service names, and polling
+
+The skill includes reference docs for the full [HTTP API](skills/port-daddy-cli/references/api-reference.md), [SDK](skills/port-daddy-cli/references/sdk-reference.md), [.portdaddyrc spec](skills/port-daddy-cli/references/portdaddyrc-spec.md), and [multi-agent coordination patterns](skills/port-daddy-cli/references/multi-agent-patterns.md) -- loaded on-demand, not all at once.
+
+### Compatible Agents
+
+Claude Code, Cursor, Windsurf, Cline, Aider, Continue, Codex CLI, and [many more](https://github.com/vercel-labs/skills#compatible-agents).
+
+---
+
 ## CLI Reference
 
 ### Service Commands
@@ -325,6 +611,16 @@ Port Daddy includes a web dashboard at `http://localhost:9876`:
 | `port-daddy env [pattern]` | Export as environment variables |
 | `port-daddy ps` | Alias for `find` |
 
+### Orchestration
+
+| Command | Description |
+|---------|-------------|
+| `port-daddy up` | Start all services (from `.portdaddyrc` or auto-detected) |
+| `port-daddy up --service <name>` | Start one service and its dependencies |
+| `port-daddy up --branch` | Include git branch in semantic identity |
+| `port-daddy up --no-health` | Skip health checks |
+| `port-daddy down` | Graceful shutdown of all running services |
+
 ### Agent Coordination
 
 | Command | Description |
@@ -336,6 +632,28 @@ Port Daddy includes a web dashboard at `http://localhost:9876`:
 | `port-daddy unlock <name>` | Release a lock |
 | `port-daddy locks` | List all active locks |
 | `port-daddy log` | View activity log |
+
+### Agent Registry
+
+| Command | Description |
+|---------|-------------|
+| `port-daddy agent register` | Register as an agent |
+| `port-daddy agent heartbeat` | Send heartbeat |
+| `port-daddy agent unregister` | Unregister agent |
+| `port-daddy agent <id>` | Get info about an agent |
+| `port-daddy agents` | List all registered agents |
+
+### Project Setup
+
+| Command | Description |
+|---------|-------------|
+| `port-daddy scan` | Deep-scan project, generate `.portdaddyrc`, register with daemon |
+| `port-daddy scan --dry-run` | Preview scan results without saving |
+| `port-daddy projects` | List all registered projects |
+| `port-daddy projects rm <name>` | Remove a registered project |
+| `port-daddy doctor` | Run environment diagnostics |
+| `port-daddy detect` | *(deprecated)* Show detected framework — use `scan` |
+| `port-daddy init` | *(deprecated)* Generate config — use `scan` |
 
 ### Daemon Management
 
@@ -361,6 +679,29 @@ Port Daddy includes a web dashboard at `http://localhost:9876`:
 | `--timeout <ms>` | Wait timeout (default: 60000) |
 | `--ttl <ms>` | Lock time-to-live (default: 300000) |
 | `--owner <id>` | Lock owner identifier |
+| `--agent <id>` | Agent ID for registration/heartbeat |
+| `--type <type>` | Agent type (cli, sdk, mcp) |
+
+### Shell Completions
+
+Tab completion for all commands, subcommands, and flags. Dynamic completions pull live service IDs, lock names, channels, and agent IDs from the running daemon.
+
+**Bash:**
+
+```bash
+# Add to ~/.bashrc
+source /path/to/port-daddy/completions/port-daddy.bash
+```
+
+**Zsh:**
+
+```bash
+# Copy to fpath (before compinit in ~/.zshrc)
+mkdir -p ~/.zsh/completions
+cp /path/to/port-daddy/completions/port-daddy.zsh ~/.zsh/completions/_port-daddy
+fpath=(~/.zsh/completions $fpath)
+autoload -Uz compinit && compinit
+```
 
 ---
 
@@ -412,6 +753,15 @@ GET    /agents            # List all agents
 GET    /agents/:id        # Get agent details
 ```
 
+### Projects
+
+```
+POST   /scan             # Deep-scan a directory and register project
+GET    /projects         # List all registered projects
+GET    /projects/:id     # Get project details
+DELETE /projects/:id     # Remove a project
+```
+
 ### Webhooks
 
 ```
@@ -437,8 +787,7 @@ GET    /webhooks/events   # List available events
 ├─────────────────────────────────────────────────┤
 │                                                 │
 │  ┌─────────┐  ┌─────────┐  ┌─────────┐         │
-│  │ Claude  │  │ Claude  │  │ Claude  │         │
-│  │Session 1│  │Session 2│  │Session 3│         │
+│  │ Agent 1 │  │ Agent 2 │  │ Agent 3 │         │
 │  └────┬────┘  └────┬────┘  └────┬────┘         │
 │       │            │            │               │
 │       └────────────┼────────────┘               │
@@ -483,20 +832,130 @@ Port Daddy uses SQLite for atomic operations:
 
 ## Configuration
 
-Defaults work for most cases:
+### Project Config (`.portdaddyrc`)
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| Port | 9876 | Daemon port |
-| Range | 3100-9999 | Available ports |
-| Reserved | 8080, 8000, 9876 | Never assigned |
+Define your project's services, port ranges, and startup commands in a `.portdaddyrc` file at your project root:
 
-Override via environment:
+```json
+{
+  "project": "myapp",
+  "portRange": [3000, 3099],
+  "services": {
+    "frontend": {
+      "cmd": "npm run dev -- --port ${PORT}",
+      "port": 3000,
+      "healthPath": "/",
+      "needs": ["api"]
+    },
+    "api": {
+      "cmd": "npm run dev:api",
+      "port": 3001,
+      "healthPath": "/health",
+      "env": {
+        "DATABASE_URL": "postgresql://localhost:5432/myapp"
+      }
+    },
+    "worker": {
+      "cmd": "npm run worker",
+      "needs": ["api"],
+      "noPort": true
+    }
+  }
+}
+```
+
+**Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `project` | string | Project name (used as service ID prefix) |
+| `portRange` | `[min, max]` | Port range reserved for this project |
+| `services.<name>.cmd` | string | Dev command (`${PORT}` is replaced with assigned port) |
+| `services.<name>.port` | number | Preferred port (next available if taken) |
+| `services.<name>.healthPath` | string | Health check path |
+| `services.<name>.healthTimeout` | number | Health check timeout in ms (default: 30000) |
+| `services.<name>.needs` | string[] | Services that must start first |
+| `services.<name>.env` | object | Environment variables for the service |
+| `services.<name>.cwd` | string | Working directory (relative to .portdaddyrc) |
+| `services.<name>.noPort` | boolean | Service doesn't need a port (e.g., workers) |
+| `services.<name>.metadata` | object | Arbitrary metadata |
+
+Config files are searched up the directory tree. Valid names: `.portdaddyrc`, `.portdaddyrc.json`, `portdaddy.config.json`.
+
+### Auto-Detection (`port-daddy scan`)
+
+Port Daddy deep-scans your project and generates a config automatically:
 
 ```bash
-PORT_DADDY_PORT=9999
-PORT_DADDY_RANGE_START=4000
-PORT_DADDY_RANGE_END=5000
+# Preview what would be generated
+port-daddy scan --dry-run
+
+# Scan, save config, and register project
+port-daddy scan
+```
+
+`scan` walks your directory tree recursively (max depth 5), detects services at every level, handles monorepos and npm workspaces, and registers the project with the daemon for dashboard visibility.
+
+**Supported frameworks (22):**
+
+| Framework | Default Port | Detection |
+|-----------|-------------|-----------|
+| Next.js | 3000 | `next.config.*` |
+| Nuxt | 3000 | `nuxt.config.*` |
+| SvelteKit | 5173 | `svelte.config.js` |
+| Remix | 3000 | `remix.config.js` |
+| Astro | 4321 | `astro.config.*` |
+| Vite | 5173 | `vite.config.*` |
+| Angular | 4200 | `angular.json` |
+| Create React App | 3000 | `react-scripts` dep |
+| Vue CLI | 8080 | `vue.config.js` |
+| Express | 3000 | `express` dep |
+| Fastify | 3000 | `fastify` dep |
+| Hono | 3000 | `hono` dep |
+| NestJS | 3000 | `nest-cli.json` |
+| http-server | 8080 | `http-server` dep |
+| serve | 3000 | `serve` dep |
+| FastAPI | 8000 | `requirements.txt` |
+| Flask | 5000 | `requirements.txt` |
+| Django | 8000 | `manage.py` |
+| Cloudflare Workers | 8787 | `wrangler.toml`, `wrangler.json` |
+| Docker | 3000 | `Dockerfile`, `compose.yml` |
+| Go | 8080 | `go.mod` |
+| Rust | 8080 | `Cargo.toml` |
+
+`detect` and `init` still work but print a deprecation notice directing you to `scan`.
+
+### Daemon Config (`config.json`)
+
+The daemon itself is configured via `config.json` in the Port Daddy installation directory:
+
+```json
+{
+  "service": { "port": 9876, "host": "localhost" },
+  "ports": {
+    "range_start": 3100,
+    "range_end": 9999,
+    "reserved": [8080, 8000, 9876]
+  },
+  "cleanup": {
+    "interval_ms": 300000,
+    "stale_threshold_ms": 7200000
+  },
+  "logging": { "level": "info" },
+  "security": {
+    "rate_limit": { "window_ms": 60000, "max_requests": 100 }
+  }
+}
+```
+
+**Environment variable overrides:**
+
+```bash
+PORT_DADDY_PORT=9999           # Daemon port
+PORT_DADDY_RANGE_START=4000    # Port range start
+PORT_DADDY_RANGE_END=5000      # Port range end
+PORT_DADDY_URL=http://host:9876  # SDK/CLI daemon URL
+PORT_DADDY_AGENT=my-agent        # Default agent ID for SDK
 ```
 
 ---
@@ -569,27 +1028,6 @@ port-daddy unlock files:src-auth
 
 ---
 
-## Future Vision
-
-Port Daddy is growing. Coming soon:
-
-- **Tunnel Integration**: Automatic ngrok/cloudflare tunnel setup
-- **Launch Mode**: `port-daddy launch myapp:api` — claims AND starts
-- **Metrics Export**: Prometheus/StatsD integration
-- **Cross-Machine**: Coordinate across multiple dev machines
-
----
-
-## Why "Daddy"?
-
-Because someone has to be the authority. In a house full of children (agents) all wanting different things, daddy decides who gets what. No fighting. No negotiation. Just ask, and receive.
-
----
-
 ## License
 
-MIT
-
----
-
-*Port Daddy: Because port conflicts are beneath you.*
+MIT -- Created by [Erich Owens](https://github.com/erichowens) at [Curiositech LLC](https://curiositech.ai)

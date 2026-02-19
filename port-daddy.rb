@@ -1,77 +1,72 @@
 class PortDaddy < Formula
-  desc "Authoritative port assignment service for multi-agent development environments"
-  homepage "https://github.com/erichowens/port-daddy"
-  url "file:///Users/erichowens/.claude/port-daddy/port-daddy-1.0.0.tar.gz"
+  desc "Authoritative port management and service orchestration for multi-agent development"
+  homepage "https://github.com/curiositech/port-daddy"
+  url "https://github.com/curiositech/port-daddy/archive/refs/tags/v2.0.0.tar.gz"
   sha256 "PLACEHOLDER_SHA256"
   license "MIT"
 
-  depends_on "node"
+  depends_on "node@18"
 
   def install
-    # Install Node.js app
+    # Install Node.js app into libexec
     libexec.install Dir["*"]
 
-    # Create wrapper scripts in bin
-    (bin/"get-port").write <<~EOS
-      #!/bin/bash
-      exec "#{libexec}/bin/get-port" "$@"
-    EOS
-
-    (bin/"release-port").write <<~EOS
-      #!/bin/bash
-      exec "#{libexec}/bin/release-port" "$@"
-    EOS
-
-    (bin/"list-ports").write <<~EOS
-      #!/bin/bash
-      exec "#{libexec}/bin/list-ports" "$@"
-    EOS
-
     # Install npm dependencies
-    system "npm", "install", "--production", "--prefix", libexec
+    system "npm", "install", "--omit=dev", "--prefix", libexec
+
+    # Create unified CLI wrapper in bin
+    (bin/"port-daddy").write <<~EOS
+      #!/bin/bash
+      exec "#{Formula["node@18"].opt_bin}/node" "#{libexec}/bin/port-daddy-cli.js" "$@"
+    EOS
+
+    # Install shell completions
+    bash_completion.install "#{libexec}/completions/port-daddy.bash" => "port-daddy"
+    zsh_completion.install "#{libexec}/completions/port-daddy.zsh" => "_port-daddy"
   end
 
   def post_install
-    # Install launchd daemon
-    system "#{libexec}/install-daemon.js", "install"
+    # Install launchd daemon via the CLI
+    system bin/"port-daddy", "install"
   end
 
   def caveats
     <<~EOS
-      Port Daddy has been installed as a launchd daemon.
+      Port Daddy v2 has been installed.
 
-      To start the service now:
+      Start the daemon:
         brew services start port-daddy
+        # or: port-daddy start
 
-      Or to start manually:
-        port-daddy-server
+      Quick start:
+        port-daddy up                      # Start your whole stack
+        port-daddy claim myapp:api         # Claim a port
+        port-daddy detect                  # Detect your framework
+        port-daddy doctor                  # Check your environment
 
-      Check status:
-        curl http://localhost:9876/health
-
-      CLI commands:
-        get-port <project>      # Request port
-        release-port <project>  # Release port
-        list-ports              # List active ports
+      Dashboard: http://localhost:9876
+      Docs: https://github.com/curiositech/port-daddy#readme
     EOS
   end
 
   service do
-    run [opt_libexec/"server.js"]
+    run [Formula["node@18"].opt_bin/"node", opt_libexec/"server.js"]
     keep_alive true
     log_path var/"log/port-daddy.log"
     error_log_path var/"log/port-daddy-error.log"
+    working_dir opt_libexec
   end
 
   test do
-    # Start service temporarily
+    # Start daemon temporarily
     fork do
-      exec opt_libexec/"server.js"
+      exec Formula["node@18"].opt_bin/"node", libexec/"server.js"
     end
 
     sleep 2
 
     # Test health endpoint
-    system "curl", "-sf", "http://localhost:9876/health"
+    output = shell_output("curl -sf http://localhost:9876/health")
+    assert_match "ok", output
   end
 end

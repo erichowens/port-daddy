@@ -3,6 +3,8 @@
 /**
  * Port Daddy Daemon Installer
  *
+ * Cross-platform service installer for macOS (launchctl) and Linux (systemd).
+ *
  * Usage:
  *   node install-daemon.js install   - Install and start Port Daddy daemon
  *   node install-daemon.js uninstall - Stop and uninstall Port Daddy daemon
@@ -10,18 +12,29 @@
  */
 
 import { spawnSync } from 'child_process';
-import { copyFileSync, existsSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { homedir } from 'os';
+import { homedir, platform } from 'os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PLIST_FILE = join(__dirname, 'com.erichowens.port-daddy.plist');
-const LAUNCH_AGENTS = join(homedir(), 'Library', 'LaunchAgents');
-const INSTALLED_PLIST = join(LAUNCH_AGENTS, 'com.erichowens.port-daddy.plist');
+const PLATFORM = platform();
+const NODE_PATH = process.execPath;
+const SERVER_PATH = join(__dirname, 'server.js');
+const LOG_PATH = join(__dirname, 'port-daddy.log');
+const ERROR_LOG_PATH = join(__dirname, 'port-daddy-error.log');
 
-function runCommand(command, args) {
-  const result = spawnSync(command, args, { encoding: 'utf8' });
+// macOS paths
+const PLIST_LABEL = 'com.portdaddy.daemon';
+const LAUNCH_AGENTS = join(homedir(), 'Library', 'LaunchAgents');
+const PLIST_PATH = join(LAUNCH_AGENTS, `${PLIST_LABEL}.plist`);
+
+// Linux paths
+const SYSTEMD_USER_DIR = join(homedir(), '.config', 'systemd', 'user');
+const SYSTEMD_UNIT = join(SYSTEMD_USER_DIR, 'port-daddy.service');
+
+function runCommand(command, args, options = {}) {
+  const result = spawnSync(command, args, { encoding: 'utf8', ...options });
   return {
     stdout: result.stdout || '',
     stderr: result.stderr || '',
@@ -29,82 +42,315 @@ function runCommand(command, args) {
   };
 }
 
-function install() {
-  console.log('📦 Installing Port Daddy daemon...');
+// =============================================================================
+// macOS: LaunchAgent plist
+// =============================================================================
 
-  // Copy plist to LaunchAgents
-  try {
-    copyFileSync(PLIST_FILE, INSTALLED_PLIST);
-    console.log('✅ Copied plist to LaunchAgents');
-  } catch (err) {
-    console.error('❌ Failed to copy plist:', err.message);
+function generatePlist() {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>${PLIST_LABEL}</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>${NODE_PATH}</string>
+        <string>${SERVER_PATH}</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>${LOG_PATH}</string>
+
+    <key>StandardErrorPath</key>
+    <string>${ERROR_LOG_PATH}</string>
+
+    <key>WorkingDirectory</key>
+    <string>${__dirname}</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>${dirname(NODE_PATH)}:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+</dict>
+</plist>`;
+}
+
+function installMacOS() {
+  // Ensure LaunchAgents directory exists
+  if (!existsSync(LAUNCH_AGENTS)) {
+    mkdirSync(LAUNCH_AGENTS, { recursive: true });
+  }
+
+  // Unload old service if present (handles label changes)
+  const oldPlist = join(LAUNCH_AGENTS, 'com.erichowens.port-daddy.plist');
+  if (existsSync(oldPlist)) {
+    runCommand('launchctl', ['unload', oldPlist]);
+    try { unlinkSync(oldPlist); } catch { /* ignore */ }
+    console.log('  Removed legacy plist (com.erichowens.port-daddy)');
+  }
+
+  // Unload current if already installed
+  if (existsSync(PLIST_PATH)) {
+    runCommand('launchctl', ['unload', PLIST_PATH]);
+  }
+
+  // Write plist with correct paths
+  writeFileSync(PLIST_PATH, generatePlist());
+  console.log(`  Wrote ${PLIST_PATH}`);
+
+  // Load
+  const load = runCommand('launchctl', ['load', PLIST_PATH]);
+  if (load.status === 0) {
+    console.log('  LaunchAgent loaded');
+    return true;
+  } else {
+    console.error('  Failed to load LaunchAgent:', load.stderr.trim());
+    return false;
+  }
+}
+
+function uninstallMacOS() {
+  // Unload both old and new labels
+  for (const path of [PLIST_PATH, join(LAUNCH_AGENTS, 'com.erichowens.port-daddy.plist')]) {
+    if (existsSync(path)) {
+      runCommand('launchctl', ['unload', path]);
+      try {
+        unlinkSync(path);
+        console.log(`  Removed ${path}`);
+      } catch (err) {
+        console.error(`  Failed to remove ${path}: ${err.message}`);
+      }
+    }
+  }
+  return true;
+}
+
+function statusMacOS() {
+  if (!existsSync(PLIST_PATH)) {
+    // Check for legacy plist
+    const oldPlist = join(LAUNCH_AGENTS, 'com.erichowens.port-daddy.plist');
+    if (existsSync(oldPlist)) {
+      console.log('  Legacy plist found (com.erichowens.port-daddy)');
+      console.log('  Run "port-daddy install" to upgrade to new format');
+      return 'legacy';
+    }
+    return 'not-installed';
+  }
+
+  const list = runCommand('launchctl', ['list']);
+  return list.stdout.includes(PLIST_LABEL) ? 'running' : 'installed';
+}
+
+// =============================================================================
+// Linux: systemd user service
+// =============================================================================
+
+function generateSystemdUnit() {
+  return `[Unit]
+Description=Port Daddy - Authoritative Port Management Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=${NODE_PATH} ${SERVER_PATH}
+WorkingDirectory=${__dirname}
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:${LOG_PATH}
+StandardError=append:${ERROR_LOG_PATH}
+Environment=PATH=${dirname(NODE_PATH)}:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=default.target
+`;
+}
+
+function installLinux() {
+  // Ensure systemd user directory exists
+  if (!existsSync(SYSTEMD_USER_DIR)) {
+    mkdirSync(SYSTEMD_USER_DIR, { recursive: true });
+  }
+
+  // Write unit file
+  writeFileSync(SYSTEMD_UNIT, generateSystemdUnit());
+  console.log(`  Wrote ${SYSTEMD_UNIT}`);
+
+  // Reload systemd
+  const reload = runCommand('systemctl', ['--user', 'daemon-reload']);
+  if (reload.status !== 0) {
+    console.error('  Failed to reload systemd:', reload.stderr.trim());
+    return false;
+  }
+
+  // Enable (start on login)
+  const enable = runCommand('systemctl', ['--user', 'enable', 'port-daddy.service']);
+  if (enable.status !== 0) {
+    console.error('  Failed to enable service:', enable.stderr.trim());
+    return false;
+  }
+  console.log('  Service enabled (auto-start on login)');
+
+  // Start now
+  const start = runCommand('systemctl', ['--user', 'start', 'port-daddy.service']);
+  if (start.status === 0) {
+    console.log('  Service started');
+    return true;
+  } else {
+    console.error('  Failed to start service:', start.stderr.trim());
+    return false;
+  }
+}
+
+function uninstallLinux() {
+  // Stop
+  runCommand('systemctl', ['--user', 'stop', 'port-daddy.service']);
+  console.log('  Service stopped');
+
+  // Disable
+  runCommand('systemctl', ['--user', 'disable', 'port-daddy.service']);
+  console.log('  Service disabled');
+
+  // Remove unit file
+  if (existsSync(SYSTEMD_UNIT)) {
+    try {
+      unlinkSync(SYSTEMD_UNIT);
+      console.log(`  Removed ${SYSTEMD_UNIT}`);
+    } catch (err) {
+      console.error(`  Failed to remove unit file: ${err.message}`);
+    }
+  }
+
+  // Reload
+  runCommand('systemctl', ['--user', 'daemon-reload']);
+  return true;
+}
+
+function statusLinux() {
+  if (!existsSync(SYSTEMD_UNIT)) {
+    return 'not-installed';
+  }
+
+  const status = runCommand('systemctl', ['--user', 'is-active', 'port-daddy.service']);
+  const state = status.stdout.trim();
+
+  if (state === 'active') return 'running';
+  if (state === 'inactive') return 'installed';
+  if (state === 'failed') return 'failed';
+  return 'installed';
+}
+
+// =============================================================================
+// Cross-platform dispatch
+// =============================================================================
+
+function install() {
+  console.log('Installing Port Daddy daemon...');
+  console.log(`  Platform: ${PLATFORM}`);
+  console.log(`  Node: ${NODE_PATH}`);
+  console.log(`  Server: ${SERVER_PATH}`);
+  console.log('');
+
+  let success = false;
+
+  if (PLATFORM === 'darwin') {
+    success = installMacOS();
+  } else if (PLATFORM === 'linux') {
+    success = installLinux();
+  } else {
+    console.log(`  Platform "${PLATFORM}" does not support auto-start installation.`);
+    console.log('  You can still run the daemon manually:');
+    console.log(`    node ${SERVER_PATH}`);
+    console.log('  Or: port-daddy start');
     return;
   }
 
-  // Load the daemon
-  const load = runCommand('launchctl', ['load', INSTALLED_PLIST]);
-  if (load.status === 0) {
-    console.log('✅ Port Daddy daemon loaded successfully');
-    console.log('🚀 Service will auto-start on login');
-    console.log('\nTest with: curl http://localhost:9876/health');
-  } else {
-    console.error('❌ Failed to load daemon:', load.stderr);
+  if (success) {
+    console.log('');
+    console.log('Port Daddy daemon installed successfully.');
+    console.log('  Auto-starts on login');
+    console.log('  Test: curl http://localhost:9876/health');
+    console.log('  Logs: tail -f ' + LOG_PATH);
   }
 }
 
 function uninstall() {
-  console.log('🗑️  Uninstalling Port Daddy daemon...');
+  console.log('Uninstalling Port Daddy daemon...');
 
-  if (!existsSync(INSTALLED_PLIST)) {
-    console.log('ℹ️  Port Daddy daemon is not installed');
+  if (PLATFORM === 'darwin') {
+    uninstallMacOS();
+  } else if (PLATFORM === 'linux') {
+    uninstallLinux();
+  } else {
+    console.log(`  No system service to uninstall on "${PLATFORM}".`);
     return;
   }
 
-  // Unload the daemon
-  const unload = runCommand('launchctl', ['unload', INSTALLED_PLIST]);
-  if (unload.status === 0) {
-    console.log('✅ Port Daddy daemon unloaded');
-  } else {
-    console.warn('⚠️  Failed to unload daemon:', unload.stderr);
-  }
-
-  // Remove plist
-  try {
-    unlinkSync(INSTALLED_PLIST);
-    console.log('✅ Removed plist from LaunchAgents');
-  } catch (err) {
-    console.error('❌ Failed to remove plist:', err.message);
-  }
+  console.log('');
+  console.log('Port Daddy daemon uninstalled.');
 }
 
 function status() {
-  console.log('🔍 Checking Port Daddy status...\n');
+  console.log('Checking Port Daddy status...\n');
 
-  // Check if installed
-  if (existsSync(INSTALLED_PLIST)) {
-    console.log('✅ Daemon installed at:', INSTALLED_PLIST);
+  // Platform-specific service check
+  let serviceState = 'unknown';
+
+  if (PLATFORM === 'darwin') {
+    serviceState = statusMacOS();
+  } else if (PLATFORM === 'linux') {
+    serviceState = statusLinux();
   } else {
-    console.log('❌ Daemon not installed');
-    return;
+    serviceState = 'unsupported';
   }
 
-  // Check if loaded
-  const list = runCommand('launchctl', ['list']);
-  const isLoaded = list.stdout.includes('com.erichowens.port-daddy');
-
-  if (isLoaded) {
-    console.log('✅ Daemon is loaded (should be running)');
-  } else {
-    console.log('❌ Daemon is not loaded');
+  switch (serviceState) {
+    case 'running':
+      console.log('  System service: installed and running');
+      break;
+    case 'installed':
+      console.log('  System service: installed but not running');
+      break;
+    case 'failed':
+      console.log('  System service: installed but failed');
+      console.log('  Check logs: tail -f ' + ERROR_LOG_PATH);
+      break;
+    case 'legacy':
+      // Already printed details
+      break;
+    case 'not-installed':
+      console.log('  System service: not installed');
+      console.log('  Install with: port-daddy install');
+      break;
+    case 'unsupported':
+      console.log(`  System service: not available on ${PLATFORM}`);
+      break;
   }
 
-  // Check if responding
-  const health = runCommand('curl', ['-s', 'http://localhost:9876/health']);
+  // Check if daemon is actually responding
+  console.log('');
+  const health = runCommand('curl', ['-s', '--connect-timeout', '2', 'http://localhost:9876/health']);
   if (health.status === 0 && health.stdout.includes('"status":"ok"')) {
-    console.log('✅ Service is responding on port 9876');
-    console.log('\nHealth:', health.stdout);
+    console.log('  Daemon: responding on port 9876');
+    try {
+      const data = JSON.parse(health.stdout);
+      console.log(`  Version: ${data.version || 'unknown'}`);
+      console.log(`  Uptime: ${data.uptime_seconds ? Math.round(data.uptime_seconds) + 's' : 'unknown'}`);
+      console.log(`  Active ports: ${data.active_ports ?? 'unknown'}`);
+    } catch { /* ignore parse errors */ }
   } else {
-    console.log('❌ Service is not responding');
+    console.log('  Daemon: not responding');
   }
 }
 
@@ -129,5 +375,10 @@ Usage:
   node install-daemon.js install   - Install and start daemon
   node install-daemon.js uninstall - Stop and uninstall daemon
   node install-daemon.js status    - Check daemon status
+
+Supported platforms:
+  macOS   - LaunchAgent (auto-start on login)
+  Linux   - systemd user service (auto-start on login)
+  Windows - Manual start only (port-daddy start)
     `);
 }

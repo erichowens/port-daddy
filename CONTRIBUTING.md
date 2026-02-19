@@ -1,84 +1,147 @@
 # Contributing to Port Daddy
 
-Thank you for your interest in contributing to Port Daddy!
+Thank you for your interest in contributing to Port Daddy! This guide covers the v2 architecture, development workflow, and conventions you need to know.
 
-## Development Setup
-
-### Prerequisites
+## Prerequisites
 
 - Node.js 18+
 - npm 9+
 - macOS or Linux (Windows support via WSL)
 
-### Installation
+## Getting Started
 
 ```bash
 # Clone the repo
-git clone https://github.com/erichowens/port-daddy.git
+git clone https://github.com/curiositech/port-daddy.git
 cd port-daddy
 
 # Install dependencies
 npm install
 
-# Run tests
-npm test
-
-# Start development server (manual, not daemon)
+# Start the daemon in development mode
 npm run dev
+
+# Run the full test suite (1078 tests across 19 suites)
+npm test
 ```
 
-## Project Structure
+## Project Structure (v2)
 
 ```
 port-daddy/
-├── server.js           # Main Express API server
-├── install-daemon.js   # Daemon installer/manager
-├── config.json         # Configuration (customizable)
-├── VERSION             # Semantic version number
-├── bin/               # CLI tools (symlinked to ~/bin)
-│   ├── get-port       # Request port assignment
-│   ├── release-port   # Release port assignment
-│   └── list-ports     # List active assignments
+├── server.js              # Express daemon (main entry)
+├── config.json            # Daemon configuration
+├── package.json           # ESM project, "type": "module"
+├── bin/
+│   └── port-daddy-cli.js  # Unified CLI (subcommands, no separate scripts)
+├── lib/
+│   ├── services.js        # Port assignment module
+│   ├── locks.js           # Distributed locks
+│   ├── messaging.js       # Pub/sub messaging
+│   ├── agents.js          # Agent registry
+│   ├── activity.js        # Activity logging
+│   ├── webhooks.js        # Webhook subscriptions
+│   ├── identity.js        # Semantic ID parsing (project:stack:context)
+│   ├── detect.js          # Framework detection (17 frameworks)
+│   ├── config.js          # .portdaddyrc handling
+│   ├── health.js          # Health check utilities
+│   ├── utils.js           # Common utilities
+│   ├── client.js          # JavaScript SDK (PortDaddy class)
+│   ├── orchestrator.js    # Service orchestrator (topological sort, spawn, health)
+│   ├── discover.js        # Monorepo/workspace service discovery
+│   └── log-prefix.js      # Colored multiplexed log output
+├── routes/
+│   ├── index.js           # Route aggregator
+│   ├── services.js        # /claim, /release, /services
+│   ├── messaging.js       # /msg, /subscribe, /channels
+│   ├── locks.js           # /locks
+│   ├── agents.js          # /agents
+│   ├── info.js            # /health, /version, /metrics
+│   ├── webhooks.js        # /webhooks
+│   ├── activity.js        # /activity
+│   └── detect-config.js   # /detect, /init, /config
+├── shared/
+│   └── validation.js      # Input validation
+├── public/
+│   └── index.html         # Dashboard UI
 ├── tests/
-│   ├── integration/   # API endpoint tests
-│   ├── unit/          # Unit tests (future)
-│   └── e2e/           # End-to-end tests (future)
-├── public/            # Web dashboard (static files)
-│   └── index.html
-├── migrations/        # Database schema migrations
-│   └── 001_initial_schema.sql
-└── completions/       # Shell completion scripts
-    └── port-daddy.bash
+│   ├── integration/       # API tests against live daemon
+│   │   ├── api.test.js
+│   │   ├── cli.test.js
+│   │   ├── security.test.js
+│   │   └── up-down.test.js
+│   ├── unit/              # Unit test files (mocked, no daemon)
+│   └── setup-unit.js      # Unit test setup
+├── completions/
+│   ├── port-daddy.bash    # Bash completions
+│   └── port-daddy.zsh     # Zsh completions
+└── install-daemon.js      # Daemon installer/manager
 ```
 
 ## Architecture
 
+### What Changed from v1 to v2
+
+| Area | v1 | v2 |
+|------|----|----|
+| CLI | Separate shell scripts (`get-port`, `release-port`, `list-ports`) | Unified `port-daddy` command with subcommands |
+| Naming | Flat project names | Semantic identities: `project:stack:context` |
+| Routes | All handlers in `server.js` | Modular `routes/` directory |
+| Validation | Inline in route handlers | Centralized in `shared/validation.js` |
+| SDK | None | `lib/client.js` (PortDaddy class) |
+| Config | Just `config.json` | Per-project `.portdaddyrc` with auto-detection |
+| Coordination | Port assignment only | Pub/sub, distributed locks, agent registry, webhooks |
+| Tests | Integration only | Unit + integration (1078 tests, 19 suites) |
+| Completions | Bash only | Bash and zsh |
+| Module system | CommonJS | ESM throughout (`import`/`export`) |
+
 ### Core Components
 
-**1. Express API Server** (`server.js`)
-- Handles HTTP requests for port assignment
-- Manages SQLite database (WAL mode for concurrency)
-- Tracks process IDs for automatic cleanup
-- Provides metrics and health endpoints
+**1. Express Daemon** (`server.js`)
+- HTTP API for all port and coordination services
+- SQLite database (WAL mode for concurrency)
+- Process tracking for automatic cleanup
+- Rate limiting (100 req/min per IP, 10 concurrent SSE connections)
 
-**2. CLI Tools** (`bin/*`)
-- Bash wrappers that call the HTTP API
-- Include retry logic and fallback mechanisms
-- Designed for shell integration
+**2. Unified CLI** (`bin/port-daddy-cli.js`)
+- Single entry point: `port-daddy <subcommand>`
+- Subcommands: `claim`, `release`, `list`, `dev`, `start`, `restart`, `status`, etc.
+- Shell completions for bash and zsh
 
-**3. Database** (SQLite)
-- Single file: `port-registry.db`
-- WAL mode for concurrent reads/writes
-- Automatic cleanup of stale entries every 5 minutes
+**3. Modular Routes** (`routes/`)
+- Each domain gets its own route file
+- `routes/index.js` aggregates all routes and mounts them on the Express app
+- Route handlers are thin: validate input, call lib module, return response
+
+**4. Library Modules** (`lib/`)
+- Each module exports a factory function that accepts dependencies (for testability)
+- All state backed by SQLite with parameterized queries
+- Modules: services, locks, messaging, agents, activity, webhooks, identity, detect, config, health, utils, client
+
+**5. JavaScript SDK** (`lib/client.js`)
+- `PortDaddy` class for programmatic usage
+- Wraps HTTP API with a clean interface
+- Importable: `import { PortDaddy } from 'port-daddy/client'`
+
+**6. Shared Validation** (`shared/validation.js`)
+- Input validation rules used across routes
+- Semantic identity format validation
+- Port range and parameter validation
 
 ### Key Design Decisions
 
 **Why SQLite?**
-- Atomic transactions (no race conditions)
+- Atomic transactions (no race conditions between agents)
 - Single file (easy backup/migration)
 - No separate service to manage
 - Fast (<10ms queries)
 - ACID guarantees
+
+**Why Semantic Identities?**
+- `project:stack:context` gives structure to service names
+- Enables pattern queries (all services for a project, all frontends, etc.)
+- Human-readable and machine-parseable
+- Example: `myapp:api:main`, `myapp:frontend:feature-auth`
 
 **Why localhost-only?**
 - Port assignment is inherently local
@@ -86,75 +149,138 @@ port-daddy/
 - Simpler security model
 - No authentication required
 
-**Why process tracking?**
-- Automatic cleanup when processes die
-- No manual intervention needed
-- Prevents port leaks
-
 ## Development Workflow
 
 ### Making Changes
 
-1. Create a feature branch
-2. Make your changes (follow existing code style)
-3. Add tests for new features
-4. Run tests: `npm test`
-5. Commit with clear messages
-6. Push and create PR
+1. Create a feature branch from `main`
+2. Make your changes (follow the code style below)
+3. Write tests -- both unit and integration
+4. Run `npm test` and confirm all 1078+ tests pass
+5. Commit with clear, descriptive messages
+6. Push and open a pull request against `main`
 
-### Testing Guidelines
+### Adding New Features Checklist
 
-**Unit Tests** (`tests/unit/`)
-- Test individual functions in isolation
-- Mock external dependencies
-- Fast execution (<1s total)
+When adding a new capability to Port Daddy, follow this sequence:
 
-**Integration Tests** (`tests/integration/`)
-- Test API endpoints end-to-end
-- Use real database (test instance)
-- Verify HTTP contracts
+1. **Add module** to `lib/` -- export a factory function that takes dependencies
+2. **Import and wire up** the module in `server.js`
+3. **Add routes** in the `routes/` directory -- create a new file or extend an existing one
+4. **Code hash is automatic** -- `server.js` uses dynamic `readdirSync` to hash all source files, so new `lib/` and `routes/` files are included automatically
+5. **Add shared validation** in `shared/validation.js` if the feature takes user input
+6. **Update the dashboard** in `public/index.html`
+7. **Write unit tests** in `tests/unit/` (mock dependencies, no daemon needed)
+8. **Write integration tests** in `tests/integration/` (test against live daemon)
+9. **Update README.md** with API docs and usage examples
+10. **Add SDK methods** to `lib/client.js` so programmatic users get the feature too
 
-**E2E Tests** (`tests/e2e/`)
-- Test full CLI workflows
-- Verify daemon behavior
-- Test race conditions
+## Testing
 
-**Test Coverage Target**: 80%+ for core functionality
+Port Daddy has 1078 tests across 19 suites, split into two projects configured in `jest.config.js`.
 
-### Code Style
+### Running Tests
 
-- ES Modules (import/export)
-- No semicolons
-- 2-space indentation
-- Descriptive variable names
-- Comments for non-obvious logic
+```bash
+# Run everything (unit + integration)
+npm test
 
-### Security Guidelines
+# Watch mode for rapid iteration
+npm run test:watch
 
-- Use spawnSync with array args (not shell strings)
-- Validate all inputs
-- Parameterize SQL queries
-- localhost-only binding
-- Rate limiting enabled
+# Generate coverage report (target: 90%+)
+npm run test:coverage
+
+# CI gate (verifies daemon health, then runs tests)
+npm run test:ci
+```
+
+### Unit Tests (`tests/unit/`)
+
+- 12 test files, one per `lib/` module
+- All dependencies are mocked -- no daemon, no database, no network
+- Fast execution
+- Great for TDD: write the test first, then implement
+
+```bash
+# Run only unit tests
+npm test -- --selectProjects unit
+```
+
+### Integration Tests (`tests/integration/`)
+
+- 4 test files: `api.test.js`, `cli.test.js`, `security.test.js`, `up-down.test.js`
+- Run against a live daemon (the `pretest` script auto-starts it)
+- Verify real HTTP contracts, CLI behavior, and security controls
+- The test harness restarts the daemon with fresh code and verifies the code hash
+
+```bash
+# Run only integration tests
+npm test -- --selectProjects integration
+```
+
+### Writing Tests
+
+- **Unit tests**: Place in `tests/unit/<module-name>.test.js`. Mock the module's dependencies using the factory function pattern. No network calls, no file I/O.
+- **Integration tests**: Place in `tests/integration/`. Use real HTTP requests against `localhost:9876`. Clean up any resources you create (ports, locks, agents, etc.) in `afterEach` or `afterAll`.
+
+## Code Style
+
+- **ES Modules** -- `import`/`export`, not `require`/`module.exports`. The project has `"type": "module"` in `package.json`.
+- **No semicolons** -- rely on ASI. Be consistent with the existing codebase.
+- **2-space indentation** -- no tabs.
+- **Descriptive names** -- `assignPortToService` not `assign`, `validateSemanticId` not `validate`.
+- **Comments for non-obvious logic** -- especially around SQLite transaction boundaries and race condition handling.
+- **Express routes in `routes/` directory** -- keep `server.js` focused on wiring, not business logic.
+- **Factory functions with dependency injection** -- every `lib/` module exports a function that takes its dependencies, making testing straightforward.
+
+Example module pattern:
+
+```js
+// lib/example.js
+export function createExample({ db, logger }) {
+  function doSomething(input) {
+    logger.info('Doing something', { input })
+    // ... use db, return result
+  }
+
+  return { doSomething }
+}
+```
+
+## Security Guidelines
+
+- **SSRF Protection**: Webhook URLs are validated against private IP ranges
+- **Input Validation**: All user input validated through `shared/validation.js`
+- **SQL Injection Prevention**: Parameterized queries throughout -- never interpolate user input into SQL
+- **Localhost Binding**: Daemon only listens on `127.0.0.1`
+- **Rate Limiting**: 100 requests/min per IP, 10 concurrent SSE connections per IP
+- **HMAC Signing**: Webhook payloads are signed so receivers can verify authenticity
+- **Process Arguments**: Use `spawnSync` with array args, never shell strings
 
 ## Release Process
 
-1. Update VERSION file
-2. Update CHANGELOG.md with changes
-3. Run full test suite
-4. Tag release: `git tag v1.x.x`
-5. Push tags: `git push --tags`
-6. Create GitHub release with notes
+Port Daddy is published as an npm package. To cut a release:
+
+1. **Update the version** in `package.json` following [semver](https://semver.org/)
+2. **Update CHANGELOG.md** with a summary of changes
+3. **Run the full test suite**: `npm test` -- all 1078+ tests must pass
+4. **Commit the version bump**: `git commit -am "Bump to vX.Y.Z"`
+5. **Tag the release**: `git tag vX.Y.Z`
+6. **Push**: `git push origin main --tags`
+7. **Publish to npm**: `npm publish`
+8. **Create a GitHub release** at https://github.com/curiositech/port-daddy/releases with release notes
 
 ## Getting Help
 
-- Issues: https://github.com/erichowens/port-daddy/issues
-- Discussions: https://github.com/erichowens/port-daddy/discussions
+- **Issues**: https://github.com/curiositech/port-daddy/issues
+- **Discussions**: https://github.com/curiositech/port-daddy/discussions
+- **README**: https://github.com/curiositech/port-daddy#readme
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under MIT.
+By contributing to Port Daddy, you agree that your contributions will be licensed under the [MIT License](https://opensource.org/licenses/MIT), the same license that covers the project.
 
 ---
 
-**Thank you for contributing to Port Daddy!** 🎉
+Thank you for helping make Port Daddy better!

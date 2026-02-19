@@ -1,9 +1,13 @@
 {
   "name": "port-daddy",
   "version": "2.0.0",
-  "description": "Authoritative port assignment service for multi-Claude environments",
+  "description": "Authoritative port management and service orchestration for multi-agent development — port-daddy up/down, atomic assignment, pub/sub messaging, distributed locks, agent registry, and project:stack:context semantic identities",
   "main": "server.js",
   "type": "module",
+  "exports": {
+    ".": "./server.js",
+    "./client": "./lib/client.js"
+  },
   "bin": {
     "port-daddy": "./bin/port-daddy-cli.js"
   },
@@ -19,32 +23,45 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/erichowens/port-daddy.git"
+    "url": "git+https://github.com/curiositech/port-daddy.git"
   },
-  "author": "Erich Owens <erich@curiositech.com> (https://curiositech.com)",
+  "author": "Curiositech LLC <hello@curiositech.ai> (https://curiositech.ai)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/erichowens/port-daddy/issues"
+    "url": "https://github.com/curiositech/port-daddy/issues"
   },
-  "homepage": "https://github.com/erichowens/port-daddy#readme",
+  "homepage": "https://github.com/curiositech/port-daddy#readme",
   "keywords": [
     "port",
     "port-management",
+    "port-finder",
+    "port-conflict",
+    "devtools",
     "development",
     "dev-server",
     "multi-agent",
-    "claude",
-    "ai-development",
+    "pubsub",
+    "distributed-locks",
+    "agent-coordination",
+    "service-orchestration",
+    "monorepo",
+    "framework-detection",
     "daemon",
-    "macos"
+    "ai-development",
+    "claude"
   ],
   "files": [
     "server.js",
     "install-daemon.js",
     "bin/",
+    "lib/",
+    "routes/",
+    "shared/",
     "public/",
     "config.json",
     "completions/",
+    "skills/",
+    ".claude-plugin/",
     "LICENSE",
     "README.md"
   ],

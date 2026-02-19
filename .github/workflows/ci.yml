@@ -32,9 +32,14 @@ jobs:
 
       - name: Test CLI tools
         run: |
-          node bin/get-port.js --help || true
-          node bin/release-port.js --help || true
-          node bin/list-ports.js --help || true
+          node bin/port-daddy-cli.js --help
+          node bin/port-daddy-cli.js version || true
+
+      - name: Test CLI subcommands
+        run: |
+          node bin/port-daddy-cli.js status || true
+          node bin/port-daddy-cli.js doctor || true
+          node bin/port-daddy-cli.js --version
 
   lint:
     runs-on: ubuntu-latest
@@ -52,3 +57,9 @@ jobs:
 
       - name: Check for security vulnerabilities
         run: npm audit --audit-level=high || true
+
+      - name: Validate skill metadata
+        run: |
+          test -f skills/port-daddy-cli/SKILL.md && echo "SKILL.md exists" || exit 1
+          test -f .claude-plugin/plugin.json && echo "plugin.json exists" || exit 1
+          node -e "JSON.parse(require('fs').readFileSync('.claude-plugin/plugin.json'))" && echo "plugin.json is valid JSON" || exit 1

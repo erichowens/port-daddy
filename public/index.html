@@ -11,9 +11,11 @@
       --bg-dark: #1a1a2e;
       --bg-card: #16213e;
       --bg-input: #0f0f1a;
+      --bg-elevated: #1e2844;
       --accent: #d4a03c;
       --accent-dim: #b8860b;
       --accent-soft: #c9985a;
+      --accent-glow: rgba(212,160,60,0.15);
       --text: #e0ddd8;
       --text-dim: #9a9590;
       --text-muted: #6a6560;
@@ -22,19 +24,37 @@
       --danger: #e07070;
       --info: #70a5e0;
       --border: #2a2a40;
+      --border-light: #353550;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.3);
+      --transition-fast: 0.15s ease;
+      --transition-med: 0.25s ease;
     }
     body {
       font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
       background: var(--bg-dark);
       color: var(--text);
       min-height: 100vh;
-      line-height: 1.5;
+      line-height: 1.6;
+      font-size: 14px;
       letter-spacing: 0.01em;
       -webkit-font-smoothing: antialiased;
     }
-    .container { max-width: 1800px; margin: 0 auto; padding: 20px; }
-
+    .container { max-width: 1800px; margin: 0 auto; padding: 20px 24px; }
     .text-muted { color: var(--text-muted); }
+
+    /* Animations */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 4px var(--success); } 50% { box-shadow: 0 0 12px var(--success); } }
+    @keyframes toastIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes toastOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(120%); opacity: 0; } }
+    @keyframes countUp { from { transform: scale(1.3); opacity: 0.5; } to { transform: scale(1); opacity: 1; } }
 
     /* Icons */
     .icon {
@@ -47,13 +67,17 @@
     /* Header */
     .header {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px;
+      padding: 16px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px;
     }
     .logo { display: flex; align-items: center; gap: 16px; }
     .logo-mark {
-      width: 48px; height: 48px; background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
       border-radius: 12px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(212,160,60,0.25);
+      transition: transform var(--transition-med), box-shadow var(--transition-med);
     }
+    .logo-mark:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(212,160,60,0.35); }
     .logo-mark svg { width: 28px; height: 28px; stroke: var(--bg-dark); stroke-width: 2.5; }
     .logo-text h1 {
       font-size: 1.8em; font-weight: 700; letter-spacing: -0.5px;
@@ -61,31 +85,177 @@
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
     .logo-text .tagline { color: var(--text-dim); font-size: 0.85em; font-weight: 400; }
-    .header-right { display: flex; gap: 16px; align-items: center; }
+    .header-right { display: flex; gap: 12px; align-items: center; }
     .status-pill {
       display: flex; align-items: center; gap: 8px;
-      padding: 6px 14px; border-radius: 20px; font-size: 0.8em;
+      padding: 6px 14px; border-radius: 20px; font-size: 0.85em;
       background: var(--bg-card); border: 1px solid var(--border);
+      transition: border-color var(--transition-med);
     }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
-    .status-dot.online { background: var(--success); box-shadow: 0 0 8px var(--success); }
-    .status-dot.offline { background: var(--danger); }
-    .version-info { text-align: right; font-size: 0.75em; color: var(--text-muted); }
-    .version-info code { color: var(--accent); }
+    .status-pill.online { border-color: rgba(109,209,148,0.3); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; transition: all var(--transition-med); }
+    .status-dot.online { background: var(--success); animation: pulseGlow 2s infinite; }
+    .status-dot.offline { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+    .version-info { text-align: right; font-size: 0.8em; color: var(--text-muted); line-height: 1.5; }
+    .version-info code { color: var(--accent); background: var(--bg-input); padding: 1px 6px; border-radius: 3px; }
     .settings-btn {
       background: none; border: 1px solid var(--border); color: var(--text-dim);
-      width: 36px; height: 36px; border-radius: 8px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+      width: 38px; height: 38px; border-radius: var(--radius-sm); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--transition-med);
     }
-    .settings-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .settings-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+    .settings-btn:hover svg { transform: rotate(45deg); }
+    .settings-btn svg { transition: transform 0.4s ease; }
+
+    /* Stats Grid */
+    .stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 14px 16px;
+      position: relative; overflow: hidden;
+      transition: border-color var(--transition-med), transform var(--transition-fast);
+    }
+    .stat-card:hover { border-color: var(--border-light); transform: translateY(-1px); }
+    .stat-card .stat-icon-bg {
+      position: absolute; top: -4px; right: -4px; width: 48px; height: 48px;
+      opacity: 0.06; stroke-width: 1.5;
+    }
+    .stat-card .value {
+      font-size: 1.6em; font-weight: 700; color: var(--accent); line-height: 1.2;
+      transition: transform 0.2s ease;
+    }
+    .stat-card .value.updated { animation: countUp 0.3s ease; }
+    .stat-card .label {
+      font-size: 0.75em; color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: 0.5px; margin-top: 4px;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .stat-card .label svg { opacity: 0.6; }
+    @media (max-width: 1100px) { .stats { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 600px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+
+    /* Quick Actions */
+    .quick-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .quick-btn {
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text); padding: 8px 16px; border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 0.85em; cursor: pointer;
+      transition: all var(--transition-med);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .quick-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+    /* Tabs */
+    .tabs-container {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden;
+      max-height: calc(100vh - 260px); display: flex; flex-direction: column;
+      box-shadow: var(--shadow-sm);
+    }
+    .tabs-wrapper {
+      overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+      -webkit-overflow-scrolling: touch;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .tabs-wrapper::-webkit-scrollbar { height: 3px; }
+    .tabs-wrapper::-webkit-scrollbar-track { background: transparent; }
+    .tabs-wrapper::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .tabs { display: flex; padding: 0 8px; min-width: max-content; }
+    .tab {
+      padding: 12px 16px; background: none; border: none;
+      color: var(--text-dim); font-family: inherit; font-size: 0.85em;
+      cursor: pointer; border-bottom: 2px solid transparent;
+      transition: all var(--transition-med); white-space: nowrap;
+      display: flex; align-items: center; gap: 8px; position: relative;
+    }
+    .tab:hover { color: var(--text); background: rgba(255,255,255,0.02); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(212,160,60,0.06); }
+    .tab-badge {
+      font-size: 0.7em; background: var(--bg-input); color: var(--text-muted);
+      padding: 1px 6px; border-radius: 8px; min-width: 18px; text-align: center;
+      font-weight: 600; transition: all var(--transition-med);
+    }
+    .tab.active .tab-badge { background: var(--accent-glow); color: var(--accent); }
+    .tab-content { display: none; padding: 20px; overflow-y: auto; flex: 1; min-height: 0; animation: fadeIn 0.2s ease; }
+    .tab-content.active { display: block; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left; padding: 12px 16px; font-size: 0.8em;
+      color: var(--accent); text-transform: uppercase; letter-spacing: 0.8px;
+      border-bottom: 2px solid var(--border); font-weight: 600;
+    }
+    td { padding: 14px 16px; border-bottom: 1px solid rgba(42,42,64,0.6); font-size: 0.9em; line-height: 1.5; }
+    tr { transition: background var(--transition-fast); }
+    tr:hover { background: rgba(255,255,255,0.02); }
+
+    /* Empty States */
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+    .empty-state-icon { width: 48px; height: 48px; margin: 0 auto 12px; opacity: 0.3; stroke: var(--text-muted); fill: none; stroke-width: 1.5; }
+    .empty-state-text { font-size: 0.9em; }
+    .empty-state-hint { font-size: 0.8em; color: var(--text-muted); opacity: 0.6; margin-top: 6px; }
+
+    /* Port Badge */
+    .port-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: linear-gradient(135deg, rgba(212,160,60,0.15), rgba(212,160,60,0.05));
+      border: 1px solid rgba(212,160,60,0.25); color: var(--accent);
+      padding: 3px 10px; border-radius: 6px; font-size: 0.9em;
+      font-weight: 600; font-family: inherit; letter-spacing: 0.5px;
+    }
+
+    /* Status Indicator */
+    .status-indicator {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 4px; font-size: 0.8em;
+      font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .status-indicator.running { background: rgba(109,209,148,0.12); color: var(--success); }
+    .status-indicator.running::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--success); animation: pulseGlow 2s infinite;
+    }
+    .status-indicator.claimed { background: rgba(96,165,250,0.12); color: var(--info); }
+    .status-indicator.claimed::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--info);
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 4px;
+      font-size: 0.8em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .badge-success { background: rgba(74, 222, 128, 0.12); color: var(--success); }
+    .badge-warning { background: rgba(251, 191, 36, 0.12); color: var(--warning); }
+    .badge-danger { background: rgba(248, 113, 113, 0.12); color: var(--danger); }
+    .badge-info { background: rgba(96, 165, 250, 0.12); color: var(--info); }
+    .badge-muted { background: rgba(255,255,255,0.05); color: var(--text-muted); }
+
+    code { background: var(--bg-input); padding: 2px 8px; border-radius: 4px; font-size: 0.9em; color: var(--accent); }
+
+    /* Action Buttons */
+    .action-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-dim);
+      padding: 5px 12px; border-radius: var(--radius-sm); font-family: inherit;
+      font-size: 0.8em; cursor: pointer; transition: all var(--transition-med);
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .action-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+    .action-btn.danger:hover { border-color: var(--danger); color: var(--danger); background: rgba(224,112,112,0.1); }
 
     /* Command Bar */
     .command-bar {
-      background: var(--bg-dark); border: 1px solid var(--border);
-      border-radius: 6px; padding: 4px; margin-bottom: 16px;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 4px; margin-bottom: 12px;
       display: flex; align-items: center; gap: 8px;
+      transition: border-color var(--transition-med), box-shadow var(--transition-med);
     }
-    .command-bar .prompt { color: var(--accent); padding: 0 12px; font-weight: 600; }
+    .command-bar:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .command-bar .prompt { color: var(--accent); padding: 0 12px; font-weight: 700; font-size: 1.05em; }
     .command-bar input {
       flex: 1; background: none; border: none; color: var(--text);
       font-family: inherit; font-size: 0.95em; padding: 12px 0; outline: none;
@@ -93,322 +263,330 @@
     .command-bar input::placeholder { color: var(--text-muted); }
     .command-bar button {
       background: var(--accent); color: var(--bg-dark); border: none;
-      padding: 10px 20px; border-radius: 6px; font-family: inherit;
-      font-weight: 600; cursor: pointer; transition: all 0.2s;
+      padding: 10px 20px; border-radius: var(--radius-sm); font-family: inherit;
+      font-weight: 600; cursor: pointer; transition: all var(--transition-med);
     }
-    .command-bar button:hover { background: #e8b84a; }
-    .command-output {
-      font-size: 0.9em; min-height: 350px; overflow-y: auto;
+    .command-bar button:hover { background: #e8b84a; transform: translateY(-1px); }
+    .command-bar button:active { transform: translateY(0); }
+
+    /* Command Suggestions */
+    .cmd-suggest {
+      position: absolute; left: 0; right: 0;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
+      box-shadow: var(--shadow-md); z-index: 100; display: none;
+      max-height: 240px; overflow-y: auto;
     }
+    .cmd-suggest.open { display: block; }
+    .cmd-suggest-item {
+      padding: 10px 16px; cursor: pointer; display: flex;
+      justify-content: space-between; align-items: center;
+      transition: background var(--transition-fast);
+      font-size: 0.9em; border-bottom: 1px solid rgba(42,42,64,0.4);
+    }
+    .cmd-suggest-item:last-child { border-bottom: none; }
+    .cmd-suggest-item:hover, .cmd-suggest-item.selected { background: var(--accent-glow); }
+    .cmd-suggest-item .cmd-name { color: var(--accent); font-weight: 500; }
+    .cmd-suggest-item .cmd-desc { color: var(--text-muted); font-size: 0.85em; }
+
+    /* Terminal Output */
+    .command-output { font-size: 0.9em; min-height: 350px; overflow-y: auto; scroll-behavior: smooth; }
     .command-output pre { white-space: pre-wrap; word-break: break-all; margin: 0; }
+    .cmd-entry { margin-bottom: 16px; animation: fadeIn 0.2s ease; }
+    .cmd-entry-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+      font-size: 0.8em; color: var(--text-muted);
+    }
+    .cmd-entry-header .cmd-timestamp { opacity: 0.6; }
+    .cmd-entry-header .cmd-text { color: var(--accent-soft); }
+    .cmd-entry-body { padding: 12px 16px; border-radius: var(--radius-sm); background: rgba(15,15,26,0.5); }
+    .cmd-entry-body.success-entry { border-left: 3px solid var(--success); }
+    .cmd-entry-body.error-entry { border-left: 3px solid var(--danger); }
     .command-output .success { color: var(--success); }
     .command-output .error { color: var(--danger); }
-
-    /* Quick Actions */
-    .quick-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .quick-btn {
-      background: var(--bg-card); border: 1px solid var(--border);
-      color: var(--text); padding: 8px 16px; border-radius: 6px;
-      font-family: inherit; font-size: 0.8em; cursor: pointer; transition: all 0.2s;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .quick-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-    /* Stats Grid */
-    .stats {
-      display: flex; gap: 12px; margin-bottom: 20px;
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 8px; padding: 12px 16px;
-    }
-    .stat {
-      display: flex; align-items: center; gap: 10px;
-      padding-right: 16px; border-right: 1px solid var(--border);
-    }
-    .stat:last-child { border-right: none; padding-right: 0; }
-    .stat .value { font-size: 1.4em; font-weight: 700; color: var(--accent); }
-    .stat .label {
-      font-size: 0.7em; color: var(--text-muted); text-transform: uppercase;
-      letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px;
-    }
-    @media (max-width: 900px) {
-      .stats { flex-wrap: wrap; }
-      .stat { border-right: none; padding-right: 0; }
-    }
-
-    /* Tabs */
-    .tabs-container {
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 8px; overflow: hidden;
-      max-height: calc(100vh - 180px); display: flex; flex-direction: column;
-    }
-    .tabs {
-      display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--border);
-      padding: 8px 8px 0;
-    }
-    .tab {
-      padding: 8px 12px; background: none; border: none;
-      color: var(--text-dim); font-family: inherit; font-size: 0.75em;
-      cursor: pointer; border-bottom: 2px solid transparent;
-      transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 6px;
-      margin-bottom: -1px;
-    }
-    .tab:hover { color: var(--text); }
-    .tab.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--bg-input); border-radius: 4px 4px 0 0; }
-    .tab-content { display: none; padding: 16px; overflow-y: auto; flex: 1; }
-    .tab-content.active { display: block; }
-
-    /* Tables */
-    table { width: 100%; border-collapse: collapse; }
-    th {
-      text-align: left; padding: 12px 16px; font-size: 0.75em;
-      color: var(--accent); text-transform: uppercase; letter-spacing: 1px;
-      border-bottom: 1px solid var(--border);
-    }
-    td { padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: 0.9em; }
-    tr:hover { background: rgba(255,255,255,0.02); }
-    .empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
-
-    /* Badges */
-    .badge {
-      display: inline-block; padding: 3px 10px; border-radius: 4px;
-      font-size: 0.75em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
-    }
-    .badge-success { background: rgba(74, 222, 128, 0.15); color: var(--success); }
-    .badge-warning { background: rgba(251, 191, 36, 0.15); color: var(--warning); }
-    .badge-danger { background: rgba(248, 113, 113, 0.15); color: var(--danger); }
-    .badge-info { background: rgba(96, 165, 250, 0.15); color: var(--info); }
-    .badge-muted { background: rgba(255,255,255,0.05); color: var(--text-muted); }
-
-    code {
-      background: var(--bg-input); padding: 2px 8px; border-radius: 4px;
-      font-size: 0.9em; color: var(--accent);
-    }
-
-    /* Action Buttons */
-    .action-btn {
-      background: none; border: 1px solid var(--border); color: var(--text-dim);
-      padding: 4px 10px; border-radius: 4px; font-family: inherit;
-      font-size: 0.75em; cursor: pointer; transition: all 0.2s;
-    }
-    .action-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .action-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+    .json-key { color: var(--info); }
+    .json-string { color: var(--success); }
+    .json-number { color: var(--accent); }
+    .json-bool { color: var(--warning); }
+    .json-null { color: var(--text-muted); }
 
     /* Activity Feed */
-    .activity-feed { max-height: 500px; overflow-y: auto; }
+    .activity-feed { max-height: 500px; overflow-y: auto; position: relative; }
+    .activity-feed::before {
+      content: ''; position: absolute; left: 23px; top: 0; bottom: 0;
+      width: 2px; background: var(--border); z-index: 0;
+    }
     .activity-item {
-      display: flex; gap: 12px; padding: 12px 0;
-      border-bottom: 1px solid var(--border);
+      display: flex; gap: 14px; padding: 14px 0;
+      position: relative; z-index: 1; animation: slideIn 0.2s ease;
     }
-    .activity-item:last-child { border-bottom: none; }
     .activity-icon {
-      width: 36px; height: 36px; border-radius: 8px;
+      width: 40px; height: 40px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; background: rgba(255,255,255,0.05); color: var(--text-dim);
+      flex-shrink: 0; background: var(--bg-card); border: 2px solid var(--border);
+      color: var(--text-dim); transition: all var(--transition-med);
     }
-    .activity-content { flex: 1; }
-    .activity-content .type { font-weight: 500; color: var(--text); font-size: 0.9em; }
-    .activity-content .details { font-size: 0.8em; color: var(--text-dim); margin-top: 2px; }
-    .activity-content .time { font-size: 0.7em; color: var(--text-muted); margin-top: 4px; }
+    .activity-item:hover .activity-icon { border-color: var(--accent); color: var(--accent); }
+    .activity-icon.claim { border-color: rgba(109,209,148,0.3); color: var(--success); background: rgba(109,209,148,0.06); }
+    .activity-icon.release { border-color: rgba(96,165,250,0.3); color: var(--info); background: rgba(96,165,250,0.06); }
+    .activity-icon.lock { border-color: rgba(229,182,85,0.3); color: var(--warning); background: rgba(229,182,85,0.06); }
+    .activity-icon.agent { border-color: rgba(212,160,60,0.3); color: var(--accent); background: rgba(212,160,60,0.06); }
+    .activity-icon.daemon { border-color: rgba(224,112,112,0.3); color: var(--danger); background: rgba(224,112,112,0.06); }
+    .activity-content { flex: 1; min-width: 0; }
+    .activity-content .type { font-weight: 600; color: var(--text); font-size: 0.9em; }
+    .activity-content .details {
+      font-size: 0.85em; color: var(--text-dim); margin-top: 3px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .activity-content .time { font-size: 0.75em; color: var(--text-muted); margin-top: 4px; }
 
     /* Channels */
     .channel-card {
       background: var(--bg-input); border: 1px solid var(--border);
-      border-radius: 6px; padding: 14px; margin-bottom: 8px;
+      border-radius: var(--radius-sm); padding: 14px 18px; margin-bottom: 8px;
       display: flex; justify-content: space-between; align-items: center;
+      transition: all var(--transition-med);
     }
-    .channel-name { font-weight: 500; color: var(--accent); }
-    .channel-stats { font-size: 0.8em; color: var(--text-muted); }
+    .channel-card:hover { border-color: var(--border-light); transform: translateX(4px); }
+    .channel-name { font-weight: 600; color: var(--accent); }
+    .channel-stats { font-size: 0.85em; color: var(--text-muted); }
+
+    /* Refresh Buttons */
+    .tab-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .refresh-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-dim);
+      padding: 7px 14px; border-radius: var(--radius-sm); font-family: inherit;
+      font-size: 0.85em; cursor: pointer; transition: all var(--transition-med);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .refresh-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+    .refresh-btn.spinning svg { animation: spin 0.8s linear infinite; }
+    .filter-select {
+      background: var(--bg-input); border: 1px solid var(--border);
+      color: var(--text); padding: 7px 12px; border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 0.85em; transition: border-color var(--transition-med);
+    }
+    .filter-select:focus { border-color: var(--accent); outline: none; }
+
+    /* View Toggle */
+    .view-toggle {
+      display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      overflow: hidden; margin-left: auto;
+    }
+    .view-toggle button {
+      background: none; border: none; color: var(--text-dim); padding: 6px 12px;
+      cursor: pointer; font-family: inherit; font-size: 0.8em; transition: all var(--transition-fast);
+    }
+    .view-toggle button.active { background: var(--accent-glow); color: var(--accent); }
+    .view-toggle button:hover:not(.active) { color: var(--text); }
+    .services-compact td { padding: 8px 16px; }
+    .services-compact .badge, .services-compact .status-indicator { font-size: 0.7em; }
+
+    /* Config Tab */
+    .config-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    @media (max-width: 900px) { .config-grid { grid-template-columns: 1fr; } }
+    .config-item {
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 18px; transition: border-color var(--transition-med);
+    }
+    .config-item:hover { border-color: var(--border-light); }
+    .config-label {
+      font-size: 0.9em; font-weight: 600; color: var(--text);
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    }
+    .config-path {
+      display: block; background: var(--bg-dark); padding: 10px 14px;
+      border-radius: var(--radius-sm); font-size: 0.85em; color: var(--accent);
+      word-break: break-all; margin-bottom: 8px;
+    }
+    .config-desc { font-size: 0.8em; color: var(--text-muted); line-height: 1.5; }
 
     /* Settings Panel */
     .settings-panel {
-      position: fixed; top: 0; right: -400px; width: 400px; height: 100vh;
+      position: fixed; top: 0; right: -420px; width: 420px; height: 100vh;
       background: var(--bg-card); border-left: 1px solid var(--border);
-      z-index: 1000; transition: right 0.3s ease; overflow-y: auto;
+      z-index: 1000; transition: right 0.35s cubic-bezier(0.4,0,0.2,1);
+      overflow-y: auto; box-shadow: -8px 0 30px rgba(0,0,0,0.3);
     }
     .settings-panel.open { right: 0; }
     .settings-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5); z-index: 999; display: none;
+      background: rgba(0,0,0,0.5); z-index: 999;
+      opacity: 0; pointer-events: none; transition: opacity 0.35s ease;
     }
-    .settings-overlay.open { display: block; }
+    .settings-overlay.open { opacity: 1; pointer-events: auto; }
     .settings-header {
-      padding: 20px; border-bottom: 1px solid var(--border);
+      padding: 20px 24px; border-bottom: 1px solid var(--border);
       display: flex; justify-content: space-between; align-items: center;
     }
     .settings-header h2 { font-size: 1.2em; color: var(--accent); }
     .settings-close {
       background: none; border: none; color: var(--text-dim);
-      cursor: pointer; padding: 8px;
+      cursor: pointer; padding: 8px; transition: color var(--transition-fast);
     }
     .settings-close:hover { color: var(--text); }
-    .settings-section { padding: 20px; border-bottom: 1px solid var(--border); }
+    .settings-section { padding: 20px 24px; border-bottom: 1px solid var(--border); }
     .settings-section h3 { font-size: 0.85em; color: var(--text); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
-    .settings-section p { font-size: 0.8em; color: var(--text-muted); margin-bottom: 12px; }
+    .settings-section p { font-size: 0.85em; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5; }
     .setting-row {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 12px 0; border-bottom: 1px solid var(--border);
+      padding: 14px 0; border-bottom: 1px solid var(--border);
     }
     .setting-row:last-child { border-bottom: none; }
-    .setting-label { font-size: 0.85em; }
-    .setting-desc { font-size: 0.75em; color: var(--text-muted); margin-top: 2px; }
+    .setting-label { font-size: 0.9em; }
+    .setting-desc { font-size: 0.8em; color: var(--text-muted); margin-top: 3px; }
     .toggle {
-      width: 44px; height: 24px; background: var(--border); border-radius: 12px;
-      position: relative; cursor: pointer; transition: background 0.2s;
+      width: 46px; height: 26px; background: var(--border); border-radius: 13px;
+      position: relative; cursor: pointer;
+      transition: background 0.3s cubic-bezier(0.4,0,0.2,1); flex-shrink: 0;
     }
     .toggle.on { background: var(--accent); }
     .toggle::after {
-      content: ''; position: absolute; top: 2px; left: 2px;
+      content: ''; position: absolute; top: 3px; left: 3px;
       width: 20px; height: 20px; background: white; border-radius: 50%;
-      transition: left 0.2s;
+      transition: left 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s ease;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
     }
-    .toggle.on::after { left: 22px; }
+    .toggle.on::after { left: 23px; }
     .rule-list { margin-top: 12px; }
     .rule-item {
       background: var(--bg-input); border: 1px solid var(--border);
-      border-radius: 6px; padding: 10px 12px; margin-bottom: 8px;
+      border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 8px;
       display: flex; justify-content: space-between; align-items: center;
-      font-size: 0.85em;
+      font-size: 0.9em; transition: border-color var(--transition-med);
     }
+    .rule-item:hover { border-color: var(--border-light); }
     .rule-item code { font-size: 0.9em; }
     .rule-item .remove-rule {
       background: none; border: none; color: var(--danger);
-      cursor: pointer; padding: 4px;
+      cursor: pointer; padding: 4px; transition: opacity var(--transition-fast); opacity: 0.6;
     }
+    .rule-item .remove-rule:hover { opacity: 1; }
     .add-rule-form { display: flex; gap: 8px; margin-top: 12px; }
     .add-rule-form input {
       flex: 1; background: var(--bg-input); border: 1px solid var(--border);
-      color: var(--text); padding: 8px 12px; border-radius: 6px;
-      font-family: inherit; font-size: 0.85em;
+      color: var(--text); padding: 8px 14px; border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 0.9em; transition: border-color var(--transition-med);
     }
+    .add-rule-form input:focus { border-color: var(--accent); outline: none; }
     .add-rule-form button {
       background: var(--accent); color: var(--bg-dark); border: none;
-      padding: 8px 16px; border-radius: 6px; font-family: inherit;
-      font-weight: 600; cursor: pointer;
+      padding: 8px 18px; border-radius: var(--radius-sm); font-family: inherit;
+      font-weight: 600; cursor: pointer; transition: all var(--transition-med);
     }
+    .add-rule-form button:hover { background: #e8b84a; }
 
-    /* Footer */
-    .footer {
-      text-align: center; padding: 20px; color: var(--text-muted);
-      font-size: 0.75em; border-top: 1px solid var(--border); margin-top: 20px;
+    /* Toast Notifications */
+    .toast-container {
+      position: fixed; bottom: 24px; right: 24px; z-index: 3000;
+      display: flex; flex-direction: column-reverse; gap: 8px;
     }
-    .footer a { color: var(--accent); text-decoration: none; }
-
-    .refresh-btn {
-      background: none; border: 1px solid var(--border); color: var(--text-dim);
-      padding: 6px 12px; border-radius: 4px; font-family: inherit;
-      font-size: 0.8em; cursor: pointer; transition: all 0.2s; margin-bottom: 12px;
-      display: inline-flex; align-items: center; gap: 6px;
+    .toast {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 12px 18px;
+      box-shadow: var(--shadow-md); min-width: 260px; max-width: 380px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.9em; animation: toastIn 0.3s ease;
     }
-    .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .filter-select {
-      background: var(--bg-input); border: 1px solid var(--border);
-      color: var(--text); padding: 6px 12px; border-radius: 4px;
-      font-family: inherit; font-size: 0.8em; margin-left: 8px;
-    }
-
-    /* Config Tab */
-    .config-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-    @media (max-width: 900px) { .config-grid { grid-template-columns: 1fr; } }
-    .config-item {
-      background: var(--bg-input); border: 1px solid var(--border);
-      border-radius: 8px; padding: 16px;
-    }
-    .config-label {
-      font-size: 0.85em; font-weight: 600; color: var(--text);
-      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
-    }
-    .config-path {
-      display: block; background: var(--bg-dark); padding: 10px 14px;
-      border-radius: 4px; font-size: 0.85em; color: var(--accent);
-      word-break: break-all; margin-bottom: 8px;
-    }
-    .config-desc { font-size: 0.75em; color: var(--text-muted); line-height: 1.4; }
-
-    /* Command buttons (used in modals) */
-    .cmd-btn {
-      background: none; border: 1px solid var(--border); color: var(--text-dim);
-      width: 32px; height: 32px; border-radius: 4px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; transition: all 0.2s;
-    }
-    .cmd-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .cmd-btn.copied, .cmd-btn.ran { border-color: var(--success); color: var(--success); }
-
-    /* Danger button */
-    .danger-btn { border-color: var(--danger) !important; color: var(--danger) !important; }
-    .danger-btn:hover { background: rgba(248, 113, 113, 0.1) !important; }
-
-    /* Accent button */
-    .accent-btn { border-color: var(--accent) !important; color: var(--accent) !important; }
-    .accent-btn:hover { background: rgba(212, 160, 60, 0.15) !important; }
-
-    /* Tutorial mode styling in terminal */
-    .tutorial-output { color: var(--text); line-height: 1.6; }
-    .tutorial-output h4 {
-      color: var(--accent); margin: 20px 0 8px 0; font-size: 1.1em;
-      border-bottom: 1px solid var(--border); padding-bottom: 4px;
-    }
-    .tutorial-output h4:first-child { margin-top: 0; }
-    .tutorial-output .cmd {
-      background: var(--bg-card); padding: 8px 12px; border-radius: 4px;
-      margin: 6px 0; font-size: 0.95em; color: #f0d890;
-      border-left: 3px solid var(--accent);
-      font-family: inherit;
-    }
-    .tutorial-output .desc { color: var(--text); font-size: 0.9em; margin-bottom: 12px; }
-    .tutorial-output .note { color: var(--text-dim); font-size: 0.85em; font-style: italic; margin-top: 4px; }
-
-    /* Modal integration cards */
-    .integrate-grid { display: grid; grid-template-columns: 1fr; gap: 12px; max-height: 400px; overflow-y: auto; }
-    .integrate-card {
-      background: var(--bg-input); border: 1px solid var(--border);
-      border-radius: 6px; padding: 12px;
-    }
-    .integrate-card:hover { border-color: var(--border); }
-    .integrate-name { color: var(--text); font-weight: 500; font-size: 0.9em; margin-bottom: 4px; }
-    .integrate-desc { color: var(--text-muted); font-size: 0.75em; margin-bottom: 8px; line-height: 1.4; }
-    .integrate-cmd {
-      display: flex; align-items: center; gap: 8px;
-      background: var(--bg-dark); padding: 8px 10px; border-radius: 4px;
-    }
-    .integrate-cmd code { flex: 1; font-size: 0.8em; color: var(--accent-soft); word-break: break-all; }
+    .toast.removing { animation: toastOut 0.3s ease forwards; }
+    .toast.success { border-left: 3px solid var(--success); }
+    .toast.error { border-left: 3px solid var(--danger); }
+    .toast.info { border-left: 3px solid var(--info); }
+    .toast-icon { flex-shrink: 0; }
+    .toast-msg { flex: 1; line-height: 1.4; }
 
     /* Modal */
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.7); z-index: 2000; display: none;
-      align-items: center; justify-content: center;
+      align-items: center; justify-content: center; backdrop-filter: blur(2px);
     }
     .modal-overlay.open { display: flex; }
     .modal {
       background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 12px; padding: 24px; max-width: 600px; width: 90%;
+      border-radius: var(--radius-lg); padding: 28px; max-width: 620px; width: 90%;
       max-height: 85vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5); animation: fadeIn 0.2s ease;
     }
-    .modal h3 { color: var(--accent); margin-bottom: 16px; }
-    .modal p { color: var(--text-dim); font-size: 0.9em; margin-bottom: 16px; line-height: 1.5; }
+    .modal h3 { color: var(--accent); margin-bottom: 16px; font-size: 1.15em; }
+    .modal p { color: var(--text-dim); font-size: 0.9em; margin-bottom: 16px; line-height: 1.6; }
     .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
     .modal-btn {
-      padding: 10px 20px; border-radius: 6px; font-family: inherit;
+      padding: 10px 22px; border-radius: var(--radius-sm); font-family: inherit;
       font-weight: 600; cursor: pointer; border: 1px solid var(--border);
-      background: var(--bg-input); color: var(--text); transition: all 0.2s;
+      background: var(--bg-input); color: var(--text); transition: all var(--transition-med);
     }
-    .modal-btn:hover { border-color: var(--accent); }
+    .modal-btn:hover { border-color: var(--accent); background: var(--accent-glow); }
     .modal-btn.danger { background: var(--danger); color: white; border-color: var(--danger); }
     .modal-btn.danger:hover { background: #e05555; }
 
-    /* Shortcuts display */
-    .shortcut-list { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; }
+    .shortcut-list { display: grid; grid-template-columns: auto 1fr; gap: 10px 18px; }
     .shortcut-key {
       background: var(--bg-input); border: 1px solid var(--border);
-      padding: 4px 10px; border-radius: 4px; font-size: 0.85em;
+      padding: 5px 12px; border-radius: 4px; font-size: 0.85em;
       color: var(--accent); font-family: inherit; text-align: center;
     }
     .shortcut-desc { color: var(--text-dim); font-size: 0.9em; display: flex; align-items: center; }
 
+    .tutorial-output { color: var(--text); line-height: 1.7; }
+    .tutorial-output h4 {
+      color: var(--accent); margin: 24px 0 10px 0; font-size: 1.05em;
+      border-bottom: 1px solid var(--border); padding-bottom: 6px;
+    }
+    .tutorial-output h4:first-child { margin-top: 0; }
+    .tutorial-output .cmd {
+      background: var(--bg-card); padding: 10px 14px; border-radius: var(--radius-sm);
+      margin: 8px 0; font-size: 0.95em; color: #f0d890;
+      border-left: 3px solid var(--accent); font-family: inherit;
+      transition: background var(--transition-fast); cursor: default;
+    }
+    .tutorial-output .cmd:hover { background: var(--bg-elevated); }
+    .tutorial-output .desc { color: var(--text); font-size: 0.9em; margin-bottom: 12px; }
+    .tutorial-output .note { color: var(--text-dim); font-size: 0.85em; font-style: italic; margin-top: 6px; }
+
+    .integrate-grid { display: grid; grid-template-columns: 1fr; gap: 12px; max-height: 400px; overflow-y: auto; }
+    .integrate-card {
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px; transition: border-color var(--transition-med);
+    }
+    .integrate-card:hover { border-color: var(--border-light); }
+    .integrate-name { color: var(--text); font-weight: 600; font-size: 0.9em; margin-bottom: 4px; }
+    .integrate-desc { color: var(--text-muted); font-size: 0.8em; margin-bottom: 10px; line-height: 1.5; }
+    .integrate-cmd {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg-dark); padding: 10px 12px; border-radius: var(--radius-sm);
+    }
+    .integrate-cmd code { flex: 1; font-size: 0.8em; color: var(--accent-soft); word-break: break-all; }
+
+    .cmd-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-dim);
+      width: 32px; height: 32px; border-radius: 4px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: all var(--transition-med);
+    }
+    .cmd-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .cmd-btn.copied, .cmd-btn.ran { border-color: var(--success); color: var(--success); }
+
+    .danger-btn { border-color: var(--danger) !important; color: var(--danger) !important; }
+    .danger-btn:hover { background: rgba(248, 113, 113, 0.1) !important; }
+    .accent-btn { border-color: var(--accent) !important; color: var(--accent) !important; }
+    .accent-btn:hover { background: rgba(212, 160, 60, 0.12) !important; }
+
+    .footer {
+      text-align: center; padding: 20px; color: var(--text-muted);
+      font-size: 0.8em; border-top: 1px solid var(--border); margin-top: 20px;
+    }
+    .footer a { color: var(--accent); text-decoration: none; transition: color var(--transition-fast); }
+    .footer a:hover { color: #e8b84a; }
+
+    @media (max-width: 768px) {
+      .header { flex-direction: column; gap: 12px; align-items: flex-start; }
+      .header-right { width: 100%; justify-content: space-between; }
+      .quick-actions { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+      .container { padding: 12px 16px; }
+    }
   </style>
 </head>
 <body>
-  <!-- SVG Icons -->
   <svg style="display:none">
     <symbol id="icon-server" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></symbol>
     <symbol id="icon-bot" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></symbol>
@@ -435,6 +613,8 @@
     <symbol id="icon-run" viewBox="0 0 24 24"><rect x="2" y="4" width="16" height="14" rx="2"/><polyline points="5 14 8 11 5 8"/><line x1="10" y1="14" x2="14" y2="14"/><path d="M18 10l4 2-4 2"/></symbol>
     <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
     <symbol id="icon-code" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></symbol>
+    <symbol id="icon-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+    <symbol id="icon-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></symbol>
   </svg>
 
   <div class="container">
@@ -452,7 +632,7 @@
         </div>
       </div>
       <div class="header-right">
-        <div class="status-pill">
+        <div class="status-pill" id="status-pill">
           <div class="status-dot online" id="status-dot"></div>
           <span id="status-text">Online</span>
         </div>
@@ -460,356 +640,315 @@
           <div>v<code id="version">-</code></div>
           <div>PID <code id="pid">-</code></div>
         </div>
-        <button class="settings-btn" onclick="openSettings()">
+        <button class="settings-btn" onclick="openSettings()" title="Settings">
           <svg class="icon-lg"><use href="#icon-settings"/></svg>
         </button>
       </div>
     </div>
 
-    <!-- Stats bar at top -->
     <div class="stats">
-      <div class="stat"><div class="value" id="stat-services">-</div><div class="label"><svg class="icon"><use href="#icon-server"/></svg>Services</div></div>
-      <div class="stat"><div class="value" id="stat-agents">-</div><div class="label"><svg class="icon"><use href="#icon-bot"/></svg>Agents</div></div>
-      <div class="stat"><div class="value" id="stat-locks">-</div><div class="label"><svg class="icon"><use href="#icon-lock"/></svg>Locks</div></div>
-      <div class="stat"><div class="value" id="stat-channels">-</div><div class="label"><svg class="icon"><use href="#icon-message"/></svg>Channels</div></div>
-      <div class="stat"><div class="value" id="stat-webhooks">-</div><div class="label"><svg class="icon"><use href="#icon-webhook"/></svg>Webhooks</div></div>
-      <div class="stat"><div class="value" id="stat-uptime">-</div><div class="label"><svg class="icon"><use href="#icon-clock"/></svg>Uptime</div></div>
+      <div class="stat-card"><svg class="stat-icon-bg icon-xl"><use href="#icon-server"/></svg><div class="value" id="stat-services">-</div><div class="label"><svg class="icon"><use href="#icon-server"/></svg>Services</div></div>
+      <div class="stat-card"><svg class="stat-icon-bg icon-xl"><use href="#icon-bot"/></svg><div class="value" id="stat-agents">-</div><div class="label"><svg class="icon"><use href="#icon-bot"/></svg>Agents</div></div>
+      <div class="stat-card"><svg class="stat-icon-bg icon-xl"><use href="#icon-lock"/></svg><div class="value" id="stat-locks">-</div><div class="label"><svg class="icon"><use href="#icon-lock"/></svg>Locks</div></div>
+      <div class="stat-card"><svg class="stat-icon-bg icon-xl"><use href="#icon-message"/></svg><div class="value" id="stat-channels">-</div><div class="label"><svg class="icon"><use href="#icon-message"/></svg>Channels</div></div>
+      <div class="stat-card"><svg class="stat-icon-bg icon-xl"><use href="#icon-webhook"/></svg><div class="value" id="stat-webhooks">-</div><div class="label"><svg class="icon"><use href="#icon-webhook"/></svg>Webhooks</div></div>
+      <div class="stat-card"><svg class="stat-icon-bg icon-xl"><use href="#icon-clock"/></svg><div class="value" id="stat-uptime">-</div><div class="label"><svg class="icon"><use href="#icon-clock"/></svg>Uptime</div></div>
     </div>
 
-    <!-- Quick actions -->
     <div class="quick-actions">
       <button class="quick-btn accent-btn" onclick="showIntegrateModal()"><svg class="icon"><use href="#icon-code"/></svg>Integrate Into Your Stack</button>
       <button class="quick-btn danger-btn" onclick="releaseAllServices()" title="Remove all services from Port Daddy's database (does NOT kill processes)"><svg class="icon"><use href="#icon-trash"/></svg>Release All</button>
       <button class="quick-btn" onclick="showShortcuts()"><svg class="icon"><use href="#icon-zap"/></svg>Shortcuts</button>
     </div>
 
-    <!-- All panels including terminal -->
     <div class="tabs-container">
-      <div class="tabs">
-        <button class="tab active" data-tab="terminal"><svg class="icon"><use href="#icon-terminal"/></svg>Terminal</button>
-        <button class="tab" data-tab="services"><svg class="icon"><use href="#icon-server"/></svg>Services</button>
-        <button class="tab" data-tab="agents"><svg class="icon"><use href="#icon-bot"/></svg>Agents</button>
-        <button class="tab" data-tab="locks"><svg class="icon"><use href="#icon-lock"/></svg>Locks</button>
-        <button class="tab" data-tab="channels"><svg class="icon"><use href="#icon-message"/></svg>Channels</button>
-        <button class="tab" data-tab="webhooks"><svg class="icon"><use href="#icon-webhook"/></svg>Webhooks</button>
-        <button class="tab" data-tab="activity"><svg class="icon"><use href="#icon-activity"/></svg>Activity</button>
-        <button class="tab" data-tab="config"><svg class="icon"><use href="#icon-folder"/></svg>Config</button>
+      <div class="tabs-wrapper">
+        <div class="tabs">
+          <button class="tab active" data-tab="terminal"><svg class="icon"><use href="#icon-terminal"/></svg>Terminal</button>
+          <button class="tab" data-tab="services"><svg class="icon"><use href="#icon-server"/></svg>Services<span class="tab-badge" id="badge-services">0</span></button>
+          <button class="tab" data-tab="agents"><svg class="icon"><use href="#icon-bot"/></svg>Agents<span class="tab-badge" id="badge-agents">0</span></button>
+          <button class="tab" data-tab="locks"><svg class="icon"><use href="#icon-lock"/></svg>Locks<span class="tab-badge" id="badge-locks">0</span></button>
+          <button class="tab" data-tab="channels"><svg class="icon"><use href="#icon-message"/></svg>Channels<span class="tab-badge" id="badge-channels">0</span></button>
+          <button class="tab" data-tab="webhooks"><svg class="icon"><use href="#icon-webhook"/></svg>Webhooks<span class="tab-badge" id="badge-webhooks">0</span></button>
+          <button class="tab" data-tab="projects"><svg class="icon"><use href="#icon-folder"/></svg>Projects<span class="tab-badge" id="badge-projects">0</span></button>
+          <button class="tab" data-tab="activity"><svg class="icon"><use href="#icon-activity"/></svg>Activity</button>
+          <button class="tab" data-tab="config"><svg class="icon"><use href="#icon-settings"/></svg>Config</button>
+        </div>
       </div>
 
-      <div class="tab-content active" id="tab-terminal">
-        <!-- Command bar inside terminal tab -->
-        <div class="command-bar">
-          <span class="prompt">$</span>
-          <input type="text" id="command-input" placeholder="Type a command or 'help' for list" autofocus list="cmd-suggestions">
-          <datalist id="cmd-suggestions">
-            <option value="claim myapp:api">
-            <option value="release myapp:api">
-            <option value="find">
-            <option value="find 'myapp:*'">
-            <option value="lock db-migrations">
-            <option value="unlock db-migrations">
-            <option value="locks">
-            <option value="agents">
-            <option value="status">
-            <option value="log --limit 20">
-            <option value="help">
-            <option value="tutorial">
-          </datalist>
-          <button onclick="runCommand()">Run</button>
+      <div class="tab-content active" id="tab-terminal" style="display:flex;flex-direction:column;min-height:420px">
+        <div class="command-output" id="command-output" style="flex:1;max-height:600px">
+          <div class="cmd-entry"><div class="cmd-entry-body" style="border-left:3px solid var(--border)"><pre><span class="text-muted">Type a command below, or try: find, scan, projects, status, tutorial</span></pre></div></div>
         </div>
-        <div class="command-output" id="command-output">
-          <pre id="command-result"><span class="text-muted">Type a command above, or try: find, locks, agents, status, tutorial</span></pre>
+        <div style="position:relative;margin-top:8px">
+          <div class="cmd-suggest" id="cmd-suggest" style="bottom:100%;top:auto;border-radius:var(--radius-md) var(--radius-md) 0 0"></div>
+          <div class="command-bar">
+            <span class="prompt">$</span>
+            <input type="text" id="command-input" placeholder="Type a command or 'help' for list" autofocus autocomplete="off">
+            <button onclick="runCommand()">Run</button>
+          </div>
         </div>
       </div>
 
       <div class="tab-content" id="tab-services">
-        <button class="refresh-btn" onclick="refreshServices()"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
-        <table>
+        <div class="tab-toolbar">
+          <button class="refresh-btn" onclick="refreshServices()" id="refresh-services"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
+          <div class="view-toggle">
+            <button class="active" onclick="setServicesView('detail', this)" title="Detailed"><svg class="icon"><use href="#icon-list"/></svg></button>
+            <button onclick="setServicesView('compact', this)" title="Compact"><svg class="icon"><use href="#icon-grid"/></svg></button>
+          </div>
+        </div>
+        <table id="services-table">
           <thead><tr><th>Identity</th><th>Port</th><th>Status</th><th>PID</th><th>URL</th><th>Age</th><th></th></tr></thead>
-          <tbody id="services-body"><tr><td colspan="7" class="empty-state">Loading...</td></tr></tbody>
+          <tbody id="services-body"><tr><td colspan="7" class="empty-state"><svg class="empty-state-icon"><use href="#icon-server"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
         </table>
       </div>
 
       <div class="tab-content" id="tab-agents">
-        <button class="refresh-btn" onclick="refreshAgents()"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
+        <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshAgents()" id="refresh-agents"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button></div>
         <table>
           <thead><tr><th>Agent ID</th><th>Type</th><th>PID</th><th>Status</th><th>Last Heartbeat</th><th>Limits</th><th></th></tr></thead>
-          <tbody id="agents-body"><tr><td colspan="7" class="empty-state">Loading...</td></tr></tbody>
+          <tbody id="agents-body"><tr><td colspan="7" class="empty-state"><svg class="empty-state-icon"><use href="#icon-bot"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
         </table>
       </div>
 
       <div class="tab-content" id="tab-locks">
-        <button class="refresh-btn" onclick="refreshLocks()"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
+        <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshLocks()" id="refresh-locks"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button></div>
         <table>
           <thead><tr><th>Lock Name</th><th>Owner</th><th>PID</th><th>Acquired</th><th>Expires</th><th></th></tr></thead>
-          <tbody id="locks-body"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
+          <tbody id="locks-body"><tr><td colspan="6" class="empty-state"><svg class="empty-state-icon"><use href="#icon-lock"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
         </table>
       </div>
 
       <div class="tab-content" id="tab-channels">
-        <button class="refresh-btn" onclick="refreshChannels()"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
-        <div id="channels-list"><div class="empty-state">Loading...</div></div>
+        <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshChannels()" id="refresh-channels"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button></div>
+        <div id="channels-list"><div class="empty-state"><svg class="empty-state-icon"><use href="#icon-message"/></svg><div class="empty-state-text">Loading...</div></div></div>
       </div>
 
       <div class="tab-content" id="tab-webhooks">
-        <button class="refresh-btn" onclick="refreshWebhooks()"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
+        <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshWebhooks()" id="refresh-webhooks"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button></div>
         <table>
           <thead><tr><th>Endpoint</th><th>Events</th><th>Status</th><th>Deliveries</th><th>Last Triggered</th></tr></thead>
-          <tbody id="webhooks-body"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
+          <tbody id="webhooks-body"><tr><td colspan="5" class="empty-state"><svg class="empty-state-icon"><use href="#icon-webhook"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="tab-content" id="tab-projects">
+        <div class="tab-toolbar">
+          <button class="refresh-btn" onclick="refreshProjects()" id="refresh-projects"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
+        </div>
+        <table>
+          <thead><tr><th>Project</th><th>Type</th><th>Services</th><th>Last Scanned</th><th>Frameworks</th><th></th></tr></thead>
+          <tbody id="projects-body"><tr><td colspan="6" class="empty-state"><svg class="empty-state-icon"><use href="#icon-folder"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
         </table>
       </div>
 
       <div class="tab-content" id="tab-activity">
-        <button class="refresh-btn" onclick="refreshActivity()"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
-        <select class="filter-select" id="activity-filter" onchange="refreshActivity()">
-          <option value="">All Activity</option>
-          <option value="service.claim">Claims</option>
-          <option value="service.release">Releases</option>
-          <option value="lock.acquire">Lock Acquires</option>
-          <option value="lock.release">Lock Releases</option>
-          <option value="agent.register">Agent Registers</option>
-        </select>
-        <div class="activity-feed" id="activity-feed"><div class="empty-state">Loading...</div></div>
+        <div class="tab-toolbar">
+          <button class="refresh-btn" onclick="refreshActivity()" id="refresh-activity"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
+          <select class="filter-select" id="activity-filter" onchange="refreshActivity()">
+            <option value="">All Activity</option>
+            <option value="service.claim">Claims</option>
+            <option value="service.release">Releases</option>
+            <option value="lock.acquire">Lock Acquires</option>
+            <option value="lock.release">Lock Releases</option>
+            <option value="agent.register">Agent Registers</option>
+          </select>
+        </div>
+        <div class="activity-feed" id="activity-feed"><div class="empty-state"><svg class="empty-state-icon"><use href="#icon-activity"/></svg><div class="empty-state-text">Loading...</div></div></div>
       </div>
 
       <div class="tab-content" id="tab-config">
-        <h3 style="color:var(--accent);margin-bottom:16px">Configuration Locations</h3>
+        <h3 style="color:var(--accent);margin-bottom:16px;font-size:1.05em">Configuration Locations</h3>
         <div class="config-grid" id="config-grid">
-          <div class="config-item">
-            <div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>Database</div>
-            <code class="config-path" id="config-db">Loading...</code>
-            <div class="config-desc">SQLite database storing all services, locks, agents, and messages</div>
-          </div>
-          <div class="config-item">
-            <div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>Daemon PID</div>
-            <code class="config-path" id="config-pid">Loading...</code>
-            <div class="config-desc">Process ID file for the running daemon</div>
-          </div>
-          <div class="config-item">
-            <div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>Logs</div>
-            <code class="config-path" id="config-log">Loading...</code>
-            <div class="config-desc">Daemon log output (when running as service)</div>
-          </div>
-          <div class="config-item">
-            <div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>Installation</div>
-            <code class="config-path" id="config-install">Loading...</code>
-            <div class="config-desc">Port Daddy installation directory</div>
-          </div>
-          <div class="config-item">
-            <div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>CLI Skill</div>
-            <code class="config-path">~/.claude/commands/port-daddy.md</code>
-            <div class="config-desc">Agentic skill file teaching Claude how to use Port Daddy</div>
-          </div>
-          <div class="config-item">
-            <div class="config-label"><svg class="icon"><use href="#icon-settings"/></svg>Environment</div>
-            <code class="config-path">PORT_DADDY_PORT, PORT_DADDY_RANGE_START, PORT_DADDY_RANGE_END</code>
-            <div class="config-desc">Optional env vars to customize port and range</div>
-          </div>
+          <div class="config-item"><div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>Database</div><code class="config-path" id="config-db">Loading...</code><div class="config-desc">SQLite database storing all services, locks, agents, and messages</div></div>
+          <div class="config-item"><div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>Daemon PID</div><code class="config-path" id="config-pid">Loading...</code><div class="config-desc">Process ID file for the running daemon</div></div>
+          <div class="config-item"><div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>Logs</div><code class="config-path" id="config-log">Loading...</code><div class="config-desc">Daemon log output (when running as service)</div></div>
+          <div class="config-item"><div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>Installation</div><code class="config-path" id="config-install">Loading...</code><div class="config-desc">Port Daddy installation directory</div></div>
+          <div class="config-item"><div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>CLI Skill</div><code class="config-path">~/.claude/commands/port-daddy.md</code><div class="config-desc">Agentic skill file teaching Claude how to use Port Daddy</div></div>
+          <div class="config-item"><div class="config-label"><svg class="icon"><use href="#icon-settings"/></svg>Environment</div><code class="config-path">PORT_DADDY_PORT, PORT_DADDY_RANGE_START, PORT_DADDY_RANGE_END</code><div class="config-desc">Optional env vars to customize port and range</div></div>
         </div>
       </div>
-
-    </div>
     </div>
 
-    <div class="footer">
-      Auto-refreshes every 5s · <a href="https://github.com/erichowens/port-daddy">GitHub</a> · Port Daddy — Because port conflicts are beneath you.
-    </div>
+    <div class="footer">Auto-refreshes every 5s · <a href="https://github.com/curiositech/port-daddy">GitHub</a> · Port Daddy by <a href="https://curiositech.ai">Curiositech</a> — Because port conflicts are beneath you.</div>
   </div>
 
-  <!-- Modals -->
+  <div class="toast-container" id="toast-container"></div>
+
   <div class="modal-overlay" id="modal-overlay" onclick="closeModal()">
     <div class="modal" id="modal-content" onclick="event.stopPropagation()"></div>
   </div>
 
-  <!-- Settings Panel -->
   <div class="settings-overlay" id="settings-overlay" onclick="closeSettings()"></div>
   <div class="settings-panel" id="settings-panel">
-    <div class="settings-header">
-      <h2>Settings</h2>
-      <button class="settings-close" onclick="closeSettings()"><svg class="icon-lg"><use href="#icon-x"/></svg></button>
-    </div>
-
+    <div class="settings-header"><h2>Settings</h2><button class="settings-close" onclick="closeSettings()"><svg class="icon-lg"><use href="#icon-x"/></svg></button></div>
     <div class="settings-section">
-      <h3>Auto-Launch Dashboard</h3>
-      <p>Open dashboard automatically when Port Daddy is used</p>
-      <div class="setting-row">
-        <div>
-          <div class="setting-label">Enable auto-launch</div>
-          <div class="setting-desc">Opens dashboard on first command in session</div>
-        </div>
-        <div class="toggle" id="toggle-autolaunch" onclick="toggleSetting('autolaunch')"></div>
-      </div>
+      <h3>Auto-Launch Dashboard</h3><p>Open dashboard automatically when Port Daddy is used</p>
+      <div class="setting-row"><div><div class="setting-label">Enable auto-launch</div><div class="setting-desc">Opens dashboard on first command in session</div></div><div class="toggle" id="toggle-autolaunch" onclick="toggleSetting('autolaunch')"></div></div>
     </div>
-
     <div class="settings-section">
-      <h3>Project Rules</h3>
-      <p>Auto-launch only for specific projects (empty = all projects)</p>
+      <h3>Project Rules</h3><p>Auto-launch only for specific projects (empty = all projects)</p>
       <div class="rule-list" id="project-rules"></div>
-      <div class="add-rule-form">
-        <input type="text" id="new-project-rule" placeholder="myapp:*">
-        <button onclick="addProjectRule()">Add</button>
-      </div>
+      <div class="add-rule-form"><input type="text" id="new-project-rule" placeholder="myapp:*"><button onclick="addProjectRule()">Add</button></div>
     </div>
-
     <div class="settings-section">
-      <h3>Command Rules</h3>
-      <p>Auto-launch only for specific commands (empty = all commands)</p>
+      <h3>Command Rules</h3><p>Auto-launch only for specific commands (empty = all commands)</p>
       <div class="rule-list" id="command-rules"></div>
-      <div class="add-rule-form">
-        <input type="text" id="new-command-rule" placeholder="claim">
-        <button onclick="addCommandRule()">Add</button>
-      </div>
+      <div class="add-rule-form"><input type="text" id="new-command-rule" placeholder="claim"><button onclick="addCommandRule()">Add</button></div>
     </div>
-
     <div class="settings-section">
       <h3>Behavior</h3>
-      <div class="setting-row">
-        <div>
-          <div class="setting-label">Stay in background</div>
-          <div class="setting-desc">Don't steal focus when auto-launching</div>
-        </div>
-        <div class="toggle" id="toggle-background" onclick="toggleSetting('background')"></div>
-      </div>
-      <div class="setting-row">
-        <div>
-          <div class="setting-label">Once per session</div>
-          <div class="setting-desc">Only auto-launch once per terminal session</div>
-        </div>
-        <div class="toggle on" id="toggle-once" onclick="toggleSetting('once')"></div>
-      </div>
+      <div class="setting-row"><div><div class="setting-label">Stay in background</div><div class="setting-desc">Don't steal focus when auto-launching</div></div><div class="toggle" id="toggle-background" onclick="toggleSetting('background')"></div></div>
+      <div class="setting-row"><div><div class="setting-label">Once per session</div><div class="setting-desc">Only auto-launch once per terminal session</div></div><div class="toggle on" id="toggle-once" onclick="toggleSetting('once')"></div></div>
     </div>
   </div>
 
-  <script>
-    const API = '';
 
-    // Settings storage
-    let settings = JSON.parse(localStorage.getItem('portdaddy-settings') || '{}');
+  <script>
+    var API = '';
+    var servicesViewMode = 'detail';
+
+    /* ── XSS Protection ── */
+    function escapeHtml(str) {
+      if (str == null) return '';
+      var div = document.createElement('div');
+      div.textContent = String(str);
+      return div.innerHTML;
+    }
+
+    /* ── Toast Notifications ── */
+    function showToast(message, type) {
+      type = type || 'info';
+      var container = document.getElementById('toast-container');
+      var toast = document.createElement('div');
+      toast.className = 'toast ' + type;
+      var iconMap = { success: '#icon-check', error: '#icon-x', info: '#icon-zap' };
+      var iconEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      iconEl.setAttribute('class', 'icon toast-icon');
+      iconEl.style.color = 'var(--' + type + ')';
+      var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', iconMap[type] || iconMap.info);
+      iconEl.appendChild(use);
+      toast.appendChild(iconEl);
+      var span = document.createElement('span');
+      span.className = 'toast-msg';
+      span.textContent = message;
+      toast.appendChild(span);
+      container.appendChild(toast);
+      setTimeout(function() {
+        toast.classList.add('removing');
+        setTimeout(function() { toast.remove(); }, 300);
+      }, 3000);
+    }
+
+    /* ── Settings ── */
+    var settings = JSON.parse(localStorage.getItem('portdaddy-settings') || '{}');
     settings = {
-      autolaunch: settings.autolaunch ?? false,
-      background: settings.background ?? false,
-      once: settings.once ?? true,
+      autolaunch: settings.autolaunch === undefined ? false : settings.autolaunch,
+      background: settings.background === undefined ? false : settings.background,
+      once: settings.once === undefined ? true : settings.once,
       projectRules: settings.projectRules || [],
       commandRules: settings.commandRules || []
     };
-
-    function saveSettings() {
-      localStorage.setItem('portdaddy-settings', JSON.stringify(settings));
-    }
-
+    function saveSettings() { localStorage.setItem('portdaddy-settings', JSON.stringify(settings)); }
     function openSettings() {
       document.getElementById('settings-panel').classList.add('open');
       document.getElementById('settings-overlay').classList.add('open');
       renderSettings();
     }
-
     function closeSettings() {
       document.getElementById('settings-panel').classList.remove('open');
       document.getElementById('settings-overlay').classList.remove('open');
     }
-
-    function toggleSetting(key) {
-      settings[key] = !settings[key];
-      saveSettings();
-      renderSettings();
-    }
-
+    function toggleSetting(key) { settings[key] = !settings[key]; saveSettings(); renderSettings(); }
     function renderSettings() {
       document.getElementById('toggle-autolaunch').className = 'toggle' + (settings.autolaunch ? ' on' : '');
       document.getElementById('toggle-background').className = 'toggle' + (settings.background ? ' on' : '');
       document.getElementById('toggle-once').className = 'toggle' + (settings.once ? ' on' : '');
-
-      const projectRules = document.getElementById('project-rules');
-      projectRules.innerHTML = settings.projectRules.length === 0 ? '<div style="color:var(--text-muted);font-size:0.8em">No rules (launches for all projects)</div>' :
-        settings.projectRules.map((r, i) => `<div class="rule-item"><code>${r}</code><button class="remove-rule" onclick="removeProjectRule(${i})"><svg class="icon"><use href="#icon-trash"/></svg></button></div>`).join('');
-
-      const commandRules = document.getElementById('command-rules');
-      commandRules.innerHTML = settings.commandRules.length === 0 ? '<div style="color:var(--text-muted);font-size:0.8em">No rules (launches for all commands)</div>' :
-        settings.commandRules.map((r, i) => `<div class="rule-item"><code>${r}</code><button class="remove-rule" onclick="removeCommandRule(${i})"><svg class="icon"><use href="#icon-trash"/></svg></button></div>`).join('');
+      var pr = document.getElementById('project-rules');
+      if (settings.projectRules.length === 0) {
+        pr.textContent = '';
+        var d = document.createElement('div');
+        d.style.cssText = 'color:var(--text-muted);font-size:0.85em';
+        d.textContent = 'No rules (launches for all projects)';
+        pr.appendChild(d);
+      } else {
+        pr.textContent = '';
+        settings.projectRules.forEach(function(r, i) {
+          var item = document.createElement('div');
+          item.className = 'rule-item';
+          var c = document.createElement('code');
+          c.textContent = r;
+          item.appendChild(c);
+          var btn = document.createElement('button');
+          btn.className = 'remove-rule';
+          btn.onclick = function() { removeProjectRule(i); };
+          btn.textContent = 'X';
+          item.appendChild(btn);
+          pr.appendChild(item);
+        });
+      }
+      var cr = document.getElementById('command-rules');
+      if (settings.commandRules.length === 0) {
+        cr.textContent = '';
+        var d2 = document.createElement('div');
+        d2.style.cssText = 'color:var(--text-muted);font-size:0.85em';
+        d2.textContent = 'No rules (launches for all commands)';
+        cr.appendChild(d2);
+      } else {
+        cr.textContent = '';
+        settings.commandRules.forEach(function(r, i) {
+          var item = document.createElement('div');
+          item.className = 'rule-item';
+          var c = document.createElement('code');
+          c.textContent = r;
+          item.appendChild(c);
+          var btn = document.createElement('button');
+          btn.className = 'remove-rule';
+          btn.onclick = function() { removeCommandRule(i); };
+          btn.textContent = 'X';
+          item.appendChild(btn);
+          cr.appendChild(item);
+        });
+      }
     }
-
     function addProjectRule() {
-      const input = document.getElementById('new-project-rule');
-      if (input.value.trim()) {
-        settings.projectRules.push(input.value.trim());
-        input.value = '';
-        saveSettings();
-        renderSettings();
-      }
+      var input = document.getElementById('new-project-rule');
+      if (input.value.trim()) { settings.projectRules.push(input.value.trim()); input.value = ''; saveSettings(); renderSettings(); }
     }
-
-    function removeProjectRule(i) {
-      settings.projectRules.splice(i, 1);
-      saveSettings();
-      renderSettings();
-    }
-
+    function removeProjectRule(i) { settings.projectRules.splice(i, 1); saveSettings(); renderSettings(); }
     function addCommandRule() {
-      const input = document.getElementById('new-command-rule');
-      if (input.value.trim()) {
-        settings.commandRules.push(input.value.trim());
-        input.value = '';
-        saveSettings();
-        renderSettings();
-      }
+      var input = document.getElementById('new-command-rule');
+      if (input.value.trim()) { settings.commandRules.push(input.value.trim()); input.value = ''; saveSettings(); renderSettings(); }
+    }
+    function removeCommandRule(i) { settings.commandRules.splice(i, 1); saveSettings(); renderSettings(); }
+
+    /* ── View Toggle ── */
+    function setServicesView(mode, btn) {
+      servicesViewMode = mode;
+      var table = document.getElementById('services-table');
+      if (mode === 'compact') { table.classList.add('services-compact'); } else { table.classList.remove('services-compact'); }
+      var buttons = btn.parentElement.querySelectorAll('button');
+      buttons.forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
     }
 
-    function removeCommandRule(i) {
-      settings.commandRules.splice(i, 1);
-      saveSettings();
-      renderSettings();
-    }
-
-    // Tab switching
+    /* ── Tab Switching ── */
     function switchToTab(tabName) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      document.querySelector(`.tab[data-tab="${tabName}"]`)?.classList.add('active');
-      document.getElementById('tab-' + tabName)?.classList.add('active');
+      document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+      document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+      var tabBtn = document.querySelector('.tab[data-tab="' + tabName + '"]');
+      var tabContent = document.getElementById('tab-' + tabName);
+      if (tabBtn) tabBtn.classList.add('active');
+      if (tabContent) tabContent.classList.add('active');
     }
-
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', () => switchToTab(tab.dataset.tab));
+    document.querySelectorAll('.tab').forEach(function(tab) {
+      tab.addEventListener('click', function() { switchToTab(tab.dataset.tab); });
     });
 
-    // Command bar
-    document.getElementById('command-input').addEventListener('keypress', e => {
-      if (e.key === 'Enter') runCommand();
-    });
-
-    async function runCommand() {
-      const input = document.getElementById('command-input');
-      const output = document.getElementById('command-output');
-      const result = document.getElementById('command-result');
-      let cmd = input.value.trim();
-      if (!cmd) return;
-      if (cmd.startsWith('port-daddy ')) cmd = cmd.substring(11);
-
-      // Switch to Terminal tab
-      switchToTab('terminal');
-
-      result.innerHTML = '<span style="color:var(--text-muted)">Running...</span>';
-
-      try {
-        const data = await executeCommand(cmd);
-        // Handle HTML output (for tutorial mode)
-        if (data._html) {
-          result.innerHTML = data._html;
-        } else {
-          result.innerHTML = '<span class="success">' + escapeHtml(JSON.stringify(data, null, 2)) + '</span>';
-        }
-        refreshAll();
-      } catch (err) {
-        result.innerHTML = '<span class="error">Error: ' + escapeHtml(err.message) + '</span>';
-      }
-    }
-
-    function quickCommand(cmd) {
-      document.getElementById('command-input').value = cmd;
-      runCommand();
-    }
-
-    const COMMANDS = {
+    /* ── Command Definitions ── */
+    var COMMANDS = {
       claim:    { args: '<id>', opts: ['--port <n>'], desc: 'Claim a port for a service' },
       release:  { args: '<id>', opts: [], desc: 'Release a service' },
       find:     { args: '[pattern]', opts: [], desc: 'List services (alias: ps)' },
@@ -822,40 +961,258 @@
       activity: { args: '', opts: ['--limit <n>'], desc: 'View activity log' },
       status:   { args: '', opts: [], desc: 'Health check' },
       pub:      { args: '<channel> <json>', opts: [], desc: 'Publish a message' },
+      scan:     { args: '', opts: [], desc: 'Deep scan project for all services' },
+      projects: { args: '', opts: [], desc: 'List registered projects' },
+      detect:   { args: '', opts: [], desc: '(deprecated) Use scan instead' },
+      doctor:   { args: '', opts: [], desc: 'Run environment diagnostics' },
       help:     { args: '', opts: [], desc: 'Show available commands' },
       tutorial: { args: '', opts: [], desc: 'Show command tutorial' }
     };
 
+    /* ── Command Suggestions ── */
+    var suggestEl = document.getElementById('cmd-suggest');
+    var suggestIndex = -1;
+    var suggestItems = [];
+    function updateSuggestions() {
+      var input = document.getElementById('command-input');
+      var val = input.value.trim().toLowerCase();
+      suggestEl.textContent = '';
+      suggestIndex = -1;
+      suggestItems = [];
+      if (!val) { suggestEl.classList.remove('open'); return; }
+      var matches = Object.keys(COMMANDS).filter(function(c) {
+        return c.indexOf(val) !== -1 || COMMANDS[c].desc.toLowerCase().indexOf(val) !== -1;
+      });
+      if (matches.length === 0 || (matches.length === 1 && matches[0] === val)) {
+        suggestEl.classList.remove('open'); return;
+      }
+      matches.slice(0, 8).forEach(function(cmd) {
+        var item = document.createElement('div');
+        item.className = 'cmd-suggest-item';
+        var nameSpan = document.createElement('span');
+        nameSpan.className = 'cmd-name';
+        nameSpan.textContent = cmd + (COMMANDS[cmd].args ? ' ' + COMMANDS[cmd].args : '');
+        var descSpan = document.createElement('span');
+        descSpan.className = 'cmd-desc';
+        descSpan.textContent = COMMANDS[cmd].desc;
+        item.appendChild(nameSpan);
+        item.appendChild(descSpan);
+        item.addEventListener('click', function() {
+          input.value = cmd + ' ';
+          input.focus();
+          suggestEl.classList.remove('open');
+        });
+        suggestEl.appendChild(item);
+        suggestItems.push(item);
+      });
+      suggestEl.classList.add('open');
+    }
+    document.getElementById('command-input').addEventListener('input', updateSuggestions);
+    document.getElementById('command-input').addEventListener('focus', updateSuggestions);
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.command-bar') && !e.target.closest('.cmd-suggest')) {
+        suggestEl.classList.remove('open');
+      }
+    });
+
+    /* ── Command History ── */
+    var commandHistory = JSON.parse(localStorage.getItem('portdaddy-history') || '[]');
+    var historyIndex = -1;
+    function saveToHistory(cmd) {
+      if (!cmd || cmd === commandHistory[0]) return;
+      commandHistory.unshift(cmd);
+      if (commandHistory.length > 50) commandHistory.pop();
+      localStorage.setItem('portdaddy-history', JSON.stringify(commandHistory));
+    }
+
+    /* ── JSON Syntax Highlighting ── */
+    function highlightJson(str) {
+      var escaped = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return escaped
+        .replace(/("(?:\\.|[^"\\])*"\s*:)/g, '<span class="json-key">$1</span>')
+        .replace(/(:\s*"(?:\\.|[^"\\])*")/g, function(m) {
+          return ':<span class="json-string">' + m.substring(1) + '</span>';
+        })
+        .replace(/(:\s*)(\d+\.?\d*)/g, '$1<span class="json-number">$2</span>')
+        .replace(/(:\s*)(true|false)/g, '$1<span class="json-bool">$2</span>')
+        .replace(/(:\s*)(null)/g, '$1<span class="json-null">$2</span>');
+    }
+
+    /* ── Helpers ── */
+    function formatTime(ts) { return new Date(ts).toLocaleTimeString(); }
+    function formatAge(ms) { var m = Math.floor(ms / 60000); if (m < 60) return m + 'm'; var h = Math.floor(m / 60); if (h < 24) return h + 'h'; return Math.floor(h / 24) + 'd'; }
+    function formatUptime(s) { var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h > 0 ? h + 'h ' + m + 'm' : m + 'm'; }
+    function animateValue(el, newVal) {
+      if (el.textContent !== String(newVal)) {
+        el.textContent = newVal;
+        el.classList.add('updated');
+        setTimeout(function() { el.classList.remove('updated'); }, 300);
+      }
+    }
+    function spinRefreshBtn(id) {
+      var btn = document.getElementById(id);
+      if (btn) { btn.classList.add('spinning'); setTimeout(function() { btn.classList.remove('spinning'); }, 800); }
+    }
+
+    /* ── Empty State Rendering (DOM-safe) ── */
+    function renderEmptyTd(tbody, iconId, text, hint, cols) {
+      tbody.textContent = '';
+      var tr = document.createElement('tr');
+      var td = document.createElement('td');
+      td.colSpan = cols;
+      td.className = 'empty-state';
+      var svgNs = 'http://www.w3.org/2000/svg';
+      var svg = document.createElementNS(svgNs, 'svg');
+      svg.setAttribute('class', 'empty-state-icon');
+      var use = document.createElementNS(svgNs, 'use');
+      use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', iconId);
+      svg.appendChild(use);
+      td.appendChild(svg);
+      var textDiv = document.createElement('div');
+      textDiv.className = 'empty-state-text';
+      textDiv.textContent = text;
+      td.appendChild(textDiv);
+      if (hint) {
+        var hintDiv = document.createElement('div');
+        hintDiv.className = 'empty-state-hint';
+        hintDiv.textContent = hint;
+        td.appendChild(hintDiv);
+      }
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+    }
+
+    /* ── Command Input Handler ── */
+    document.getElementById('command-input').addEventListener('keydown', function(e) {
+      if (suggestEl.classList.contains('open')) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          suggestIndex = Math.min(suggestIndex + 1, suggestItems.length - 1);
+          suggestItems.forEach(function(it, i) { it.classList.toggle('selected', i === suggestIndex); });
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          suggestIndex = Math.max(suggestIndex - 1, 0);
+          suggestItems.forEach(function(it, i) { it.classList.toggle('selected', i === suggestIndex); });
+          return;
+        }
+        if (e.key === 'Tab' || (e.key === 'Enter' && suggestIndex >= 0)) {
+          e.preventDefault();
+          if (suggestIndex >= 0 && suggestItems[suggestIndex]) {
+            var cmdName = suggestItems[suggestIndex].querySelector('.cmd-name').textContent.split(' ')[0];
+            document.getElementById('command-input').value = cmdName + ' ';
+            suggestEl.classList.remove('open');
+          }
+          return;
+        }
+        if (e.key === 'Escape') { suggestEl.classList.remove('open'); return; }
+      }
+      if (e.key === 'Enter') runCommand();
+    });
+
+    /* ── Run Command ── */
+    async function runCommand() {
+      var input = document.getElementById('command-input');
+      var output = document.getElementById('command-output');
+      var cmd = input.value.trim();
+      if (!cmd) return;
+      suggestEl.classList.remove('open');
+      saveToHistory(cmd);
+      historyIndex = -1;
+      if (cmd.startsWith('port-daddy ')) cmd = cmd.substring(11);
+      switchToTab('terminal');
+      var ts = new Date().toLocaleTimeString();
+
+      /* Build entry via DOM */
+      var entry = document.createElement('div');
+      entry.className = 'cmd-entry';
+      entry.setAttribute('data-ran', '1');
+      var header = document.createElement('div');
+      header.className = 'cmd-entry-header';
+      var tsSpan = document.createElement('span');
+      tsSpan.className = 'cmd-timestamp';
+      tsSpan.textContent = ts;
+      var cmdSpan = document.createElement('span');
+      cmdSpan.className = 'cmd-text';
+      cmdSpan.textContent = '$ ' + cmd;
+      header.appendChild(tsSpan);
+      header.appendChild(cmdSpan);
+      var body = document.createElement('div');
+      body.className = 'cmd-entry-body';
+      body.style.borderLeft = '3px solid var(--border)';
+      var pre = document.createElement('pre');
+      var loadSpan = document.createElement('span');
+      loadSpan.style.cssText = 'color:var(--text-muted);animation:pulse 1s infinite';
+      loadSpan.textContent = 'Running...';
+      pre.appendChild(loadSpan);
+      body.appendChild(pre);
+      entry.appendChild(header);
+      entry.appendChild(body);
+
+      /* Clear placeholder on first real command */
+      var first = output.querySelector('.cmd-entry:first-child');
+      if (first && !first.hasAttribute('data-ran')) { output.textContent = ''; }
+      output.appendChild(entry);
+      output.scrollTop = output.scrollHeight;
+
+      try {
+        var data = await executeCommand(cmd);
+        body.textContent = '';
+        if (data._html) {
+          body.className = 'cmd-entry-body success-entry';
+          /* Tutorial HTML is safe static content, not user input */
+          var tpl = document.createElement('div');
+          tpl.innerHTML = data._html;
+          while (tpl.firstChild) body.appendChild(tpl.firstChild);
+        } else {
+          body.className = 'cmd-entry-body success-entry';
+          var pre2 = document.createElement('pre');
+          pre2.innerHTML = highlightJson(JSON.stringify(data, null, 2));
+          body.appendChild(pre2);
+        }
+        refreshAll();
+      } catch (err) {
+        body.className = 'cmd-entry-body error-entry';
+        body.textContent = '';
+        var pre3 = document.createElement('pre');
+        var errSpan = document.createElement('span');
+        errSpan.className = 'error';
+        errSpan.textContent = 'Error: ' + err.message;
+        pre3.appendChild(errSpan);
+        body.appendChild(pre3);
+      }
+      input.value = '';
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function quickCommand(cmd) {
+      document.getElementById('command-input').value = cmd;
+      runCommand();
+    }
+
+    /* ── Execute Command ── */
     async function executeCommand(cmd) {
-      const parts = cmd.split(/\s+/);
-      const verb = parts[0]?.toLowerCase();
-      const args = parts.slice(1);
-      const opts = {};
-
-      if (!verb) {
-        throw new Error('No command entered. Try: claim, find, lock, status, help');
-      }
-
+      var parts = cmd.split(/\s+/);
+      var verb = parts[0] ? parts[0].toLowerCase() : '';
+      var args = parts.slice(1);
+      var opts = {};
+      if (!verb) throw new Error('No command entered. Try: claim, find, lock, status, help');
       if (verb === 'help') {
-        return {
-          commands: Object.entries(COMMANDS).map(([name, info]) => ({
-            command: name + (info.args ? ' ' + info.args : ''),
-            options: info.opts.join(', ') || 'none',
-            description: info.desc
-          }))
-        };
+        return { commands: Object.entries(COMMANDS).map(function(e) {
+          return { command: e[0] + (e[1].args ? ' ' + e[1].args : ''), options: e[1].opts.join(', ') || 'none', description: e[1].desc };
+        })};
       }
-
-      if (verb === 'tutorial') {
-        return { _html: renderTutorial() };
+      if (verb === 'tutorial') return { _html: renderTutorial() };
+      var CLI_ONLY = ['up', 'down', 'start', 'stop', 'restart', 'install', 'uninstall', 'dev', 'ci-gate'];
+      if (CLI_ONLY.indexOf(verb) !== -1) {
+        throw new Error('"' + verb + '" is a CLI-only command (requires local process management).\n\nRun it in your terminal:\n  port-daddy ' + verb + '\n\nDashboard commands: ' + Object.keys(COMMANDS).join(', '));
       }
-
       if (!COMMANDS[verb]) {
-        const similar = Object.keys(COMMANDS).filter(c => c.startsWith(verb[0]) || c.includes(verb));
-        throw new Error(`Unknown command: "${verb}"\n\nAvailable: ${Object.keys(COMMANDS).join(', ')}${similar.length ? '\n\nDid you mean: ' + similar.join(', ') + '?' : ''}`);
+        var similar = Object.keys(COMMANDS).filter(function(c) { return c.startsWith(verb[0]) || c.indexOf(verb) !== -1; });
+        throw new Error('Unknown command: "' + verb + '"\n\nAvailable: ' + Object.keys(COMMANDS).join(', ') + (similar.length ? '\n\nDid you mean: ' + similar.join(', ') + '?' : ''));
       }
-
-      for (let i = 0; i < args.length; i++) {
+      for (var i = 0; i < args.length; i++) {
         if (args[i] === '--json' || args[i] === '-j') opts.json = true;
         else if (args[i] === '--port' || args[i] === '-p') opts.port = parseInt(args[++i]);
         else if (args[i] === '--limit') opts.limit = parseInt(args[++i]);
@@ -863,123 +1220,355 @@
         else if (args[i] === '--ttl') opts.ttl = parseInt(args[++i]);
         else if (!args[i].startsWith('-')) opts.target = opts.target || args[i];
       }
-
-      // Validate required arguments
-      const needsTarget = ['claim', 'release', 'lock', 'unlock', 'pub'];
-      if (needsTarget.includes(verb) && !opts.target) {
-        const info = COMMANDS[verb];
-        throw new Error(`Missing required argument.\n\nUsage: ${verb} ${info.args}${info.opts.length ? '\nOptions: ' + info.opts.join(', ') : ''}`);
+      var needsTarget = ['claim', 'release', 'lock', 'unlock', 'pub'];
+      if (needsTarget.indexOf(verb) !== -1 && !opts.target) {
+        var info = COMMANDS[verb];
+        throw new Error('Missing required argument.\n\nUsage: ' + verb + ' ' + info.args + (info.opts.length ? '\nOptions: ' + info.opts.join(', ') : ''));
       }
-
       switch (verb) {
-        case 'claim': return fetch(API + '/claim/' + opts.target, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ port: opts.port }) }).then(r => r.json());
-        case 'release': return fetch(API + '/release/' + opts.target, { method: 'DELETE' }).then(r => r.json());
-        case 'find': case 'ps': return fetch(opts.target ? API + '/services?pattern=' + encodeURIComponent(opts.target) : API + '/services').then(r => r.json());
-        case 'lock': return fetch(API + '/locks/' + opts.target, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ owner: opts.owner || 'dashboard', ttl: opts.ttl }) }).then(r => r.json());
-        case 'unlock': return fetch(API + '/locks/' + opts.target, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ owner: opts.owner || 'dashboard', force: true }) }).then(r => r.json());
-        case 'locks': return fetch(API + '/locks').then(r => r.json());
-        case 'agents': return fetch(API + '/agents').then(r => r.json());
-        case 'log': case 'activity': return fetch(API + '/activity?limit=' + (opts.limit || 20)).then(r => r.json());
-        case 'status': return fetch(API + '/health').then(r => r.json());
-        case 'pub': const payload = args.find(a => a.startsWith('{')) || '{}'; return fetch(API + '/msg/' + opts.target, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payload: JSON.parse(payload) }) }).then(r => r.json());
-        default: throw new Error(`Unknown command: ${verb}`);
+        case 'claim': return fetch(API + '/claim/' + opts.target, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ port: opts.port }) }).then(function(r) { return r.json(); });
+        case 'release': return fetch(API + '/release/' + opts.target, { method: 'DELETE' }).then(function(r) { return r.json(); });
+        case 'find': case 'ps': return fetch(opts.target ? API + '/services?pattern=' + encodeURIComponent(opts.target) : API + '/services').then(function(r) { return r.json(); });
+        case 'lock': return fetch(API + '/locks/' + opts.target, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ owner: opts.owner || 'dashboard', ttl: opts.ttl }) }).then(function(r) { return r.json(); });
+        case 'unlock': return fetch(API + '/locks/' + opts.target, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ owner: opts.owner || 'dashboard', force: true }) }).then(function(r) { return r.json(); });
+        case 'locks': return fetch(API + '/locks').then(function(r) { return r.json(); });
+        case 'agents': return fetch(API + '/agents').then(function(r) { return r.json(); });
+        case 'log': case 'activity': return fetch(API + '/activity?limit=' + (opts.limit || 20)).then(function(r) { return r.json(); });
+        case 'status': return fetch(API + '/health').then(function(r) { return r.json(); });
+        case 'pub': var payload = args.find(function(a) { return a.startsWith('{'); }) || '{}'; return fetch(API + '/msg/' + opts.target, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payload: JSON.parse(payload) }) }).then(function(r) { return r.json(); });
+        case 'scan': return fetch(API + '/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }).then(function(r) { return r.json(); });
+        case 'projects': return fetch(API + '/projects').then(function(r) { return r.json(); });
+        case 'detect': case 'init': return fetch(API + '/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dryRun: true }) }).then(function(r) { return r.json(); });
+        case 'doctor': return runDashboardDoctor();
+        default: throw new Error('Unknown command: ' + verb);
       }
     }
 
-    function escapeHtml(str) { return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-    function formatTime(ts) { return new Date(ts).toLocaleTimeString(); }
-    function formatAge(ms) { const m = Math.floor(ms / 60000); if (m < 60) return m + 'm'; const h = Math.floor(m / 60); if (h < 24) return h + 'h'; return Math.floor(h / 24) + 'd'; }
-    function formatUptime(s) { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h > 0 ? h + 'h ' + m + 'm' : m + 'm'; }
-
-    async function releaseService(id) { if (!confirm('Release ' + id + '?')) return; await fetch(API + '/release/' + encodeURIComponent(id), { method: 'DELETE' }); refreshServices(); }
-    async function releaseLock(name) { if (!confirm('Force release ' + name + '?')) return; await fetch(API + '/locks/' + encodeURIComponent(name), { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ force: true }) }); refreshLocks(); }
-    async function unregisterAgent(id) { if (!confirm('Unregister ' + id + '?')) return; await fetch(API + '/agents/' + encodeURIComponent(id), { method: 'DELETE' }); refreshAgents(); }
-
-    function renderTable(tbody, rows, empty, cols) {
-      tbody.textContent = '';
-      if (rows.length === 0) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = cols; td.className = 'empty-state'; td.textContent = empty; tr.appendChild(td); tbody.appendChild(tr); return; }
-      rows.forEach(r => { const tr = document.createElement('tr'); tr.innerHTML = r; tbody.appendChild(tr); });
+    /* ── Dashboard Doctor ── */
+    async function runDashboardDoctor() {
+      var checks = [];
+      // 1. Daemon reachable
+      try {
+        var healthRes = await fetch(API + '/health');
+        var health = await healthRes.json();
+        checks.push({ ok: true, name: 'Daemon', detail: 'Running (PID ' + health.pid + ', v' + health.version + ')' });
+      } catch (e) {
+        checks.push({ ok: false, name: 'Daemon', detail: 'Not reachable at ' + API, hint: 'Run: port-daddy start' });
+        return { doctor: checks, summary: '0/1 checks passed' };
+      }
+      // 2. Code hash
+      try {
+        var vRes = await fetch(API + '/version');
+        var vData = await vRes.json();
+        checks.push({ ok: true, name: 'Version', detail: 'v' + vData.version + ' (hash: ' + vData.codeHash + ')' });
+      } catch (e) {
+        checks.push({ ok: false, name: 'Version', detail: 'Could not query version' });
+      }
+      // 3. Services health
+      try {
+        var svcRes = await fetch(API + '/services');
+        var svcData = await svcRes.json();
+        var count = (svcData.services || []).length;
+        checks.push({ ok: true, name: 'Services', detail: count + ' active service' + (count !== 1 ? 's' : '') });
+      } catch (e) {
+        checks.push({ ok: false, name: 'Services', detail: 'Could not query services' });
+      }
+      // 4. Locks
+      try {
+        var lockRes = await fetch(API + '/locks');
+        var lockData = await lockRes.json();
+        var lockCount = (lockData.locks || []).length;
+        checks.push({ ok: true, name: 'Locks', detail: lockCount + ' active lock' + (lockCount !== 1 ? 's' : '') });
+      } catch (e) {
+        checks.push({ ok: false, name: 'Locks', detail: 'Could not query locks' });
+      }
+      // 5. Agents
+      try {
+        var agentRes = await fetch(API + '/agents');
+        var agentData = await agentRes.json();
+        var agentCount = (agentData.agents || []).length;
+        checks.push({ ok: true, name: 'Agents', detail: agentCount + ' registered agent' + (agentCount !== 1 ? 's' : '') });
+      } catch (e) {
+        checks.push({ ok: false, name: 'Agents', detail: 'Could not query agents' });
+      }
+      var passed = checks.filter(function(c) { return c.ok; }).length;
+      checks.push({ ok: false, name: 'Note', detail: 'For full diagnostics (Node.js, deps, system service), run: port-daddy doctor' });
+      return { doctor: checks, summary: passed + '/' + (checks.length - 1) + ' checks passed' };
     }
 
+    /* ── Service Actions ── */
+    async function releaseService(id) {
+      if (!confirm('Release ' + id + '?')) return;
+      await fetch(API + '/release/' + encodeURIComponent(id), { method: 'DELETE' });
+      showToast('Released ' + id, 'success');
+      refreshServices();
+    }
+    async function releaseLock(name) {
+      if (!confirm('Force release ' + name + '?')) return;
+      await fetch(API + '/locks/' + encodeURIComponent(name), { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ force: true }) });
+      showToast('Released lock ' + name, 'success');
+      refreshLocks();
+    }
+    async function unregisterAgent(id) {
+      if (!confirm('Unregister ' + id + '?')) return;
+      await fetch(API + '/agents/' + encodeURIComponent(id), { method: 'DELETE' });
+      showToast('Unregistered ' + id, 'success');
+      refreshAgents();
+    }
+
+    /* ── Table Row Builder (DOM-safe) ── */
+    function buildServiceRow(s) {
+      var tr = document.createElement('tr');
+      var td1 = document.createElement('td'); var b = document.createElement('strong'); b.textContent = s.id; td1.appendChild(b);
+      var td2 = document.createElement('td'); var pb = document.createElement('span'); pb.className = 'port-badge'; pb.textContent = s.port; td2.appendChild(pb);
+      var td3 = document.createElement('td'); var si = document.createElement('span'); si.className = 'status-indicator ' + (s.status === 'running' ? 'running' : 'claimed'); si.textContent = s.status; td3.appendChild(si);
+      var td4 = document.createElement('td'); var c = document.createElement('code'); c.textContent = s.pid || '-'; td4.appendChild(c);
+      var td5 = document.createElement('td'); td5.textContent = (s.urls && s.urls.local) ? s.urls.local : '-';
+      var td6 = document.createElement('td'); td6.textContent = formatAge(Date.now() - s.createdAt);
+      var td7 = document.createElement('td'); var btn = document.createElement('button'); btn.className = 'action-btn danger'; btn.textContent = 'Release'; btn.onclick = function() { releaseService(s.id); }; td7.appendChild(btn);
+      tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7);
+      return tr;
+    }
+
+    /* ── Refresh Functions ── */
     async function refreshHealth() {
       try {
-        const data = await (await fetch(API + '/health')).json();
-        document.getElementById('stat-uptime').textContent = formatUptime(data.uptime_seconds);
+        var data = await (await fetch(API + '/health')).json();
+        animateValue(document.getElementById('stat-uptime'), formatUptime(data.uptime_seconds));
         document.getElementById('pid').textContent = data.pid;
         document.getElementById('status-text').textContent = 'Online';
         document.getElementById('status-dot').className = 'status-dot online';
-      } catch { document.getElementById('status-text').textContent = 'Offline'; document.getElementById('status-dot').className = 'status-dot offline'; }
+        document.getElementById('status-pill').classList.add('online');
+      } catch(e) {
+        document.getElementById('status-text').textContent = 'Offline';
+        document.getElementById('status-dot').className = 'status-dot offline';
+        document.getElementById('status-pill').classList.remove('online');
+      }
     }
-
-    async function refreshVersion() { try { const data = await (await fetch(API + '/version')).json(); document.getElementById('version').textContent = data.version; } catch {} }
-
+    async function refreshVersion() {
+      try { var d = await (await fetch(API + '/version')).json(); document.getElementById('version').textContent = d.version; } catch(e) {}
+    }
     async function refreshServices() {
+      spinRefreshBtn('refresh-services');
       try {
-        const data = await (await fetch(API + '/services')).json();
-        document.getElementById('stat-services').textContent = data.count;
-        const rows = data.services.map(s => '<td><strong>' + s.id + '</strong></td><td><code>' + s.port + '</code></td><td><span class="badge badge-' + (s.status === 'running' ? 'success' : 'info') + '">' + s.status + '</span></td><td><code>' + (s.pid || '-') + '</code></td><td>' + (s.urls?.local || '-') + '</td><td>' + formatAge(Date.now() - s.createdAt) + '</td><td><button class="action-btn danger" onclick="releaseService(\'' + s.id + '\')">Release</button></td>');
-        renderTable(document.getElementById('services-body'), rows, 'No services claimed', 7);
+        var data = await (await fetch(API + '/services')).json();
+        animateValue(document.getElementById('stat-services'), data.count);
+        document.getElementById('badge-services').textContent = data.count;
+        var tbody = document.getElementById('services-body');
+        tbody.textContent = '';
+        if (data.services.length === 0) {
+          renderEmptyTd(tbody, '#icon-server', 'No services claimed', 'Use "claim myapp:api" to get started', 7);
+        } else {
+          data.services.forEach(function(s) { tbody.appendChild(buildServiceRow(s)); });
+        }
       } catch (e) { console.error(e); }
     }
-
+    async function refreshProjects() {
+      spinRefreshBtn('refresh-projects');
+      try {
+        var data = await (await fetch(API + '/projects')).json();
+        var ct = data.count || 0;
+        document.getElementById('badge-projects').textContent = ct;
+        var tbody = document.getElementById('projects-body');
+        tbody.textContent = '';
+        if (ct === 0) {
+          renderEmptyTd(tbody, '#icon-folder', 'No projects registered', 'Run "port-daddy scan" from a project directory', 6);
+        } else {
+          data.projects.forEach(function(p) {
+            var tr = document.createElement('tr');
+            var td1 = document.createElement('td'); var b = document.createElement('strong'); b.textContent = p.id; td1.appendChild(b);
+            var td2 = document.createElement('td'); var badge = document.createElement('span'); badge.className = 'badge badge-muted'; badge.textContent = p.type; td2.appendChild(badge);
+            var td3 = document.createElement('td'); td3.textContent = p.serviceCount;
+            var td4 = document.createElement('td'); td4.textContent = p.lastScanned ? formatTime(p.lastScanned) : 'never';
+            var td5 = document.createElement('td'); td5.textContent = (p.frameworks || []).join(', ') || '-';
+            var td6 = document.createElement('td'); var btn = document.createElement('button'); btn.className = 'action-btn danger'; btn.textContent = 'Remove'; btn.onclick = function() { removeProject(p.id); }; td6.appendChild(btn);
+            tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6);
+            tbody.appendChild(tr);
+          });
+        }
+      } catch (e) { console.error(e); }
+    }
+    async function removeProject(id) {
+      if (!confirm('Remove project "' + id + '"?')) return;
+      try {
+        await fetch(API + '/projects/' + encodeURIComponent(id), { method: 'DELETE' });
+        refreshProjects();
+        showToast('Project removed', 'success');
+      } catch (e) { showToast('Failed to remove project', 'error'); }
+    }
     async function refreshAgents() {
+      spinRefreshBtn('refresh-agents');
       try {
-        const data = await (await fetch(API + '/agents')).json();
-        document.getElementById('stat-agents').textContent = data.agents.filter(a => a.isActive).length;
-        const rows = data.agents.map(a => '<td><strong>' + a.id + '</strong></td><td><span class="badge badge-muted">' + a.type + '</span></td><td><code>' + a.pid + '</code></td><td><span class="badge badge-' + (a.isActive ? 'success' : 'danger') + '">' + (a.isActive ? 'Active' : 'Stale') + '</span></td><td>' + formatTime(a.lastHeartbeat) + '</td><td>' + a.maxServices + ' / ' + a.maxLocks + '</td><td><button class="action-btn danger" onclick="unregisterAgent(\'' + a.id + '\')">Remove</button></td>');
-        renderTable(document.getElementById('agents-body'), rows, 'No agents registered', 7);
+        var data = await (await fetch(API + '/agents')).json();
+        var ac = data.agents.filter(function(a) { return a.isActive; }).length;
+        animateValue(document.getElementById('stat-agents'), ac);
+        document.getElementById('badge-agents').textContent = ac;
+        var tbody = document.getElementById('agents-body');
+        tbody.textContent = '';
+        if (data.agents.length === 0) {
+          renderEmptyTd(tbody, '#icon-bot', 'No agents registered', 'Agents register via the CLI or API', 7);
+        } else {
+          data.agents.forEach(function(a) {
+            var tr = document.createElement('tr');
+            var td1 = document.createElement('td'); var b = document.createElement('strong'); b.textContent = a.id; td1.appendChild(b);
+            var td2 = document.createElement('td'); var badge = document.createElement('span'); badge.className = 'badge badge-muted'; badge.textContent = a.type; td2.appendChild(badge);
+            var td3 = document.createElement('td'); var c = document.createElement('code'); c.textContent = a.pid; td3.appendChild(c);
+            var td4 = document.createElement('td'); var sb = document.createElement('span'); sb.className = 'badge badge-' + (a.isActive ? 'success' : 'danger'); sb.textContent = a.isActive ? 'Active' : 'Stale'; td4.appendChild(sb);
+            var td5 = document.createElement('td'); td5.textContent = formatTime(a.lastHeartbeat);
+            var td6 = document.createElement('td'); td6.textContent = a.maxServices + ' / ' + a.maxLocks;
+            var td7 = document.createElement('td'); var btn = document.createElement('button'); btn.className = 'action-btn danger'; btn.textContent = 'Remove'; btn.onclick = function() { unregisterAgent(a.id); }; td7.appendChild(btn);
+            tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7);
+            tbody.appendChild(tr);
+          });
+        }
       } catch (e) { console.error(e); }
     }
-
     async function refreshLocks() {
+      spinRefreshBtn('refresh-locks');
       try {
-        const data = await (await fetch(API + '/locks')).json();
-        document.getElementById('stat-locks').textContent = data.count;
-        const rows = data.locks.map(l => '<td><strong>' + l.name + '</strong></td><td>' + l.owner + '</td><td><code>' + (l.pid || '-') + '</code></td><td>' + formatTime(l.acquiredAt) + '</td><td>' + (l.expiresAt ? formatTime(l.expiresAt) : 'Never') + '</td><td><button class="action-btn danger" onclick="releaseLock(\'' + l.name + '\')">Force Release</button></td>');
-        renderTable(document.getElementById('locks-body'), rows, 'No active locks', 6);
+        var data = await (await fetch(API + '/locks')).json();
+        animateValue(document.getElementById('stat-locks'), data.count);
+        document.getElementById('badge-locks').textContent = data.count;
+        var tbody = document.getElementById('locks-body');
+        tbody.textContent = '';
+        if (data.locks.length === 0) {
+          renderEmptyTd(tbody, '#icon-lock', 'No active locks', 'Use "lock my-resource" to acquire one', 6);
+        } else {
+          data.locks.forEach(function(l) {
+            var tr = document.createElement('tr');
+            var td1 = document.createElement('td'); var b = document.createElement('strong'); b.textContent = l.name; td1.appendChild(b);
+            var td2 = document.createElement('td'); td2.textContent = l.owner;
+            var td3 = document.createElement('td'); var c = document.createElement('code'); c.textContent = l.pid || '-'; td3.appendChild(c);
+            var td4 = document.createElement('td'); td4.textContent = formatTime(l.acquiredAt);
+            var td5 = document.createElement('td'); td5.textContent = l.expiresAt ? formatTime(l.expiresAt) : 'Never';
+            var td6 = document.createElement('td'); var btn = document.createElement('button'); btn.className = 'action-btn danger'; btn.textContent = 'Force Release'; btn.onclick = function() { releaseLock(l.name); }; td6.appendChild(btn);
+            tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6);
+            tbody.appendChild(tr);
+          });
+        }
       } catch (e) { console.error(e); }
     }
-
     async function refreshChannels() {
+      spinRefreshBtn('refresh-channels');
       try {
-        const data = await (await fetch(API + '/channels')).json();
-        document.getElementById('stat-channels').textContent = data.count;
-        const el = document.getElementById('channels-list');
+        var data = await (await fetch(API + '/channels')).json();
+        var chCount = data.channels ? data.channels.length : 0;
+        animateValue(document.getElementById('stat-channels'), chCount);
+        document.getElementById('badge-channels').textContent = chCount;
+        var el = document.getElementById('channels-list');
         el.textContent = '';
-        if (data.count === 0) { el.innerHTML = '<div class="empty-state">No active channels</div>'; return; }
-        data.channels.forEach(c => { const d = document.createElement('div'); d.className = 'channel-card'; d.innerHTML = '<div class="channel-name">' + c.channel + '</div><div class="channel-stats">' + c.messageCount + ' msgs</div>'; el.appendChild(d); });
+        if (chCount === 0) {
+          var empty = document.createElement('div');
+          empty.className = 'empty-state';
+          var svgNs = 'http://www.w3.org/2000/svg';
+          var svg = document.createElementNS(svgNs, 'svg');
+          svg.setAttribute('class', 'empty-state-icon');
+          var use = document.createElementNS(svgNs, 'use');
+          use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#icon-message');
+          svg.appendChild(use);
+          empty.appendChild(svg);
+          var t = document.createElement('div'); t.className = 'empty-state-text'; t.textContent = 'No active channels'; empty.appendChild(t);
+          var h = document.createElement('div'); h.className = 'empty-state-hint'; h.textContent = 'Publish a message to create a channel'; empty.appendChild(h);
+          el.appendChild(empty);
+          return;
+        }
+        data.channels.forEach(function(c) {
+          var d = document.createElement('div');
+          d.className = 'channel-card';
+          var name = document.createElement('div');
+          name.className = 'channel-name';
+          name.textContent = c.channel;
+          var stats = document.createElement('div');
+          stats.className = 'channel-stats';
+          stats.textContent = c.count + ' msgs';
+          d.appendChild(name);
+          d.appendChild(stats);
+          el.appendChild(d);
+        });
       } catch (e) { console.error(e); }
     }
-
     async function refreshWebhooks() {
+      spinRefreshBtn('refresh-webhooks');
       try {
-        const data = await (await fetch(API + '/webhooks')).json();
-        document.getElementById('stat-webhooks').textContent = data.count;
-        const rows = data.webhooks.map(w => '<td><code>' + (w.url.length > 40 ? w.url.substring(0, 40) + '...' : w.url) + '</code></td><td>' + w.events.slice(0, 2).join(', ') + '</td><td><span class="badge badge-' + (w.active ? 'success' : 'warning') + '">' + (w.active ? 'Active' : 'Paused') + '</span></td><td><span class="badge badge-success">' + w.successCount + '</span> / <span class="badge badge-danger">' + w.failureCount + '</span></td><td>' + (w.lastTriggered ? formatTime(w.lastTriggered) : 'Never') + '</td>');
-        renderTable(document.getElementById('webhooks-body'), rows, 'No webhooks', 5);
+        var data = await (await fetch(API + '/webhooks')).json();
+        animateValue(document.getElementById('stat-webhooks'), data.count);
+        document.getElementById('badge-webhooks').textContent = data.count;
+        var tbody = document.getElementById('webhooks-body');
+        tbody.textContent = '';
+        if (data.webhooks.length === 0) {
+          renderEmptyTd(tbody, '#icon-webhook', 'No webhooks', 'Register webhooks via the API', 5);
+        } else {
+          data.webhooks.forEach(function(w) {
+            var tr = document.createElement('tr');
+            var td1 = document.createElement('td'); var c = document.createElement('code'); c.textContent = w.url.length > 40 ? w.url.substring(0, 40) + '...' : w.url; td1.appendChild(c);
+            var td2 = document.createElement('td'); td2.textContent = w.events.slice(0, 2).join(', ');
+            var td3 = document.createElement('td'); var sb = document.createElement('span'); sb.className = 'badge badge-' + (w.active ? 'success' : 'warning'); sb.textContent = w.active ? 'Active' : 'Paused'; td3.appendChild(sb);
+            var td4 = document.createElement('td');
+            var s1 = document.createElement('span'); s1.className = 'badge badge-success'; s1.textContent = w.successCount;
+            var s2 = document.createElement('span'); s2.className = 'badge badge-danger'; s2.textContent = w.failureCount;
+            td4.appendChild(s1); td4.appendChild(document.createTextNode(' / ')); td4.appendChild(s2);
+            var td5 = document.createElement('td'); td5.textContent = w.lastTriggered ? formatTime(w.lastTriggered) : 'Never';
+            tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5);
+            tbody.appendChild(tr);
+          });
+        }
       } catch (e) { console.error(e); }
     }
-
     async function refreshActivity() {
+      spinRefreshBtn('refresh-activity');
       try {
-        const f = document.getElementById('activity-filter').value;
-        const data = await (await fetch(f ? API + '/activity?type=' + f + '&limit=50' : API + '/activity?limit=50')).json();
-        const feed = document.getElementById('activity-feed');
+        var f = document.getElementById('activity-filter').value;
+        var data = await (await fetch(f ? API + '/activity?type=' + f + '&limit=50' : API + '/activity?limit=50')).json();
+        var feed = document.getElementById('activity-feed');
         feed.textContent = '';
-        if (data.count === 0) { feed.innerHTML = '<div class="empty-state">No activity</div>'; return; }
-        const icons = { 'service.claim': '#icon-box', 'service.release': '#icon-send', 'lock.acquire': '#icon-lock', 'lock.release': '#icon-unlock', 'agent.register': '#icon-bot', 'agent.heartbeat': '#icon-heart', 'daemon.start': '#icon-zap' };
-        data.entries.forEach(e => { const d = document.createElement('div'); d.className = 'activity-item'; d.innerHTML = '<div class="activity-icon"><svg class="icon"><use href="' + (icons[e.type] || '#icon-activity') + '"/></svg></div><div class="activity-content"><div class="type">' + e.type + '</div><div class="details">' + (e.details || '-') + '</div><div class="time">' + formatTime(e.timestamp) + '</div></div>'; feed.appendChild(d); });
+        if (data.count === 0) {
+          var empty = document.createElement('div');
+          empty.className = 'empty-state';
+          var svgNs = 'http://www.w3.org/2000/svg';
+          var svg = document.createElementNS(svgNs, 'svg');
+          svg.setAttribute('class', 'empty-state-icon');
+          var use = document.createElementNS(svgNs, 'use');
+          use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#icon-activity');
+          svg.appendChild(use);
+          empty.appendChild(svg);
+          var t = document.createElement('div'); t.className = 'empty-state-text'; t.textContent = 'No activity'; empty.appendChild(t);
+          var h = document.createElement('div'); h.className = 'empty-state-hint'; h.textContent = 'Activity will appear as you use Port Daddy'; empty.appendChild(h);
+          feed.appendChild(empty);
+          return;
+        }
+        var icons = { 'service.claim': '#icon-box', 'service.release': '#icon-send', 'lock.acquire': '#icon-lock', 'lock.release': '#icon-unlock', 'agent.register': '#icon-bot', 'agent.heartbeat': '#icon-heart', 'daemon.start': '#icon-zap' };
+        var iconClasses = { 'service.claim': 'claim', 'service.release': 'release', 'lock.acquire': 'lock', 'lock.release': 'lock', 'agent.register': 'agent', 'agent.heartbeat': 'agent', 'daemon.start': 'daemon' };
+        data.entries.forEach(function(e) {
+          var item = document.createElement('div');
+          item.className = 'activity-item';
+          var iconDiv = document.createElement('div');
+          iconDiv.className = 'activity-icon ' + (iconClasses[e.type] || '');
+          var svgNs2 = 'http://www.w3.org/2000/svg';
+          var svg2 = document.createElementNS(svgNs2, 'svg');
+          svg2.setAttribute('class', 'icon');
+          var use2 = document.createElementNS(svgNs2, 'use');
+          use2.setAttributeNS('http://www.w3.org/1999/xlink', 'href', icons[e.type] || '#icon-activity');
+          svg2.appendChild(use2);
+          iconDiv.appendChild(svg2);
+          var content = document.createElement('div');
+          content.className = 'activity-content';
+          var typeDiv = document.createElement('div'); typeDiv.className = 'type'; typeDiv.textContent = e.type;
+          var detailsDiv = document.createElement('div'); detailsDiv.className = 'details'; detailsDiv.textContent = e.details || '-';
+          var timeDiv = document.createElement('div'); timeDiv.className = 'time'; timeDiv.textContent = formatTime(e.timestamp);
+          content.appendChild(typeDiv); content.appendChild(detailsDiv); content.appendChild(timeDiv);
+          item.appendChild(iconDiv); item.appendChild(content);
+          feed.appendChild(item);
+        });
       } catch (e) { console.error(e); }
     }
-
     async function refreshConfig() {
       try {
-        const data = await (await fetch(API + '/version')).json();
-        const installDir = data.installDir || '~/.claude/port-daddy';
-        document.getElementById('config-db').textContent = installDir + '/port-daddy.db';
-        document.getElementById('config-pid').textContent = installDir + '/port-daddy.pid';
-        document.getElementById('config-log').textContent = installDir + '/port-daddy.log';
-        document.getElementById('config-install').textContent = installDir;
+        var data = await (await fetch(API + '/version')).json();
+        var dir = data.installDir || '~/.claude/port-daddy';
+        document.getElementById('config-db').textContent = dir + '/port-daddy.db';
+        document.getElementById('config-pid').textContent = dir + '/port-daddy.pid';
+        document.getElementById('config-log').textContent = dir + '/port-daddy.log';
+        document.getElementById('config-install').textContent = dir;
       } catch (e) {
         document.getElementById('config-db').textContent = '~/.claude/port-daddy/port-daddy.db';
         document.getElementById('config-pid').textContent = '~/.claude/port-daddy/port-daddy.pid';
@@ -988,314 +1577,235 @@
       }
     }
 
+    /* ── Copy to Clipboard ── */
     function copyCmd(cmd) {
-      navigator.clipboard.writeText(cmd).then(() => {
-        const btn = event.currentTarget;
-        btn.classList.add('copied');
-        setTimeout(() => btn.classList.remove('copied'), 1500);
+      navigator.clipboard.writeText(cmd).then(function() {
+        showToast('Copied to clipboard', 'success');
       });
     }
-
     function runTutorialCmd(cmd) {
-      // Put command in input and run it
       document.getElementById('command-input').value = cmd;
-      const btn = event.currentTarget;
-      btn.classList.add('ran');
-      setTimeout(() => btn.classList.remove('ran'), 1500);
       runCommand();
-
-      // Scroll terminal into view
       document.getElementById('command-output').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // ==========================================================================
-    // MODALS
-    // ==========================================================================
-
-    function closeModal() {
-      document.getElementById('modal-overlay').classList.remove('open');
-    }
-
-    function showModal(html) {
-      document.getElementById('modal-content').innerHTML = html;
+    /* ── Modals ── */
+    function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+    function showModal(contentEl) {
+      var mc = document.getElementById('modal-content');
+      mc.textContent = '';
+      mc.appendChild(contentEl);
       document.getElementById('modal-overlay').classList.add('open');
     }
 
     function showShortcuts() {
-      showModal(`
-        <h3>Keyboard Shortcuts</h3>
-        <div class="shortcut-list">
-          <div class="shortcut-key">Ctrl/⌘ + K</div>
-          <div class="shortcut-desc">Focus command bar</div>
-          <div class="shortcut-key">Enter</div>
-          <div class="shortcut-desc">Run command</div>
-          <div class="shortcut-key">↑ / ↓</div>
-          <div class="shortcut-desc">Command history</div>
-          <div class="shortcut-key">Escape</div>
-          <div class="shortcut-desc">Clear output / Close modal</div>
-          <div class="shortcut-key">Ctrl/⌘ + /</div>
-          <div class="shortcut-desc">Show this help</div>
-        </div>
-        <div class="modal-actions">
-          <button class="modal-btn" onclick="closeModal()">Got it</button>
-        </div>
-      `);
+      var frag = document.createElement('div');
+      var h = document.createElement('h3'); h.textContent = 'Keyboard Shortcuts'; frag.appendChild(h);
+      var grid = document.createElement('div'); grid.className = 'shortcut-list';
+      var shortcuts = [
+        ['Ctrl/Cmd + K', 'Focus command bar'], ['Enter', 'Run command'],
+        ['Up / Down', 'Command history'], ['Tab', 'Accept suggestion'],
+        ['Escape', 'Clear / Close modal'], ['Ctrl/Cmd + /', 'Show this help']
+      ];
+      shortcuts.forEach(function(s) {
+        var key = document.createElement('div'); key.className = 'shortcut-key'; key.textContent = s[0];
+        var desc = document.createElement('div'); desc.className = 'shortcut-desc'; desc.textContent = s[1];
+        grid.appendChild(key); grid.appendChild(desc);
+      });
+      frag.appendChild(grid);
+      var actions = document.createElement('div'); actions.className = 'modal-actions';
+      var btn = document.createElement('button'); btn.className = 'modal-btn'; btn.textContent = 'Got it'; btn.onclick = closeModal;
+      actions.appendChild(btn); frag.appendChild(actions);
+      showModal(frag);
     }
 
     function renderTutorial() {
-      return `<div class="tutorial-output">
-        <h4>Claiming Ports</h4>
-        <p class="desc">Get a port for your service. Port Daddy assigns and tracks it atomically.</p>
-        <div class="cmd">claim myapp:frontend</div>
-        <div class="cmd">claim myapp:api --port 3100</div>
-
-        <h4>Finding & Releasing</h4>
-        <p class="desc">List services, find by pattern, and release when done.</p>
-        <div class="cmd">find</div>
-        <div class="cmd">find 'myapp:*'</div>
-        <div class="cmd">release myapp:frontend</div>
-
-        <h4>Distributed Locks</h4>
-        <p class="desc">Prevent conflicts between agents. Only one holder at a time.</p>
-        <div class="cmd">lock db-migrations</div>
-        <div class="cmd">lock deploy --ttl 300000</div>
-        <div class="cmd">unlock db-migrations</div>
-        <div class="cmd">locks</div>
-
-        <h4>Pub/Sub Messaging</h4>
-        <p class="desc">Agents can broadcast and listen for events.</p>
-        <div class="cmd">pub build:api '{"status":"done"}'</div>
-        <p class="note">CLI: port-daddy sub build:* (streaming, not available in dashboard)</p>
-
-        <h4>Agent Registry</h4>
-        <p class="desc">Register agents for resource limits and heartbeat monitoring.</p>
-        <div class="cmd">agents</div>
-        <p class="note">CLI: port-daddy agent register --agent my-agent --type claude</p>
-
-        <h4>Status & Logs</h4>
-        <p class="desc">Check health and view activity.</p>
-        <div class="cmd">status</div>
-        <div class="cmd">log --limit 20</div>
-
-        <p class="note" style="margin-top:16px">Click any command above, then paste in the command bar to run it.</p>
-      </div>`;
+      return '<div class="tutorial-output">'
+        + '<h4>Claiming Ports</h4>'
+        + '<p class="desc">Get a port for your service. Port Daddy assigns and tracks it atomically.</p>'
+        + '<div class="cmd">claim myapp:frontend</div>'
+        + '<div class="cmd">claim myapp:api --port 3100</div>'
+        + '<h4>Finding &amp; Releasing</h4>'
+        + '<p class="desc">List services, find by pattern, and release when done.</p>'
+        + '<div class="cmd">find</div>'
+        + '<div class="cmd">find \'myapp:*\'</div>'
+        + '<div class="cmd">release myapp:frontend</div>'
+        + '<h4>Distributed Locks</h4>'
+        + '<p class="desc">Prevent conflicts between agents. Only one holder at a time.</p>'
+        + '<div class="cmd">lock db-migrations</div>'
+        + '<div class="cmd">lock deploy --ttl 300000</div>'
+        + '<div class="cmd">unlock db-migrations</div>'
+        + '<div class="cmd">locks</div>'
+        + '<h4>Pub/Sub Messaging</h4>'
+        + '<p class="desc">Agents can broadcast and listen for events.</p>'
+        + '<div class="cmd">pub build:api \'{"status":"done"}\'</div>'
+        + '<p class="note">CLI: port-daddy sub build:* (streaming, not available in dashboard)</p>'
+        + '<h4>Agent Registry</h4>'
+        + '<p class="desc">Register agents for resource limits and heartbeat monitoring.</p>'
+        + '<div class="cmd">agents</div>'
+        + '<p class="note">CLI: port-daddy agent register --agent my-agent --type claude</p>'
+        + '<h4>Status &amp; Logs</h4>'
+        + '<p class="desc">Check health and view activity.</p>'
+        + '<div class="cmd">status</div>'
+        + '<div class="cmd">log --limit 20</div>'
+        + '<p class="note" style="margin-top:16px">Click any command above, then paste in the command bar to run it.</p>'
+        + '</div>';
     }
 
     function showIntegrateModal() {
-      const frameworks = [
-        {
-          name: 'Next.js / React',
-          desc: 'Claims a port, sets PORT env var, starts Next.js dev server on that port.',
-          cmd: 'PORT=$(port-daddy claim myapp:frontend -q) && npm run dev -- --port $PORT'
-        },
-        {
-          name: 'Vite',
-          desc: 'Claims a port and starts the Vite dev server. Works with Vue, React, Svelte.',
-          cmd: 'PORT=$(port-daddy claim myapp:frontend -q) && vite --port $PORT'
-        },
-        {
-          name: 'Express / Node.js',
-          desc: 'Claims a port for your API. Your server.js should read process.env.PORT.',
-          cmd: 'PORT=$(port-daddy claim myapp:api -q) && node server.js'
-        },
-        {
-          name: 'Python / FastAPI',
-          desc: 'Claims a port and starts uvicorn with your FastAPI app.',
-          cmd: 'PORT=$(port-daddy claim myapp:api -q) && uvicorn main:app --port $PORT'
-        },
-        {
-          name: 'Flask',
-          desc: 'Claims a port and starts the Flask development server.',
-          cmd: 'PORT=$(port-daddy claim myapp:api -q) && flask run --port $PORT'
-        },
-        {
-          name: 'Go',
-          desc: 'Claims a port and runs your Go app. Read os.Getenv("PORT") in your code.',
-          cmd: 'PORT=$(port-daddy claim myapp:api -q) && go run main.go'
-        },
-        {
-          name: 'Ruby / Rails',
-          desc: 'Claims a port and starts the Rails server with Puma.',
-          cmd: 'PORT=$(port-daddy claim myapp:api -q) && rails server -p $PORT'
-        },
-        {
-          name: 'Docker Compose',
-          desc: 'Writes the port to .env file, then starts docker-compose. Your docker-compose.yml should use ${PORT}.',
-          cmd: 'echo "PORT=$(port-daddy claim myapp -q)" > .env && docker-compose up'
-        },
-        {
-          name: 'package.json script',
-          desc: 'Add this to your package.json scripts for automatic port assignment on npm run dev.',
-          cmd: '"dev": "PORT=$(port-daddy claim myapp -q) next dev --port $PORT"'
-        }
+      var frameworks = [
+        { name: 'Next.js / React', desc: 'Claims a port, sets PORT env var, starts Next.js dev server on that port.', cmd: 'PORT=$(port-daddy claim myapp:frontend -q) && npm run dev -- --port $PORT' },
+        { name: 'Vite', desc: 'Claims a port and starts the Vite dev server. Works with Vue, React, Svelte.', cmd: 'PORT=$(port-daddy claim myapp:frontend -q) && vite --port $PORT' },
+        { name: 'Express / Node.js', desc: 'Claims a port for your API. Your server.js should read process.env.PORT.', cmd: 'PORT=$(port-daddy claim myapp:api -q) && node server.js' },
+        { name: 'Python / FastAPI', desc: 'Claims a port and starts uvicorn with your FastAPI app.', cmd: 'PORT=$(port-daddy claim myapp:api -q) && uvicorn main:app --port $PORT' },
+        { name: 'Flask', desc: 'Claims a port and starts the Flask development server.', cmd: 'PORT=$(port-daddy claim myapp:api -q) && flask run --port $PORT' },
+        { name: 'Go', desc: 'Claims a port and runs your Go app. Read os.Getenv("PORT") in your code.', cmd: 'PORT=$(port-daddy claim myapp:api -q) && go run main.go' },
+        { name: 'Ruby / Rails', desc: 'Claims a port and starts the Rails server with Puma.', cmd: 'PORT=$(port-daddy claim myapp:api -q) && rails server -p $PORT' },
+        { name: 'Docker Compose', desc: 'Writes the port to .env file, then starts docker-compose.', cmd: 'echo "PORT=$(port-daddy claim myapp -q)" > .env && docker-compose up' },
+        { name: 'package.json script', desc: 'Add this to your package.json scripts for automatic port assignment.', cmd: '"dev": "PORT=$(port-daddy claim myapp -q) next dev --port $PORT"' }
       ];
-
-      const cards = frameworks.map(f => `
-        <div class="integrate-card">
-          <div class="integrate-name">${f.name}</div>
-          <div class="integrate-desc">${f.desc}</div>
-          <div class="integrate-cmd">
-            <code>${escapeHtml(f.cmd)}</code>
-            <button class="cmd-btn" onclick="copyCmd('${f.cmd.replace(/'/g, "\\'")}')"><svg class="icon"><use href="#icon-copy"/></svg></button>
-          </div>
-        </div>
-      `).join('');
-
-      showModal(`
-        <h3 style="margin-bottom:4px">Integrate Into Your Stack</h3>
-        <p style="color:var(--text-muted);font-size:0.8em;margin-bottom:16px">
-          Copy-paste snippets for your framework. Replace <code>myapp</code> with your project name.
-        </p>
-        <div class="integrate-grid">
-          ${cards}
-        </div>
-        <div class="modal-actions">
-          <button class="modal-btn" onclick="closeModal()">Close</button>
-        </div>
-      `);
+      var frag = document.createElement('div');
+      var h = document.createElement('h3'); h.textContent = 'Integrate Into Your Stack'; h.style.marginBottom = '4px'; frag.appendChild(h);
+      var p = document.createElement('p'); p.style.cssText = 'color:var(--text-muted);font-size:0.85em;margin-bottom:16px'; p.textContent = 'Copy-paste snippets for your framework. Replace myapp with your project name.'; frag.appendChild(p);
+      var grid = document.createElement('div'); grid.className = 'integrate-grid';
+      frameworks.forEach(function(f) {
+        var card = document.createElement('div'); card.className = 'integrate-card';
+        var name = document.createElement('div'); name.className = 'integrate-name'; name.textContent = f.name; card.appendChild(name);
+        var desc = document.createElement('div'); desc.className = 'integrate-desc'; desc.textContent = f.desc; card.appendChild(desc);
+        var cmdRow = document.createElement('div'); cmdRow.className = 'integrate-cmd';
+        var code = document.createElement('code'); code.textContent = f.cmd; cmdRow.appendChild(code);
+        var btn = document.createElement('button'); btn.className = 'cmd-btn'; btn.title = 'Copy';
+        btn.onclick = function() { copyCmd(f.cmd); };
+        var svgNs = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(svgNs, 'svg');
+        svg.setAttribute('class', 'icon');
+        var use = document.createElementNS(svgNs, 'use');
+        use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#icon-copy');
+        svg.appendChild(use); btn.appendChild(svg);
+        cmdRow.appendChild(btn); card.appendChild(cmdRow); grid.appendChild(card);
+      });
+      frag.appendChild(grid);
+      var actions = document.createElement('div'); actions.className = 'modal-actions';
+      var closeBtn = document.createElement('button'); closeBtn.className = 'modal-btn'; closeBtn.textContent = 'Close'; closeBtn.onclick = closeModal;
+      actions.appendChild(closeBtn); frag.appendChild(actions);
+      showModal(frag);
     }
 
     async function releaseAllServices() {
-      // First get count
-      const data = await (await fetch(API + '/services')).json();
+      var data = await (await fetch(API + '/services')).json();
       if (data.count === 0) {
-        showModal(`
-          <h3>No Services</h3>
-          <p>There are no services to release.</p>
-          <div class="modal-actions">
-            <button class="modal-btn" onclick="closeModal()">OK</button>
-          </div>
-        `);
+        var frag = document.createElement('div');
+        var h = document.createElement('h3'); h.textContent = 'No Services'; frag.appendChild(h);
+        var p = document.createElement('p'); p.textContent = 'There are no services to release.'; frag.appendChild(p);
+        var actions = document.createElement('div'); actions.className = 'modal-actions';
+        var btn = document.createElement('button'); btn.className = 'modal-btn'; btn.textContent = 'OK'; btn.onclick = closeModal;
+        actions.appendChild(btn); frag.appendChild(actions);
+        showModal(frag);
         return;
       }
-
-      showModal(`
-        <h3>Release All Services?</h3>
-        <p><strong>This will remove ${data.count} service(s) from Port Daddy's database.</strong></p>
-        <p style="color:var(--warning)">
-          ⚠️ This does <strong>NOT</strong> kill any running processes.<br>
-          Your servers will keep running, but Port Daddy will stop tracking them.
-        </p>
-        <p>Services to release:</p>
-        <ul style="color:var(--text-muted);font-size:0.85em;margin:8px 0 0 20px">
-          ${data.services.slice(0, 5).map(s => `<li><code>${s.id}</code> → port ${s.port}</li>`).join('')}
-          ${data.count > 5 ? `<li>...and ${data.count - 5} more</li>` : ''}
-        </ul>
-        <div class="modal-actions">
-          <button class="modal-btn" onclick="closeModal()">Cancel</button>
-          <button class="modal-btn danger" onclick="confirmReleaseAll()">Release All ${data.count} Services</button>
-        </div>
-      `);
+      var frag2 = document.createElement('div');
+      var h2 = document.createElement('h3'); h2.textContent = 'Release All Services?'; frag2.appendChild(h2);
+      var p1 = document.createElement('p');
+      var strong = document.createElement('strong'); strong.textContent = 'This will remove ' + data.count + ' service(s) from Port Daddy\'s database.';
+      p1.appendChild(strong); frag2.appendChild(p1);
+      var p2 = document.createElement('p'); p2.style.color = 'var(--warning)';
+      p2.textContent = 'Warning: This does NOT kill any running processes. Your servers will keep running, but Port Daddy will stop tracking them.';
+      frag2.appendChild(p2);
+      var p3 = document.createElement('p'); p3.textContent = 'Services to release:'; frag2.appendChild(p3);
+      var ul = document.createElement('ul'); ul.style.cssText = 'color:var(--text-muted);font-size:0.9em;margin:8px 0 0 20px';
+      data.services.slice(0, 5).forEach(function(s) {
+        var li = document.createElement('li');
+        var c = document.createElement('code'); c.textContent = s.id;
+        li.appendChild(c); li.appendChild(document.createTextNode(' port ' + s.port));
+        ul.appendChild(li);
+      });
+      if (data.count > 5) { var li2 = document.createElement('li'); li2.textContent = '...and ' + (data.count - 5) + ' more'; ul.appendChild(li2); }
+      frag2.appendChild(ul);
+      var actions2 = document.createElement('div'); actions2.className = 'modal-actions';
+      var cancelBtn = document.createElement('button'); cancelBtn.className = 'modal-btn'; cancelBtn.textContent = 'Cancel'; cancelBtn.onclick = closeModal;
+      var confirmBtn = document.createElement('button'); confirmBtn.className = 'modal-btn danger'; confirmBtn.textContent = 'Release All ' + data.count + ' Services'; confirmBtn.onclick = confirmReleaseAll;
+      actions2.appendChild(cancelBtn); actions2.appendChild(confirmBtn); frag2.appendChild(actions2);
+      showModal(frag2);
     }
 
     async function confirmReleaseAll() {
       closeModal();
-      const result = document.getElementById('command-result');
       switchToTab('terminal');
-      result.innerHTML = '<span style="color:var(--text-muted)">Releasing all services...</span>';
-
+      var output = document.getElementById('command-output');
+      var entry = document.createElement('div');
+      entry.className = 'cmd-entry';
+      entry.setAttribute('data-ran', '1');
+      var header = document.createElement('div'); header.className = 'cmd-entry-header';
+      var tsSpan = document.createElement('span'); tsSpan.className = 'cmd-timestamp'; tsSpan.textContent = new Date().toLocaleTimeString();
+      var cmdSpan = document.createElement('span'); cmdSpan.className = 'cmd-text'; cmdSpan.textContent = '$ release-all';
+      header.appendChild(tsSpan); header.appendChild(cmdSpan);
+      var body = document.createElement('div'); body.className = 'cmd-entry-body'; body.style.borderLeft = '3px solid var(--border)';
+      var pre = document.createElement('pre');
+      var loadSpan = document.createElement('span'); loadSpan.style.color = 'var(--text-muted)'; loadSpan.textContent = 'Releasing all services...';
+      pre.appendChild(loadSpan); body.appendChild(pre);
+      entry.appendChild(header); entry.appendChild(body);
+      output.appendChild(entry);
       try {
-        const data = await (await fetch(API + '/services')).json();
-        let released = 0;
-        for (const service of data.services) {
-          await fetch(API + '/release/' + encodeURIComponent(service.id), { method: 'DELETE' });
+        var data = await (await fetch(API + '/services')).json();
+        var released = 0;
+        for (var i = 0; i < data.services.length; i++) {
+          await fetch(API + '/release/' + encodeURIComponent(data.services[i].id), { method: 'DELETE' });
           released++;
         }
-        result.innerHTML = `<span class="success">Released ${released} service(s) from Port Daddy database.\n\nNote: Any running processes are still running.\nUse 'lsof -i :PORT' or 'kill PID' to stop them.</span>`;
+        body.className = 'cmd-entry-body success-entry';
+        body.textContent = '';
+        var pre2 = document.createElement('pre');
+        var suc = document.createElement('span'); suc.className = 'success';
+        suc.textContent = 'Released ' + released + ' service(s) from Port Daddy database.\n\nNote: Any running processes are still running.\nUse \'lsof -i :PORT\' or \'kill PID\' to stop them.';
+        pre2.appendChild(suc); body.appendChild(pre2);
+        showToast('Released ' + released + ' services', 'success');
         refreshAll();
       } catch (err) {
-        result.innerHTML = '<span class="error">Error: ' + escapeHtml(err.message) + '</span>';
+        body.className = 'cmd-entry-body error-entry';
+        body.textContent = '';
+        var pre3 = document.createElement('pre');
+        var errSpan = document.createElement('span'); errSpan.className = 'error'; errSpan.textContent = 'Error: ' + err.message;
+        pre3.appendChild(errSpan); body.appendChild(pre3);
       }
+      output.scrollTop = output.scrollHeight;
     }
 
-    // ==========================================================================
-    // COMMAND HISTORY
-    // ==========================================================================
-
-    let commandHistory = JSON.parse(localStorage.getItem('portdaddy-history') || '[]');
-    let historyIndex = -1;
-
-    function saveToHistory(cmd) {
-      if (!cmd || cmd === commandHistory[0]) return;
-      commandHistory.unshift(cmd);
-      if (commandHistory.length > 50) commandHistory.pop();
-      localStorage.setItem('portdaddy-history', JSON.stringify(commandHistory));
-    }
-
-    // ==========================================================================
-    // KEYBOARD SHORTCUTS
-    // ==========================================================================
-
-    document.addEventListener('keydown', (e) => {
-      const input = document.getElementById('command-input');
-      const isInputFocused = document.activeElement === input;
-
-      // Ctrl/Cmd + K: Focus command bar
+    /* ── Keyboard Shortcuts ── */
+    document.addEventListener('keydown', function(e) {
+      var input = document.getElementById('command-input');
+      var isInputFocused = document.activeElement === input;
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        input.focus();
-        input.select();
-        return;
+        e.preventDefault(); switchToTab('terminal'); input.focus(); input.select(); return;
       }
-
-      // Ctrl/Cmd + /: Show shortcuts
       if ((e.ctrlKey || e.metaKey) && e.key === '/') {
-        e.preventDefault();
-        showShortcuts();
-        return;
+        e.preventDefault(); showShortcuts(); return;
       }
-
-      // Escape: Close modal or clear output
       if (e.key === 'Escape') {
-        if (document.getElementById('modal-overlay').classList.contains('open')) {
-          closeModal();
-        } else if (document.getElementById('settings-panel').classList.contains('open')) {
-          closeSettings();
-        } else {
-          input.blur();
-        }
+        if (document.getElementById('modal-overlay').classList.contains('open')) { closeModal(); }
+        else if (document.getElementById('settings-panel').classList.contains('open')) { closeSettings(); }
+        else if (suggestEl.classList.contains('open')) { suggestEl.classList.remove('open'); }
+        else { input.blur(); }
         return;
       }
-
-      // When input is focused
-      if (isInputFocused) {
-        // Up arrow: Previous command
+      if (isInputFocused && !suggestEl.classList.contains('open')) {
         if (e.key === 'ArrowUp') {
           e.preventDefault();
-          if (historyIndex < commandHistory.length - 1) {
-            historyIndex++;
-            input.value = commandHistory[historyIndex] || '';
-          }
+          if (historyIndex < commandHistory.length - 1) { historyIndex++; input.value = commandHistory[historyIndex] || ''; }
           return;
         }
-
-        // Down arrow: Next command
         if (e.key === 'ArrowDown') {
           e.preventDefault();
-          if (historyIndex > 0) {
-            historyIndex--;
-            input.value = commandHistory[historyIndex] || '';
-          } else {
-            historyIndex = -1;
-            input.value = '';
-          }
+          if (historyIndex > 0) { historyIndex--; input.value = commandHistory[historyIndex] || ''; }
+          else { historyIndex = -1; input.value = ''; }
           return;
         }
       }
     });
 
-    // Modify runCommand to save history
-    const originalRunCommand = runCommand;
-    runCommand = async function() {
-      const cmd = document.getElementById('command-input').value.trim();
-      if (cmd) {
-        saveToHistory(cmd);
-        historyIndex = -1;
-      }
-      return originalRunCommand();
-    };
-
-    async function refreshAll() { await Promise.all([refreshHealth(), refreshVersion(), refreshServices(), refreshAgents(), refreshLocks(), refreshChannels(), refreshWebhooks(), refreshActivity(), refreshConfig()]); }
+    /* ── Init ── */
+    async function refreshAll() {
+      await Promise.all([refreshHealth(), refreshVersion(), refreshServices(), refreshAgents(), refreshLocks(), refreshChannels(), refreshWebhooks(), refreshActivity(), refreshProjects(), refreshConfig()]);
+    }
     refreshAll();
     setInterval(refreshAll, 5000);
   </script>
