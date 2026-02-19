@@ -12,9 +12,9 @@
     "port-daddy": "./bin/port-daddy-cli.js"
   },
   "scripts": {
-    "start": "node server.js",
-    "dev": "node bin/port-daddy-cli.js dev",
-    "install-daemon": "node install-daemon.js",
+    "start": "tsx server.ts",
+    "dev": "tsx bin/port-daddy-cli.ts dev",
+    "install-daemon": "tsx install-daemon.ts",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "npm test -- --watch",
     "test:coverage": "npm test -- --coverage",

@@ -9,6 +9,11 @@ const swcTransform = {
   }],
 };
 
+// Map .js imports to .ts files (NodeNext resolution for Jest)
+const moduleNameMapper = {
+  '^(\\.{1,2}/.*)\\.js$': '$1',
+};
+
 export default {
   testEnvironment: 'node',
   transform: {},
@@ -37,6 +42,7 @@ export default {
       displayName: 'unit',
       testEnvironment: 'node',
       transform: { ...swcTransform },
+      moduleNameMapper,
       moduleFileExtensions: ['js', 'mjs', 'ts'],
       extensionsToTreatAsEsm: ['.ts'],
       testMatch: ['<rootDir>/tests/unit/**/*.test.{js,ts}'],
@@ -47,6 +53,7 @@ export default {
       displayName: 'integration',
       testEnvironment: 'node',
       transform: { ...swcTransform },
+      moduleNameMapper,
       moduleFileExtensions: ['js', 'mjs', 'ts'],
       extensionsToTreatAsEsm: ['.ts'],
       testMatch: ['<rootDir>/tests/integration/**/*.test.{js,ts}'],

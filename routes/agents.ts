@@ -6,28 +6,49 @@
  */
 
 import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { validateAgentId } from '../shared/validators.js';
 import { WebhookEvent } from '../lib/webhooks.js';
+
+interface AgentsRouteDeps {
+  logger: {
+    info(msg: string, meta?: Record<string, unknown>): void;
+    error(msg: string, meta?: Record<string, unknown>): void;
+  };
+  metrics: { errors: number };
+  agents: {
+    register(id: string, opts: Record<string, unknown>): Record<string, unknown>;
+    heartbeat(id: string, opts: Record<string, unknown>): Record<string, unknown>;
+    unregister(id: string): Record<string, unknown>;
+    get(id: string): Record<string, unknown>;
+    list(opts: { activeOnly: boolean }): unknown;
+  };
+  activityLog: {
+    logAgent: {
+      register(id: string): void;
+      heartbeat(id: string): void;
+      unregister(id: string): void;
+    };
+  };
+  webhooks: {
+    trigger(event: string, payload: Record<string, unknown>, opts: { targetId: string }): void;
+  };
+}
 
 /**
  * Create agents routes
  *
- * @param {Object} deps - Route dependencies
- * @param {Object} deps.logger - Winston logger
- * @param {Object} deps.metrics - Metrics tracking object
- * @param {Object} deps.agents - Agents module instance
- * @param {Object} deps.activityLog - Activity log module instance
- * @param {Object} deps.webhooks - Webhooks module instance
- * @returns {Router} Express router with agent routes
+ * @param deps - Route dependencies
+ * @returns Express router with agent routes
  */
-export function createAgentsRoutes(deps) {
+export function createAgentsRoutes(deps: AgentsRouteDeps): Router {
   const { logger, metrics, agents, activityLog, webhooks } = deps;
   const router = Router();
 
   // ==========================================================================
   // POST /agents - Register an agent
   // ==========================================================================
-  router.post('/agents', (req, res) => {
+  router.post('/agents', (req: Request, res: Response) => {
     try {
       const { id, name, type, metadata, maxServices, maxLocks } = req.body;
 
@@ -43,7 +64,7 @@ export function createAgentsRoutes(deps) {
 
       const result = agents.register(id, {
         name,
-        pid: parseInt(req.headers['x-pid'], 10) || process.pid,
+        pid: parseInt(req.headers['x-pid'] as string, 10) || process.pid,
         type: type || 'cli',
         metadata,
         maxServices,
@@ -66,12 +87,12 @@ export function createAgentsRoutes(deps) {
         }, { targetId: id });
       }
 
-      logger.info('agent_registered', { agentId: id, registered: result.registered });
+      logger.info('agent_registered', { agentId: id, registered: result.registered as boolean });
       res.json(result);
 
     } catch (error) {
       metrics.errors++;
-      logger.error('agent_register_failed', { error: error.message });
+      logger.error('agent_register_failed', { error: (error as Error).message });
       res.status(500).json({ error: 'internal server error' });
     }
   });
@@ -79,12 +100,12 @@ export function createAgentsRoutes(deps) {
   // ==========================================================================
   // POST /agents/:id/heartbeat - Send heartbeat
   // ==========================================================================
-  router.post('/agents/:id/heartbeat', (req, res) => {
+  router.post('/agents/:id/heartbeat', (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
 
       const result = agents.heartbeat(id, {
-        pid: parseInt(req.headers['x-pid'], 10) || process.pid
+        pid: parseInt(req.headers['x-pid'] as string, 10) || process.pid
       });
 
       if (!result.success) {
@@ -108,9 +129,9 @@ export function createAgentsRoutes(deps) {
   // ==========================================================================
   // DELETE /agents/:id - Unregister an agent
   // ==========================================================================
-  router.delete('/agents/:id', (req, res) => {
+  router.delete('/agents/:id', (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
 
       const result = agents.unregister(id);
 
@@ -140,9 +161,9 @@ export function createAgentsRoutes(deps) {
   // ==========================================================================
   // GET /agents/:id - Get agent info
   // ==========================================================================
-  router.get('/agents/:id', (req, res) => {
+  router.get('/agents/:id', (req: Request, res: Response) => {
     try {
-      const result = agents.get(req.params.id);
+      const result = agents.get(req.params.id as string);
 
       if (!result.success) {
         return res.status(404).json({ error: result.error });
@@ -159,7 +180,7 @@ export function createAgentsRoutes(deps) {
   // ==========================================================================
   // GET /agents - List all agents
   // ==========================================================================
-  router.get('/agents', (req, res) => {
+  router.get('/agents', (req: Request, res: Response) => {
     try {
       const { active } = req.query;
       const result = agents.list({ activeOnly: active === 'true' });

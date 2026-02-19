@@ -6,39 +6,48 @@
  */
 
 import { Router } from 'express';
+import type { Request, Response } from 'express';
+
+interface ActivityRouteDeps {
+  logger: { error(msg: string, meta?: Record<string, unknown>): void };
+  metrics: { errors: number };
+  activityLog: {
+    getRecent(opts: { limit: number; type?: string; agentId?: string; targetPattern?: string }): unknown;
+    getByTimeRange(start: number, end: number, opts: { limit: number }): unknown;
+    getSummary(since: number): unknown;
+    getStats(): unknown;
+  };
+}
 
 /**
  * Create activity routes
  *
- * @param {Object} deps - Dependencies
- * @param {Object} deps.logger - Winston logger
- * @param {Object} deps.metrics - Metrics tracking object
- * @param {Object} deps.activityLog - Activity log module instance
- * @returns {Router} Express router
+ * @param deps - Dependencies
+ * @returns Express router
  */
-export function createActivityRoutes(deps) {
+export function createActivityRoutes(deps: ActivityRouteDeps): Router {
   const { logger, metrics, activityLog } = deps;
   const router = Router();
 
   // =========================================================================
   // GET /activity - Get recent activity
   // =========================================================================
-  router.get('/activity', (req, res) => {
+  router.get('/activity', (req: Request, res: Response) => {
     try {
       const { limit, type, agent, target } = req.query;
 
       const result = activityLog.getRecent({
-        limit: limit ? parseInt(limit, 10) : 100,
-        type,
-        agentId: agent,
-        targetPattern: target
+        limit: limit ? parseInt(limit as string, 10) : 100,
+        type: type as string | undefined,
+        agentId: agent as string | undefined,
+        targetPattern: target as string | undefined
       });
 
       res.json(result);
 
     } catch (error) {
       metrics.errors++;
-      logger.error('get_activity_failed', { error: error.message });
+      logger.error('get_activity_failed', { error: (error as Error).message });
       res.status(500).json({ error: 'internal server error' });
     }
   });
@@ -46,7 +55,7 @@ export function createActivityRoutes(deps) {
   // =========================================================================
   // GET /activity/range - Get activity by time range
   // =========================================================================
-  router.get('/activity/range', (req, res) => {
+  router.get('/activity/range', (req: Request, res: Response) => {
     try {
       const { start, end, limit } = req.query;
 
@@ -54,18 +63,18 @@ export function createActivityRoutes(deps) {
         return res.status(400).json({ error: 'start timestamp required' });
       }
 
-      const startTime = parseInt(start, 10);
-      const endTime = end ? parseInt(end, 10) : Date.now();
+      const startTime = parseInt(start as string, 10);
+      const endTime = end ? parseInt(end as string, 10) : Date.now();
 
       const result = activityLog.getByTimeRange(startTime, endTime, {
-        limit: limit ? parseInt(limit, 10) : 1000
+        limit: limit ? parseInt(limit as string, 10) : 1000
       });
 
       res.json(result);
 
     } catch (error) {
       metrics.errors++;
-      logger.error('get_activity_range_failed', { error: error.message });
+      logger.error('get_activity_range_failed', { error: (error as Error).message });
       res.status(500).json({ error: 'internal server error' });
     }
   });
@@ -73,17 +82,17 @@ export function createActivityRoutes(deps) {
   // =========================================================================
   // GET /activity/summary - Get activity summary
   // =========================================================================
-  router.get('/activity/summary', (req, res) => {
+  router.get('/activity/summary', (req: Request, res: Response) => {
     try {
       const { since } = req.query;
-      const sinceTimestamp = since ? parseInt(since, 10) : 0;
+      const sinceTimestamp = since ? parseInt(since as string, 10) : 0;
 
       const result = activityLog.getSummary(sinceTimestamp);
       res.json(result);
 
     } catch (error) {
       metrics.errors++;
-      logger.error('get_activity_summary_failed', { error: error.message });
+      logger.error('get_activity_summary_failed', { error: (error as Error).message });
       res.status(500).json({ error: 'internal server error' });
     }
   });
@@ -91,13 +100,13 @@ export function createActivityRoutes(deps) {
   // =========================================================================
   // GET /activity/stats - Get activity log stats
   // =========================================================================
-  router.get('/activity/stats', (req, res) => {
+  router.get('/activity/stats', (_req: Request, res: Response) => {
     try {
       const result = activityLog.getStats();
       res.json(result);
     } catch (error) {
       metrics.errors++;
-      logger.error('get_activity_stats_failed', { error: error.message });
+      logger.error('get_activity_stats_failed', { error: (error as Error).message });
       res.status(500).json({ error: 'internal server error' });
     }
   });

@@ -6,25 +6,40 @@
  */
 
 import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { WebhookEvent } from '../lib/webhooks.js';
+
+interface WebhooksRouteDeps {
+  logger: {
+    info(msg: string, meta?: Record<string, unknown>): void;
+    error(msg: string, meta?: Record<string, unknown>): void;
+  };
+  metrics: { errors: number };
+  webhooks: {
+    register(url: string, opts: Record<string, unknown>): Record<string, unknown>;
+    list(opts: { activeOnly: boolean }): unknown;
+    get(id: string): Record<string, unknown>;
+    update(id: string, opts: Record<string, unknown>): Record<string, unknown>;
+    remove(id: string): Record<string, unknown>;
+    test(id: string): Promise<unknown>;
+    getDeliveries(id: string, opts: { limit: number }): unknown;
+  };
+}
 
 /**
  * Create webhooks routes
  *
- * @param {Object} deps - Route dependencies
- * @param {Object} deps.logger - Winston logger
- * @param {Object} deps.metrics - Metrics tracking object
- * @param {Object} deps.webhooks - Webhooks module instance
- * @returns {Router} Express router with webhook routes
+ * @param deps - Route dependencies
+ * @returns Express router with webhook routes
  */
-export function createWebhooksRoutes(deps) {
+export function createWebhooksRoutes(deps: WebhooksRouteDeps): Router {
   const { logger, metrics, webhooks } = deps;
   const router = Router();
 
   // ==========================================================================
   // POST /webhooks - Register a webhook
   // ==========================================================================
-  router.post('/webhooks', (req, res) => {
+  router.post('/webhooks', (req: Request, res: Response) => {
     try {
       const { url, events, secret, filterPattern, metadata } = req.body;
 
@@ -38,12 +53,12 @@ export function createWebhooksRoutes(deps) {
         return res.status(400).json({ error: result.error });
       }
 
-      logger.info('webhook_registered', { id: result.id, url, events });
+      logger.info('webhook_registered', { id: result.id as string, url, events });
       res.json(result);
 
     } catch (error) {
       metrics.errors++;
-      logger.error('webhook_register_failed', { error: error.message });
+      logger.error('webhook_register_failed', { error: (error as Error).message });
       res.status(500).json({ error: 'internal server error' });
     }
   });
@@ -51,7 +66,7 @@ export function createWebhooksRoutes(deps) {
   // ==========================================================================
   // GET /webhooks - List webhooks
   // ==========================================================================
-  router.get('/webhooks', (req, res) => {
+  router.get('/webhooks', (req: Request, res: Response) => {
     try {
       const { active } = req.query;
       const result = webhooks.list({ activeOnly: active === 'true' });
@@ -66,7 +81,7 @@ export function createWebhooksRoutes(deps) {
   // GET /webhooks/events - Get available webhook events
   // IMPORTANT: This route MUST come before /webhooks/:id to avoid matching
   // ==========================================================================
-  router.get('/webhooks/events', (req, res) => {
+  router.get('/webhooks/events', (_req: Request, res: Response) => {
     res.json({
       success: true,
       events: Object.values(WebhookEvent),
@@ -88,9 +103,9 @@ export function createWebhooksRoutes(deps) {
   // ==========================================================================
   // GET /webhooks/:id - Get webhook by ID
   // ==========================================================================
-  router.get('/webhooks/:id', (req, res) => {
+  router.get('/webhooks/:id', (req: Request, res: Response) => {
     try {
-      const result = webhooks.get(req.params.id);
+      const result = webhooks.get(req.params.id as string);
 
       if (!result.success) {
         return res.status(404).json({ error: result.error });
@@ -106,17 +121,17 @@ export function createWebhooksRoutes(deps) {
   // ==========================================================================
   // PUT /webhooks/:id - Update webhook
   // ==========================================================================
-  router.put('/webhooks/:id', (req, res) => {
+  router.put('/webhooks/:id', (req: Request, res: Response) => {
     try {
       const { url, events, filterPattern, active, metadata } = req.body;
 
-      const result = webhooks.update(req.params.id, { url, events, filterPattern, active, metadata });
+      const result = webhooks.update(req.params.id as string, { url, events, filterPattern, active, metadata });
 
       if (!result.success) {
         return res.status(400).json({ error: result.error });
       }
 
-      logger.info('webhook_updated', { id: req.params.id });
+      logger.info('webhook_updated', { id: req.params.id as string });
       res.json(result);
 
     } catch (error) {
@@ -128,15 +143,15 @@ export function createWebhooksRoutes(deps) {
   // ==========================================================================
   // DELETE /webhooks/:id - Delete webhook
   // ==========================================================================
-  router.delete('/webhooks/:id', (req, res) => {
+  router.delete('/webhooks/:id', (req: Request, res: Response) => {
     try {
-      const result = webhooks.remove(req.params.id);
+      const result = webhooks.remove(req.params.id as string);
 
       if (!result.success) {
         return res.status(404).json({ error: result.error });
       }
 
-      logger.info('webhook_deleted', { id: req.params.id });
+      logger.info('webhook_deleted', { id: req.params.id as string });
       res.json(result);
 
     } catch (error) {
@@ -148,9 +163,9 @@ export function createWebhooksRoutes(deps) {
   // ==========================================================================
   // POST /webhooks/:id/test - Test a webhook
   // ==========================================================================
-  router.post('/webhooks/:id/test', async (req, res) => {
+  router.post('/webhooks/:id/test', async (req: Request, res: Response) => {
     try {
-      const result = await webhooks.test(req.params.id);
+      const result = await webhooks.test(req.params.id as string);
       res.json(result);
     } catch (error) {
       metrics.errors++;
@@ -161,11 +176,11 @@ export function createWebhooksRoutes(deps) {
   // ==========================================================================
   // GET /webhooks/:id/deliveries - Get webhook deliveries
   // ==========================================================================
-  router.get('/webhooks/:id/deliveries', (req, res) => {
+  router.get('/webhooks/:id/deliveries', (req: Request, res: Response) => {
     try {
       const { limit } = req.query;
-      const result = webhooks.getDeliveries(req.params.id, {
-        limit: limit ? parseInt(limit, 10) : 50
+      const result = webhooks.getDeliveries(req.params.id as string, {
+        limit: limit ? parseInt(limit as string, 10) : 50
       });
       res.json(result);
     } catch (error) {

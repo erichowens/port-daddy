@@ -10,9 +10,16 @@
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, basename, resolve, relative } from 'node:path';
+import type { DetectedStack } from '../shared/types.js';
 import { detectStack } from './detect.js';
 import { detectWorkspaceConfig, suggestNames, mergeWithConfig } from './discover.js';
-import { loadConfig, saveConfig } from './config.js';
+import type { DiscoveredService } from './discover.js';
+import { loadConfig } from './config.js';
+import type { PortDaddyRcConfig } from './config.js';
+
+// =============================================================================
+// Constants
+// =============================================================================
 
 const MAX_DEPTH = 5;
 
@@ -23,10 +30,52 @@ const SKIP_DIRS = new Set([
   '.webpack', 'bower_components', '.idea', '.vscode'
 ]);
 
+// =============================================================================
+// Types
+// =============================================================================
+
+interface ScannedService extends DiscoveredService {
+  relativePath: string;
+}
+
+interface NameSuggestion {
+  project: string;
+  stack: string;
+  context: string;
+  full: string;
+}
+
+interface ScanResult {
+  project: string;
+  root: string;
+  type: 'single' | 'monorepo' | 'multi';
+  workspaceType: 'workspaces' | 'pnpm' | 'lerna' | null;
+  services: Record<string, ScannedService>;
+  suggestions: Record<string, NameSuggestion>;
+  existingConfig: PortDaddyRcConfig | null;
+  serviceCount: number;
+  guidance: string[];
+}
+
+interface ScanOptions {
+  useBranch?: boolean;
+}
+
+interface GuidanceContext {
+  services: Record<string, ScannedService>;
+  existingConfig: PortDaddyRcConfig | null;
+  type: string;
+  projectName: string;
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
 /**
  * Read and parse JSON, returning null on failure.
  */
-function readJson(filePath) {
+function readJson(filePath: string): unknown {
   try {
     return JSON.parse(readFileSync(filePath, 'utf8'));
   } catch {
@@ -37,10 +86,10 @@ function readJson(filePath) {
 /**
  * Derive a short service name from a directory and its package.json.
  */
-function deriveName(dir, rootDir) {
-  const pkg = readJson(join(dir, 'package.json'));
+function deriveName(dir: string, rootDir: string): string {
+  const pkg = readJson(join(dir, 'package.json')) as Record<string, unknown> | null;
   if (pkg?.name) {
-    return pkg.name.replace(/^@[^/]+\//, '');
+    return (pkg.name as string).replace(/^@[^/]+\//, '');
   }
   // Use relative path from root, replacing separators with dashes
   const rel = relative(rootDir, dir);
@@ -50,9 +99,10 @@ function deriveName(dir, rootDir) {
 /**
  * Build a dev command from package.json scripts or stack defaults.
  */
-function buildDevCommand(dir, stack) {
-  const pkg = readJson(join(dir, 'package.json'));
-  if (pkg?.scripts?.dev) {
+function buildDevCommand(dir: string, stack: DetectedStack): string | null {
+  const pkg = readJson(join(dir, 'package.json')) as Record<string, unknown> | null;
+  const scripts = pkg?.scripts as Record<string, string> | undefined;
+  if (scripts?.dev) {
     return 'npm run dev';
   }
   return stack.devCmd || null;
@@ -60,17 +110,16 @@ function buildDevCommand(dir, stack) {
 
 /**
  * Walk directory tree recursively, collecting services.
- *
- * @param {string} dir - Current directory
- * @param {string} rootDir - Project root (for relative paths)
- * @param {number} depth - Current recursion depth
- * @param {Set<string>} workspaceDirs - Dirs already found via workspace config
- * @returns {Object.<string, Object>} - Map of name → service info
  */
-function walkDir(dir, rootDir, depth, workspaceDirs) {
+function walkDir(
+  dir: string,
+  rootDir: string,
+  depth: number,
+  workspaceDirs: Set<string>
+): Record<string, ScannedService> {
   if (depth > MAX_DEPTH) return {};
 
-  const services = {};
+  const services: Record<string, ScannedService> = {};
 
   // Skip if this exact dir was already handled via workspace detection
   const absDir = resolve(dir);
@@ -92,7 +141,7 @@ function walkDir(dir, rootDir, depth, workspaceDirs) {
   }
 
   // Recurse into subdirectories
-  let entries;
+  let entries: string[];
   try {
     entries = readdirSync(dir);
   } catch {
@@ -119,8 +168,8 @@ function walkDir(dir, rootDir, depth, workspaceDirs) {
 /**
  * Expand workspace globs to a Set of absolute directory paths.
  */
-function expandWorkspacePaths(rootDir, patterns) {
-  const dirs = new Set();
+function expandWorkspacePaths(rootDir: string, patterns: string[]): Set<string> {
+  const dirs = new Set<string>();
   for (const pattern of patterns) {
     const clean = pattern.replace(/\/?[*]+$/, '');
     const base = join(rootDir, clean);
@@ -147,6 +196,10 @@ function expandWorkspacePaths(rootDir, patterns) {
   return dirs;
 }
 
+// =============================================================================
+// Exported Functions
+// =============================================================================
+
 /**
  * Deep-scan a project directory.
  *
@@ -157,24 +210,19 @@ function expandWorkspacePaths(rootDir, patterns) {
  *   4. For each service: derive name, suggested identity, dev command
  *   5. Load any existing .portdaddyrc, note differences
  *   6. Generate guidance (what to do next)
- *
- * @param {string} dir - Project root directory
- * @param {Object} [options]
- * @param {boolean} [options.useBranch=false] - Use git branch for context
- * @returns {ScanResult}
  */
-export function scanProject(dir, options = {}) {
+export function scanProject(dir: string, options: ScanOptions = {}): ScanResult {
   const rootDir = resolve(dir);
 
   // 1. Check for workspace config
   const workspaceConfig = detectWorkspaceConfig(rootDir);
   const workspaceDirs = workspaceConfig.type
     ? expandWorkspacePaths(rootDir, workspaceConfig.patterns)
-    : new Set();
+    : new Set<string>();
 
   // 2. Detect stack at root level
   const rootStack = detectStack(rootDir);
-  const services = {};
+  const services: Record<string, ScannedService> = {};
 
   if (rootStack) {
     const name = deriveName(rootDir, rootDir);
@@ -215,7 +263,7 @@ export function scanProject(dir, options = {}) {
   }
 
   // 5. Derive project type
-  const type = workspaceConfig.type
+  const type: 'single' | 'monorepo' | 'multi' = workspaceConfig.type
     ? 'monorepo'
     : Object.keys(services).length > 1 ? 'multi' : 'single';
 
@@ -223,14 +271,14 @@ export function scanProject(dir, options = {}) {
   const suggestions = suggestNames(services, rootDir, options);
 
   // 7. Load existing config for diff
-  let existingConfig = null;
+  let existingConfig: PortDaddyRcConfig | null = null;
   try {
     existingConfig = loadConfig(rootDir);
   } catch { /* no existing config */ }
 
   // 8. Build project metadata
-  const pkg = readJson(join(rootDir, 'package.json'));
-  const projectName = (pkg?.name || basename(rootDir))
+  const pkg = readJson(join(rootDir, 'package.json')) as Record<string, unknown> | null;
+  const projectName = ((pkg?.name as string) || basename(rootDir))
     .replace(/^@[^/]+\//, '')
     .replace(/[^a-z0-9-]/gi, '-')
     .toLowerCase();
@@ -256,10 +304,10 @@ export function scanProject(dir, options = {}) {
 /**
  * Generate contextual next-step guidance based on scan results.
  */
-export function generateGuidance(ctx) {
-  const { services, existingConfig, type, projectName } = ctx;
+export function generateGuidance(ctx: GuidanceContext): string[] {
+  const { services, existingConfig, type } = ctx;
   const count = Object.keys(services).length;
-  const lines = [];
+  const lines: string[] = [];
 
   if (count === 0) {
     lines.push('No services detected. Port Daddy looks for known frameworks');
@@ -291,14 +339,11 @@ export function generateGuidance(ctx) {
 
 /**
  * Build a .portdaddyrc config object from scan results.
- *
- * @param {Object} scanResult - Result from scanProject()
- * @returns {Object} - Config ready to save
  */
-export function buildConfigFromScan(scanResult) {
+export function buildConfigFromScan(scanResult: ScanResult): Record<string, unknown> {
   const { project, services, suggestions } = scanResult;
 
-  const configServices = {};
+  const configServices: Record<string, Record<string, unknown>> = {};
   for (const [name, svc] of Object.entries(services)) {
     const suggestion = suggestions[name];
     configServices[name] = {
@@ -318,7 +363,7 @@ export function buildConfigFromScan(scanResult) {
   const minPort = ports.length ? Math.min(...ports) : 3100;
   const maxPort = ports.length ? Math.max(...ports) + 49 : 3199;
 
-  const config = {
+  const config: Record<string, unknown> = {
     project,
     portRange: [minPort, maxPort],
     services: configServices
@@ -326,7 +371,7 @@ export function buildConfigFromScan(scanResult) {
 
   // Merge with existing config if present (existing config wins)
   if (scanResult.existingConfig) {
-    return mergeWithConfig(config, scanResult.existingConfig);
+    return mergeWithConfig(config, scanResult.existingConfig as unknown as Record<string, unknown>);
   }
 
   return config;

@@ -12,6 +12,7 @@ import http from 'node:http';
 import { spawnSync } from 'node:child_process';
 
 const STATE_FILE = join(tmpdir(), 'port-daddy-test-state.json');
+const TSX_PATH = join(import.meta.dirname, '../../node_modules/.bin/tsx');
 
 let _state = null;
 
@@ -84,7 +85,7 @@ export function runCli(args, options = {}) {
   const { sockPath } = getDaemonState();
   const cliPath = join(import.meta.dirname, '../../bin/port-daddy-cli.js');
 
-  const result = spawnSync('node', [cliPath, ...args], {
+  const result = spawnSync(TSX_PATH, [cliPath, ...args], {
     encoding: 'utf-8',
     timeout: 10000,
     env: {

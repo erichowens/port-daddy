@@ -21,25 +21,25 @@ import { createInfoRoutes } from './info.js';
 /**
  * Create and configure all routes
  *
- * @param {Object} deps - Dependencies for route handlers
- * @returns {Router} Express router with all routes mounted
+ * @param deps - Dependencies for route handlers
+ * @returns Express router with all routes mounted
  */
-export function createRoutes(deps) {
+export function createRoutes(deps: Record<string, unknown>): Router {
   const router = Router();
 
   // Info routes first (health/version are high-frequency, low-latency)
-  router.use(createInfoRoutes(deps));
+  router.use(createInfoRoutes(deps as any));
 
   // V2 API routes
-  router.use(createServicesRoutes(deps));
-  router.use(createMessagingRoutes(deps));
-  router.use(createLocksRoutes(deps));
-  router.use(createAgentsRoutes(deps));
-  router.use(createHealthRoutes(deps));
-  router.use(createActivityRoutes(deps));
-  router.use(createWebhooksRoutes(deps));
-  router.use(createDetectConfigRoutes(deps));
-  router.use(createProjectsRoutes(deps));
+  router.use(createServicesRoutes(deps as any));
+  router.use(createMessagingRoutes(deps as any));
+  router.use(createLocksRoutes(deps as any));
+  router.use(createAgentsRoutes(deps as any));
+  router.use(createHealthRoutes(deps as any));
+  router.use(createActivityRoutes(deps as any));
+  router.use(createWebhooksRoutes(deps as any));
+  router.use(createDetectConfigRoutes(deps as any));
+  router.use(createProjectsRoutes(deps as any));
 
   return router;
 }

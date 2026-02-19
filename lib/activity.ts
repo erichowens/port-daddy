@@ -5,6 +5,8 @@
  * Pure SQLite - no shell commands
  */
 
+import type Database from 'better-sqlite3';
+
 const MAX_LOG_ENTRIES = 10000;  // Keep last 10k entries
 const LOG_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;  // 7 days
 
@@ -35,12 +37,93 @@ export const ActivityType = {
   DAEMON_START: 'daemon.start',
   DAEMON_STOP: 'daemon.stop',
   CLEANUP: 'cleanup'
-};
+} as const;
+
+interface LogOptions {
+  agentId?: string | null;
+  targetId?: string | null;
+  details?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+interface LogResult {
+  success: boolean;
+  timestamp?: number;
+  error?: string;
+}
+
+interface ActivityRow {
+  id: number;
+  timestamp: number;
+  type: string;
+  agent_id: string | null;
+  target_id: string | null;
+  details: string | null;
+  metadata: string | null;
+}
+
+interface ActivityEntryFormatted {
+  id: number;
+  timestamp: number;
+  type: string;
+  agentId: string | null;
+  targetId: string | null;
+  details: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+interface GetRecentOptions {
+  limit?: number;
+  type?: string | null;
+  agentId?: string | null;
+  targetPattern?: string | null;
+}
+
+interface GetRecentResult {
+  success: true;
+  entries: ActivityEntryFormatted[];
+  count: number;
+}
+
+interface GetByTimeRangeOptions {
+  limit?: number;
+}
+
+interface GetByTimeRangeResult {
+  success: true;
+  entries: ActivityEntryFormatted[];
+  count: number;
+  timeRange: { start: number; end: number };
+}
+
+interface SummaryResult {
+  success: true;
+  summary: Record<string, number>;
+  total: number;
+  since: number;
+}
+
+interface CleanupResult {
+  deletedOld: number;
+  deletedExcess: number;
+  total: number;
+}
+
+interface StatsResult {
+  success: true;
+  stats: {
+    totalEntries: number;
+    oldestEntry: number | null;
+    newestEntry: number | null;
+    retentionMs: number;
+    maxEntries: number;
+  };
+}
 
 /**
  * Initialize activity log with database connection
  */
-export function createActivityLog(db) {
+export function createActivityLog(db: Database.Database) {
   // Ensure activity table exists
   db.exec(`
     CREATE TABLE IF NOT EXISTS activity_log (
@@ -106,7 +189,7 @@ export function createActivityLog(db) {
   /**
    * Log an activity
    */
-  function log(type, options = {}) {
+  function log(type: string, options: LogOptions = {}): LogResult {
     const {
       agentId = null,
       targetId = null,
@@ -128,40 +211,44 @@ export function createActivityLog(db) {
 
       return { success: true, timestamp: now };
     } catch (err) {
-      return { success: false, error: err.message };
+      return { success: false, error: (err as Error).message };
     }
+  }
+
+  function formatEntry(e: ActivityRow): ActivityEntryFormatted {
+    return {
+      id: e.id,
+      timestamp: e.timestamp,
+      type: e.type,
+      agentId: e.agent_id,
+      targetId: e.target_id,
+      details: e.details,
+      metadata: e.metadata ? JSON.parse(e.metadata) : null
+    };
   }
 
   /**
    * Get recent activity
    */
-  function getRecent(options = {}) {
+  function getRecent(options: GetRecentOptions = {}): GetRecentResult {
     const { limit = 100, type = null, agentId = null, targetPattern = null } = options;
     const safeLimit = Math.min(Math.max(1, limit), 1000);
 
-    let entries;
+    let entries: ActivityRow[];
 
     if (type) {
-      entries = stmts.getByType.all(type, safeLimit);
+      entries = stmts.getByType.all(type, safeLimit) as ActivityRow[];
     } else if (agentId) {
-      entries = stmts.getByAgent.all(agentId, safeLimit);
+      entries = stmts.getByAgent.all(agentId, safeLimit) as ActivityRow[];
     } else if (targetPattern) {
-      entries = stmts.getByTarget.all(targetPattern.replace(/\*/g, '%'), safeLimit);
+      entries = stmts.getByTarget.all(targetPattern.replace(/\*/g, '%'), safeLimit) as ActivityRow[];
     } else {
-      entries = stmts.getRecent.all(safeLimit);
+      entries = stmts.getRecent.all(safeLimit) as ActivityRow[];
     }
 
     return {
       success: true,
-      entries: entries.map(e => ({
-        id: e.id,
-        timestamp: e.timestamp,
-        type: e.type,
-        agentId: e.agent_id,
-        targetId: e.target_id,
-        details: e.details,
-        metadata: e.metadata ? JSON.parse(e.metadata) : null
-      })),
+      entries: entries.map(formatEntry),
       count: entries.length
     };
   }
@@ -169,23 +256,15 @@ export function createActivityLog(db) {
   /**
    * Get activity by time range
    */
-  function getByTimeRange(startTime, endTime, options = {}) {
+  function getByTimeRange(startTime: number, endTime: number, options: GetByTimeRangeOptions = {}): GetByTimeRangeResult {
     const { limit = 1000 } = options;
     const safeLimit = Math.min(Math.max(1, limit), 10000);
 
-    const entries = stmts.getByTimeRange.all(startTime, endTime, safeLimit);
+    const entries = stmts.getByTimeRange.all(startTime, endTime, safeLimit) as ActivityRow[];
 
     return {
       success: true,
-      entries: entries.map(e => ({
-        id: e.id,
-        timestamp: e.timestamp,
-        type: e.type,
-        agentId: e.agent_id,
-        targetId: e.target_id,
-        details: e.details,
-        metadata: e.metadata ? JSON.parse(e.metadata) : null
-      })),
+      entries: entries.map(formatEntry),
       count: entries.length,
       timeRange: { start: startTime, end: endTime }
     };
@@ -194,20 +273,20 @@ export function createActivityLog(db) {
   /**
    * Get activity summary (counts by type)
    */
-  function getSummary(sinceTimestamp = 0) {
+  function getSummary(sinceTimestamp = 0): SummaryResult {
     const entries = db.prepare(`
       SELECT type, COUNT(*) as count
       FROM activity_log
       WHERE timestamp >= ?
       GROUP BY type
       ORDER BY count DESC
-    `).all(sinceTimestamp);
+    `).all(sinceTimestamp) as Array<{ type: string; count: number }>;
 
     const total = entries.reduce((sum, e) => sum + e.count, 0);
 
     return {
       success: true,
-      summary: entries.reduce((acc, e) => {
+      summary: entries.reduce((acc: Record<string, number>, e) => {
         acc[e.type] = e.count;
         return acc;
       }, {}),
@@ -219,7 +298,7 @@ export function createActivityLog(db) {
   /**
    * Cleanup old entries
    */
-  function cleanup() {
+  function cleanup(): CleanupResult {
     const now = Date.now();
     const cutoff = now - LOG_RETENTION_MS;
 
@@ -239,10 +318,10 @@ export function createActivityLog(db) {
   /**
    * Get log stats
    */
-  function getStats() {
-    const countResult = stmts.count.get();
-    const oldest = db.prepare('SELECT MIN(timestamp) as oldest FROM activity_log').get();
-    const newest = db.prepare('SELECT MAX(timestamp) as newest FROM activity_log').get();
+  function getStats(): StatsResult {
+    const countResult = stmts.count.get() as { count: number };
+    const oldest = db.prepare('SELECT MIN(timestamp) as oldest FROM activity_log').get() as { oldest: number | null };
+    const newest = db.prepare('SELECT MAX(timestamp) as newest FROM activity_log').get() as { newest: number | null };
 
     return {
       success: true,
@@ -258,13 +337,13 @@ export function createActivityLog(db) {
 
   // Convenience methods for common operations
   const logService = {
-    claim: (serviceId, agentId, port) => log(ActivityType.SERVICE_CLAIM, {
+    claim: (serviceId: string, agentId: string, port: number) => log(ActivityType.SERVICE_CLAIM, {
       targetId: serviceId,
       agentId,
       details: `claimed port ${port}`,
       metadata: { port }
     }),
-    release: (serviceId, agentId, port) => log(ActivityType.SERVICE_RELEASE, {
+    release: (serviceId: string, agentId: string, port: number) => log(ActivityType.SERVICE_RELEASE, {
       targetId: serviceId,
       agentId,
       details: `released port ${port}`,
@@ -273,12 +352,12 @@ export function createActivityLog(db) {
   };
 
   const logLock = {
-    acquire: (lockName, agentId) => log(ActivityType.LOCK_ACQUIRE, {
+    acquire: (lockName: string, agentId: string) => log(ActivityType.LOCK_ACQUIRE, {
       targetId: lockName,
       agentId,
       details: `acquired lock`
     }),
-    release: (lockName, agentId) => log(ActivityType.LOCK_RELEASE, {
+    release: (lockName: string, agentId: string) => log(ActivityType.LOCK_RELEASE, {
       targetId: lockName,
       agentId,
       details: `released lock`
@@ -286,15 +365,15 @@ export function createActivityLog(db) {
   };
 
   const logAgent = {
-    register: (agentId) => log(ActivityType.AGENT_REGISTER, {
+    register: (agentId: string) => log(ActivityType.AGENT_REGISTER, {
       agentId,
       details: `agent registered`
     }),
-    heartbeat: (agentId) => log(ActivityType.AGENT_HEARTBEAT, {
+    heartbeat: (agentId: string) => log(ActivityType.AGENT_HEARTBEAT, {
       agentId,
       details: `heartbeat`
     }),
-    unregister: (agentId) => log(ActivityType.AGENT_UNREGISTER, {
+    unregister: (agentId: string) => log(ActivityType.AGENT_UNREGISTER, {
       agentId,
       details: `agent unregistered`
     })

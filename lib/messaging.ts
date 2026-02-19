@@ -4,6 +4,7 @@
  * Simple local message broker for multi-agent communication
  */
 
+import type Database from 'better-sqlite3';
 import { parseExpires, tryParseJson } from './utils.js';
 
 // =============================================================================
@@ -13,28 +14,63 @@ import { parseExpires, tryParseJson } from './utils.js';
 const MAX_CHANNELS = 1000;               // Maximum unique channels with subscribers
 const MAX_SUBSCRIBERS_PER_CHANNEL = 100; // Maximum subscribers per channel
 
+interface MessageRow {
+  id: number;
+  channel: string;
+  payload: string;
+  sender: string | null;
+  created_at: number;
+  expires_at: number | null;
+}
+
+interface ChannelRow {
+  channel: string;
+  count: number;
+  last_message: number;
+}
+
+interface PublishOptions {
+  sender?: string | null;
+  expires?: string | number | null;
+}
+
+interface GetMessagesOptions {
+  limit?: number;
+  after?: number | null;
+}
+
+interface MessagePayload {
+  id: number | bigint;
+  channel?: string;
+  payload: string;
+  sender: string | null;
+  createdAt: number;
+}
+
+type SubscriberCallback = (msg: MessagePayload) => void;
+
 /**
  * Initialize the messaging module with a database connection
  */
-export function createMessaging(db) {
+export function createMessaging(db: Database.Database) {
   // Prepared statements
   const stmts = {
     insert: db.prepare(`
       INSERT INTO messages (channel, payload, sender, created_at, expires_at)
       VALUES (?, ?, ?, ?, ?)
     `),
-    getLatest: db.prepare(`
+    getLatest: db.prepare<[string, number]>(`
       SELECT * FROM messages
       WHERE channel = ?
       ORDER BY created_at DESC
       LIMIT ?
     `),
-    getAfter: db.prepare(`
+    getAfter: db.prepare<[string, number]>(`
       SELECT * FROM messages
       WHERE channel = ? AND id > ?
       ORDER BY created_at ASC
     `),
-    getOne: db.prepare(`
+    getOne: db.prepare<[string]>(`
       SELECT * FROM messages
       WHERE channel = ?
       ORDER BY created_at ASC
@@ -52,12 +88,12 @@ export function createMessaging(db) {
   };
 
   // In-memory subscribers (for SSE)
-  const subscribers = new Map(); // channel -> Set<callback>
+  const subscribers = new Map<string, Set<SubscriberCallback>>();
 
   /**
    * Publish a message to a channel
    */
-  function publish(channel, payload, options = {}) {
+  function publish(channel: string, payload: unknown, options: PublishOptions = {}) {
     if (!channel || typeof channel !== 'string') {
       return { success: false, error: 'channel must be a non-empty string' };
     }
@@ -65,9 +101,10 @@ export function createMessaging(db) {
     const now = Date.now();
     const { sender = null, expires = null } = options;
 
-    let expiresAt = null;
+    let expiresAt: number | null = null;
     if (expires) {
-      expiresAt = now + parseExpires(expires);
+      const parsed = parseExpires(expires);
+      expiresAt = parsed !== null ? now + parsed : null;
     }
 
     const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
@@ -75,7 +112,7 @@ export function createMessaging(db) {
     try {
       const result = stmts.insert.run(channel, payloadStr, sender, now, expiresAt);
 
-      const message = {
+      const message: MessagePayload = {
         id: result.lastInsertRowid,
         channel,
         payload: payloadStr,
@@ -92,25 +129,25 @@ export function createMessaging(db) {
         message: `published to ${channel}`
       };
     } catch (err) {
-      return { success: false, error: err.message };
+      return { success: false, error: (err as Error).message };
     }
   }
 
   /**
    * Get recent messages from a channel
    */
-  function getMessages(channel, options = {}) {
+  function getMessages(channel: string, options: GetMessagesOptions = {}) {
     if (!channel || typeof channel !== 'string') {
       return { success: false, error: 'channel must be a non-empty string' };
     }
 
     const { limit = 50, after = null } = options;
 
-    let messages;
+    let messages: MessageRow[];
     if (after !== null) {
-      messages = stmts.getAfter.all(channel, after);
+      messages = stmts.getAfter.all(channel, after) as MessageRow[];
     } else {
-      messages = stmts.getLatest.all(channel, limit);
+      messages = stmts.getLatest.all(channel, limit) as MessageRow[];
       messages.reverse(); // Return in chronological order
     }
 
@@ -131,12 +168,12 @@ export function createMessaging(db) {
    * Poll for the next message (blocking-style, but returns immediately)
    * Use with long-polling HTTP or SSE
    */
-  function poll(channel, afterId = 0) {
+  function poll(channel: string, afterId: number = 0) {
     if (!channel || typeof channel !== 'string') {
       return { success: false, error: 'channel must be a non-empty string' };
     }
 
-    const messages = stmts.getAfter.all(channel, afterId);
+    const messages = stmts.getAfter.all(channel, afterId) as MessageRow[];
 
     if (messages.length === 0) {
       return { success: true, channel, message: null, lastId: afterId };
@@ -160,7 +197,7 @@ export function createMessaging(db) {
    * Subscribe to a channel (in-memory, for SSE)
    * Returns an unsubscribe function, or null if limits exceeded
    */
-  function subscribe(channel, callback) {
+  function subscribe(channel: string, callback: SubscriberCallback): (() => void) | null {
     // Enforce channel limit to prevent memory exhaustion
     if (!subscribers.has(channel) && subscribers.size >= MAX_CHANNELS) {
       // Return null to indicate subscription failed
@@ -171,7 +208,7 @@ export function createMessaging(db) {
       subscribers.set(channel, new Set());
     }
 
-    const subs = subscribers.get(channel);
+    const subs = subscribers.get(channel)!;
 
     // Enforce per-channel subscriber limit
     if (subs.size >= MAX_SUBSCRIBERS_PER_CHANNEL) {
@@ -199,7 +236,7 @@ export function createMessaging(db) {
   /**
    * Notify all subscribers of a channel
    */
-  function notifySubscribers(channel, message) {
+  function notifySubscribers(channel: string, message: MessagePayload): void {
     const subs = subscribers.get(channel);
     if (subs) {
       for (const callback of subs) {
@@ -227,7 +264,7 @@ export function createMessaging(db) {
   /**
    * Clear all messages from a channel
    */
-  function clear(channel) {
+  function clear(channel: string) {
     if (!channel || typeof channel !== 'string') {
       return { success: false, error: 'channel must be a non-empty string' };
     }
@@ -244,7 +281,7 @@ export function createMessaging(db) {
    * List all channels with message counts
    */
   function listChannels() {
-    const channels = stmts.getChannels.all();
+    const channels = stmts.getChannels.all() as ChannelRow[];
     return {
       success: true,
       channels: channels.map(c => ({
@@ -266,7 +303,7 @@ export function createMessaging(db) {
   /**
    * Get subscriber count for a channel (for monitoring)
    */
-  function subscriberCount(channel) {
+  function subscriberCount(channel: string): number {
     const subs = subscribers.get(channel);
     return subs ? subs.size : 0;
   }

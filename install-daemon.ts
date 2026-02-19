@@ -12,29 +12,36 @@
  */
 
 import { spawnSync } from 'child_process';
+import type { SpawnSyncReturns } from 'child_process';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir, platform } from 'os';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const PLATFORM = platform();
-const NODE_PATH = process.execPath;
-const SERVER_PATH = join(__dirname, 'server.js');
-const LOG_PATH = join(__dirname, 'port-daddy.log');
-const ERROR_LOG_PATH = join(__dirname, 'port-daddy-error.log');
+const __dirname: string = dirname(fileURLToPath(import.meta.url));
+const PLATFORM: string = platform();
+const NODE_PATH: string = process.execPath;
+const SERVER_PATH: string = join(__dirname, 'server.js');
+const LOG_PATH: string = join(__dirname, 'port-daddy.log');
+const ERROR_LOG_PATH: string = join(__dirname, 'port-daddy-error.log');
 
 // macOS paths
-const PLIST_LABEL = 'com.portdaddy.daemon';
-const LAUNCH_AGENTS = join(homedir(), 'Library', 'LaunchAgents');
-const PLIST_PATH = join(LAUNCH_AGENTS, `${PLIST_LABEL}.plist`);
+const PLIST_LABEL: string = 'com.portdaddy.daemon';
+const LAUNCH_AGENTS: string = join(homedir(), 'Library', 'LaunchAgents');
+const PLIST_PATH: string = join(LAUNCH_AGENTS, `${PLIST_LABEL}.plist`);
 
 // Linux paths
-const SYSTEMD_USER_DIR = join(homedir(), '.config', 'systemd', 'user');
-const SYSTEMD_UNIT = join(SYSTEMD_USER_DIR, 'port-daddy.service');
+const SYSTEMD_USER_DIR: string = join(homedir(), '.config', 'systemd', 'user');
+const SYSTEMD_UNIT: string = join(SYSTEMD_USER_DIR, 'port-daddy.service');
 
-function runCommand(command, args, options = {}) {
-  const result = spawnSync(command, args, { encoding: 'utf8', ...options });
+interface CommandResult {
+  stdout: string;
+  stderr: string;
+  status: number | null;
+}
+
+function runCommand(command: string, args: string[], options: Record<string, unknown> = {}): CommandResult {
+  const result: SpawnSyncReturns<string> = spawnSync(command, args, { encoding: 'utf8', ...options });
   return {
     stdout: result.stdout || '',
     stderr: result.stderr || '',
@@ -46,7 +53,7 @@ function runCommand(command, args, options = {}) {
 // macOS: LaunchAgent plist
 // =============================================================================
 
-function generatePlist() {
+function generatePlist(): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -87,14 +94,14 @@ function generatePlist() {
 </plist>`;
 }
 
-function installMacOS() {
+function installMacOS(): boolean {
   // Ensure LaunchAgents directory exists
   if (!existsSync(LAUNCH_AGENTS)) {
     mkdirSync(LAUNCH_AGENTS, { recursive: true });
   }
 
   // Unload old service if present (handles label changes)
-  const oldPlist = join(LAUNCH_AGENTS, 'com.erichowens.port-daddy.plist');
+  const oldPlist: string = join(LAUNCH_AGENTS, 'com.erichowens.port-daddy.plist');
   if (existsSync(oldPlist)) {
     runCommand('launchctl', ['unload', oldPlist]);
     try { unlinkSync(oldPlist); } catch { /* ignore */ }
@@ -111,7 +118,7 @@ function installMacOS() {
   console.log(`  Wrote ${PLIST_PATH}`);
 
   // Load
-  const load = runCommand('launchctl', ['load', PLIST_PATH]);
+  const load: CommandResult = runCommand('launchctl', ['load', PLIST_PATH]);
   if (load.status === 0) {
     console.log('  LaunchAgent loaded');
     return true;
@@ -121,7 +128,7 @@ function installMacOS() {
   }
 }
 
-function uninstallMacOS() {
+function uninstallMacOS(): boolean {
   // Unload both old and new labels
   for (const path of [PLIST_PATH, join(LAUNCH_AGENTS, 'com.erichowens.port-daddy.plist')]) {
     if (existsSync(path)) {
@@ -129,18 +136,20 @@ function uninstallMacOS() {
       try {
         unlinkSync(path);
         console.log(`  Removed ${path}`);
-      } catch (err) {
-        console.error(`  Failed to remove ${path}: ${err.message}`);
+      } catch (err: unknown) {
+        console.error(`  Failed to remove ${path}: ${(err as Error).message}`);
       }
     }
   }
   return true;
 }
 
-function statusMacOS() {
+type ServiceState = 'running' | 'installed' | 'failed' | 'not-installed' | 'legacy' | 'unsupported' | 'unknown';
+
+function statusMacOS(): ServiceState {
   if (!existsSync(PLIST_PATH)) {
     // Check for legacy plist
-    const oldPlist = join(LAUNCH_AGENTS, 'com.erichowens.port-daddy.plist');
+    const oldPlist: string = join(LAUNCH_AGENTS, 'com.erichowens.port-daddy.plist');
     if (existsSync(oldPlist)) {
       console.log('  Legacy plist found (com.erichowens.port-daddy)');
       console.log('  Run "port-daddy install" to upgrade to new format');
@@ -149,7 +158,7 @@ function statusMacOS() {
     return 'not-installed';
   }
 
-  const list = runCommand('launchctl', ['list']);
+  const list: CommandResult = runCommand('launchctl', ['list']);
   return list.stdout.includes(PLIST_LABEL) ? 'running' : 'installed';
 }
 
@@ -157,7 +166,7 @@ function statusMacOS() {
 // Linux: systemd user service
 // =============================================================================
 
-function generateSystemdUnit() {
+function generateSystemdUnit(): string {
   return `[Unit]
 Description=Port Daddy - Authoritative Port Management Daemon
 After=network.target
@@ -177,7 +186,7 @@ WantedBy=default.target
 `;
 }
 
-function installLinux() {
+function installLinux(): boolean {
   // Ensure systemd user directory exists
   if (!existsSync(SYSTEMD_USER_DIR)) {
     mkdirSync(SYSTEMD_USER_DIR, { recursive: true });
@@ -188,14 +197,14 @@ function installLinux() {
   console.log(`  Wrote ${SYSTEMD_UNIT}`);
 
   // Reload systemd
-  const reload = runCommand('systemctl', ['--user', 'daemon-reload']);
+  const reload: CommandResult = runCommand('systemctl', ['--user', 'daemon-reload']);
   if (reload.status !== 0) {
     console.error('  Failed to reload systemd:', reload.stderr.trim());
     return false;
   }
 
   // Enable (start on login)
-  const enable = runCommand('systemctl', ['--user', 'enable', 'port-daddy.service']);
+  const enable: CommandResult = runCommand('systemctl', ['--user', 'enable', 'port-daddy.service']);
   if (enable.status !== 0) {
     console.error('  Failed to enable service:', enable.stderr.trim());
     return false;
@@ -203,7 +212,7 @@ function installLinux() {
   console.log('  Service enabled (auto-start on login)');
 
   // Start now
-  const start = runCommand('systemctl', ['--user', 'start', 'port-daddy.service']);
+  const start: CommandResult = runCommand('systemctl', ['--user', 'start', 'port-daddy.service']);
   if (start.status === 0) {
     console.log('  Service started');
     return true;
@@ -213,7 +222,7 @@ function installLinux() {
   }
 }
 
-function uninstallLinux() {
+function uninstallLinux(): boolean {
   // Stop
   runCommand('systemctl', ['--user', 'stop', 'port-daddy.service']);
   console.log('  Service stopped');
@@ -227,8 +236,8 @@ function uninstallLinux() {
     try {
       unlinkSync(SYSTEMD_UNIT);
       console.log(`  Removed ${SYSTEMD_UNIT}`);
-    } catch (err) {
-      console.error(`  Failed to remove unit file: ${err.message}`);
+    } catch (err: unknown) {
+      console.error(`  Failed to remove unit file: ${(err as Error).message}`);
     }
   }
 
@@ -237,13 +246,13 @@ function uninstallLinux() {
   return true;
 }
 
-function statusLinux() {
+function statusLinux(): ServiceState {
   if (!existsSync(SYSTEMD_UNIT)) {
     return 'not-installed';
   }
 
-  const status = runCommand('systemctl', ['--user', 'is-active', 'port-daddy.service']);
-  const state = status.stdout.trim();
+  const status: CommandResult = runCommand('systemctl', ['--user', 'is-active', 'port-daddy.service']);
+  const state: string = status.stdout.trim();
 
   if (state === 'active') return 'running';
   if (state === 'inactive') return 'installed';
@@ -255,14 +264,14 @@ function statusLinux() {
 // Cross-platform dispatch
 // =============================================================================
 
-function install() {
+function install(): void {
   console.log('Installing Port Daddy daemon...');
   console.log(`  Platform: ${PLATFORM}`);
   console.log(`  Node: ${NODE_PATH}`);
   console.log(`  Server: ${SERVER_PATH}`);
   console.log('');
 
-  let success = false;
+  let success: boolean = false;
 
   if (PLATFORM === 'darwin') {
     success = installMacOS();
@@ -285,7 +294,7 @@ function install() {
   }
 }
 
-function uninstall() {
+function uninstall(): void {
   console.log('Uninstalling Port Daddy daemon...');
 
   if (PLATFORM === 'darwin') {
@@ -301,11 +310,11 @@ function uninstall() {
   console.log('Port Daddy daemon uninstalled.');
 }
 
-function status() {
+function status(): void {
   console.log('Checking Port Daddy status...\n');
 
   // Platform-specific service check
-  let serviceState = 'unknown';
+  let serviceState: ServiceState = 'unknown';
 
   if (PLATFORM === 'darwin') {
     serviceState = statusMacOS();
@@ -340,11 +349,11 @@ function status() {
 
   // Check if daemon is actually responding
   console.log('');
-  const health = runCommand('curl', ['-s', '--connect-timeout', '2', 'http://localhost:9876/health']);
-  if (health.status === 0 && health.stdout.includes('"status":"ok"')) {
+  const healthResult: CommandResult = runCommand('curl', ['-s', '--connect-timeout', '2', 'http://localhost:9876/health']);
+  if (healthResult.status === 0 && healthResult.stdout.includes('"status":"ok"')) {
     console.log('  Daemon: responding on port 9876');
     try {
-      const data = JSON.parse(health.stdout);
+      const data: { version?: string; uptime_seconds?: number; active_ports?: number } = JSON.parse(healthResult.stdout);
       console.log(`  Version: ${data.version || 'unknown'}`);
       console.log(`  Uptime: ${data.uptime_seconds ? Math.round(data.uptime_seconds) + 's' : 'unknown'}`);
       console.log(`  Active ports: ${data.active_ports ?? 'unknown'}`);
@@ -355,7 +364,7 @@ function status() {
 }
 
 // Parse command
-const command = process.argv[2];
+const command: string | undefined = process.argv[2];
 
 switch (command) {
   case 'install':

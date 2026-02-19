@@ -16,37 +16,36 @@
  */
 
 import { createHmac, randomUUID } from 'crypto';
+import type Database from 'better-sqlite3';
 
 // =============================================================================
 // CONSTANTS
 // =============================================================================
 
-const MAX_WEBHOOKS = 100;                    // Maximum webhooks total
-const MAX_QUEUE_SIZE = 10000;                // Maximum pending deliveries in memory
-const MAX_RETRY_ATTEMPTS = 5;                // Maximum delivery retry attempts
-const DELIVERY_TIMEOUT_MS = 10000;           // 10 second timeout per delivery
-const CLEANUP_RETENTION_DAYS = 7;            // Keep delivery history for 7 days
-const RESPONSE_BODY_MAX_LENGTH = 1000;       // Truncate response bodies
+const MAX_WEBHOOKS = 100;
+const MAX_QUEUE_SIZE = 10000;
+const MAX_RETRY_ATTEMPTS = 5;
+const DELIVERY_TIMEOUT_MS = 10000;
+const CLEANUP_RETENTION_DAYS = 7;
+const RESPONSE_BODY_MAX_LENGTH = 1000;
 
-// Private/internal IP patterns to block (SSRF prevention)
 const PRIVATE_IP_PATTERNS = [
   /^localhost$/i,
-  /^127\./,                                  // Loopback
-  /^10\./,                                   // Private Class A
-  /^172\.(1[6-9]|2[0-9]|3[01])\./,          // Private Class B
-  /^192\.168\./,                             // Private Class C
-  /^169\.254\./,                             // Link-local
-  /^0\./,                                    // Current network
-  /^::1$/,                                   // IPv6 loopback
-  /^fc00:/i,                                 // IPv6 unique local
-  /^fe80:/i,                                 // IPv6 link-local
-  /^fd[0-9a-f]{2}:/i,                        // IPv6 unique local
-  /^\[::1\]$/,                               // IPv6 loopback bracketed
-  /^metadata\.google\.internal$/i,           // GCP metadata
-  /^169\.254\.169\.254$/,                    // AWS/GCP/Azure metadata
-];
+  /^127\./,
+  /^10\./,
+  /^172\.(1[6-9]|2[0-9]|3[01])\./,
+  /^192\.168\./,
+  /^169\.254\./,
+  /^0\./,
+  /^::1$/,
+  /^fc00:/i,
+  /^fe80:/i,
+  /^fd[0-9a-f]{2}:/i,
+  /^\[::1\]$/,
+  /^metadata\.google\.internal$/i,
+  /^169\.254\.169\.254$/,
+] as const;
 
-// Event types that can trigger webhooks
 export const WebhookEvent = {
   SERVICE_CLAIM: 'service.claim',
   SERVICE_RELEASE: 'service.release',
@@ -58,10 +57,71 @@ export const WebhookEvent = {
   MESSAGE_PUBLISH: 'message.publish',
   DAEMON_START: 'daemon.start',
   DAEMON_STOP: 'daemon.stop'
-};
+} as const;
 
-export function createWebhooks(db) {
-  // Initialize schema
+interface WebhookRow {
+  id: string;
+  url: string;
+  secret: string | null;
+  events: string;
+  filter_pattern: string | null;
+  active: number;
+  created_at: number;
+  last_triggered: number | null;
+  success_count: number;
+  failure_count: number;
+  metadata: string | null;
+}
+
+interface DeliveryRow {
+  id: string;
+  webhook_id: string;
+  event: string;
+  payload: string;
+  status: string;
+  attempts: number;
+  last_attempt: number | null;
+  response_status: number | null;
+  response_body: string | null;
+  created_at: number;
+}
+
+interface RegisterOptions {
+  events?: string[];
+  secret?: string;
+  filterPattern?: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface UpdateOptions {
+  url?: string;
+  events?: string[];
+  filterPattern?: string | null;
+  active?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+interface ListOptions {
+  activeOnly?: boolean;
+}
+
+interface TriggerOptions {
+  targetId?: string;
+}
+
+interface GetDeliveriesOptions {
+  limit?: number;
+}
+
+interface QueuedDelivery {
+  deliveryId: string;
+  webhookId: string;
+  url: string;
+  secret: string | null;
+  payload: { event: string; timestamp: number; data: unknown };
+}
+
+export function createWebhooks(db: Database.Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS webhooks (
       id TEXT PRIMARY KEY,
@@ -95,7 +155,6 @@ export function createWebhooks(db) {
     CREATE INDEX IF NOT EXISTS idx_deliveries_status ON webhook_deliveries(status);
   `);
 
-  // Prepared statements
   const stmts = {
     insert: db.prepare(`
       INSERT INTO webhooks (id, url, secret, events, filter_pattern, active, created_at, metadata)
@@ -108,9 +167,7 @@ export function createWebhooks(db) {
     delete: db.prepare('DELETE FROM webhooks WHERE id = ?'),
     getById: db.prepare('SELECT * FROM webhooks WHERE id = ?'),
     getActive: db.prepare('SELECT * FROM webhooks WHERE active = 1'),
-    getByEvent: db.prepare(`
-      SELECT * FROM webhooks WHERE active = 1 AND events LIKE ?
-    `),
+    getByEvent: db.prepare('SELECT * FROM webhooks WHERE active = 1 AND events LIKE ?'),
     getAll: db.prepare('SELECT * FROM webhooks ORDER BY created_at DESC'),
     updateStats: db.prepare(`
       UPDATE webhooks SET last_triggered = ?, success_count = success_count + ?, failure_count = failure_count + ?
@@ -125,52 +182,30 @@ export function createWebhooks(db) {
       SET status = ?, attempts = attempts + 1, last_attempt = ?, response_status = ?, response_body = ?
       WHERE id = ?
     `),
-    getDeliveries: db.prepare(`
-      SELECT * FROM webhook_deliveries WHERE webhook_id = ? ORDER BY created_at DESC LIMIT ?
-    `),
-    getPendingDeliveries: db.prepare(`
-      SELECT * FROM webhook_deliveries WHERE status IN ('pending', 'retrying') AND attempts < 5
-    `),
-    cleanupDeliveries: db.prepare(`
-      DELETE FROM webhook_deliveries WHERE created_at < ?
-    `)
+    getDeliveries: db.prepare('SELECT * FROM webhook_deliveries WHERE webhook_id = ? ORDER BY created_at DESC LIMIT ?'),
+    getPendingDeliveries: db.prepare("SELECT * FROM webhook_deliveries WHERE status IN ('pending', 'retrying') AND attempts < 5"),
+    cleanupDeliveries: db.prepare('DELETE FROM webhook_deliveries WHERE created_at < ?')
   };
 
-  // In-memory queue for pending deliveries
-  const deliveryQueue = [];
+  const deliveryQueue: QueuedDelivery[] = [];
   let processingQueue = false;
 
-  /**
-   * Check if a hostname is a private/internal address (SSRF prevention)
-   * @param {string} hostname - The hostname to check
-   * @returns {boolean} True if the hostname is private/internal
-   */
-  function isPrivateHost(hostname) {
+  function isPrivateHost(hostname: string): boolean {
     for (const pattern of PRIVATE_IP_PATTERNS) {
-      if (pattern.test(hostname)) {
-        return true;
-      }
+      if (pattern.test(hostname)) return true;
     }
     return false;
   }
 
-  /**
-   * Register a new webhook
-   */
-  function register(url, options = {}) {
+  function register(url: string, options: RegisterOptions = {}) {
     const { events = ['*'], secret, filterPattern, metadata } = options;
 
-    // Enforce maximum webhook limit
     const currentCount = stmts.getAll.all().length;
     if (currentCount >= MAX_WEBHOOKS) {
-      return {
-        success: false,
-        error: `Maximum webhook limit reached (${MAX_WEBHOOKS})`
-      };
+      return { success: false, error: `Maximum webhook limit reached (${MAX_WEBHOOKS})` };
     }
 
-    // Validate URL
-    let parsed;
+    let parsed: URL;
     try {
       parsed = new URL(url);
       if (!['http:', 'https:'].includes(parsed.protocol)) {
@@ -180,28 +215,21 @@ export function createWebhooks(db) {
       return { success: false, error: 'Invalid URL' };
     }
 
-    // SSRF Prevention: Block private/internal hosts
     if (isPrivateHost(parsed.hostname)) {
-      return {
-        success: false,
-        error: 'Webhook URLs cannot target private or internal addresses'
-      };
+      return { success: false, error: 'Webhook URLs cannot target private or internal addresses' };
     }
 
-    // Validate events
-    const validEvents = Object.values(WebhookEvent);
+    const validEvents = Object.values(WebhookEvent) as string[];
     for (const event of events) {
       if (event !== '*' && !validEvents.includes(event)) {
         return { success: false, error: `Invalid event type: ${event}` };
       }
     }
 
-    // Validate filter pattern (prevent ReDoS by limiting complexity)
     if (filterPattern) {
       if (filterPattern.length > 100) {
         return { success: false, error: 'Filter pattern too long (max 100 chars)' };
       }
-      // Only allow simple glob patterns: alphanumeric, dashes, underscores, colons, and single *
       if (!/^[a-zA-Z0-9:_*-]+$/.test(filterPattern)) {
         return { success: false, error: 'Filter pattern contains invalid characters' };
       }
@@ -210,34 +238,14 @@ export function createWebhooks(db) {
     const id = randomUUID();
     const now = Date.now();
 
-    stmts.insert.run(
-      id,
-      url,
-      secret || null,
-      JSON.stringify(events),
-      filterPattern || null,
-      1,
-      now,
-      metadata ? JSON.stringify(metadata) : null
-    );
+    stmts.insert.run(id, url, secret || null, JSON.stringify(events), filterPattern || null, 1, now, metadata ? JSON.stringify(metadata) : null);
 
-    return {
-      success: true,
-      id,
-      url,
-      events,
-      message: 'Webhook registered'
-    };
+    return { success: true, id, url, events, message: 'Webhook registered' };
   }
 
-  /**
-   * Update a webhook
-   */
-  function update(id, updates) {
-    const existing = stmts.getById.get(id);
-    if (!existing) {
-      return { success: false, error: 'Webhook not found' };
-    }
+  function update(id: string, updates: UpdateOptions) {
+    const existing = stmts.getById.get(id) as WebhookRow | undefined;
+    if (!existing) return { success: false, error: 'Webhook not found' };
 
     const { url, events, filterPattern, active, metadata } = updates;
 
@@ -253,10 +261,7 @@ export function createWebhooks(db) {
     return { success: true, message: 'Webhook updated' };
   }
 
-  /**
-   * Delete a webhook
-   */
-  function remove(id) {
+  function remove(id: string) {
     const result = stmts.delete.run(id);
     return {
       success: result.changes > 0,
@@ -265,44 +270,24 @@ export function createWebhooks(db) {
     };
   }
 
-  /**
-   * Get a webhook by ID
-   */
-  function get(id) {
-    const webhook = stmts.getById.get(id);
-    if (!webhook) {
-      return { success: false, error: 'Webhook not found' };
-    }
-
-    return {
-      success: true,
-      webhook: parseWebhook(webhook)
-    };
+  function get(id: string) {
+    const webhook = stmts.getById.get(id) as WebhookRow | undefined;
+    if (!webhook) return { success: false, error: 'Webhook not found' };
+    return { success: true, webhook: parseWebhook(webhook) };
   }
 
-  /**
-   * List all webhooks
-   */
-  function list(options = {}) {
+  function list(options: ListOptions = {}) {
     const { activeOnly } = options;
-    const webhooks = activeOnly ? stmts.getActive.all() : stmts.getAll.all();
-
-    return {
-      success: true,
-      webhooks: webhooks.map(parseWebhook),
-      count: webhooks.length
-    };
+    const webhooks = (activeOnly ? stmts.getActive.all() : stmts.getAll.all()) as WebhookRow[];
+    return { success: true, webhooks: webhooks.map(parseWebhook), count: webhooks.length };
   }
 
-  /**
-   * Parse webhook row from database
-   */
-  function parseWebhook(row) {
+  function parseWebhook(row: WebhookRow) {
     return {
       id: row.id,
       url: row.url,
       hasSecret: !!row.secret,
-      events: JSON.parse(row.events),
+      events: JSON.parse(row.events) as string[],
       filterPattern: row.filter_pattern,
       active: !!row.active,
       createdAt: row.created_at,
@@ -313,28 +298,17 @@ export function createWebhooks(db) {
     };
   }
 
-  /**
-   * Sign a payload with HMAC-SHA256
-   */
-  function signPayload(payload, secret) {
+  function signPayload(payload: unknown, secret: string): string {
     const hmac = createHmac('sha256', secret);
     hmac.update(JSON.stringify(payload));
     return hmac.digest('hex');
   }
 
-  /**
-   * Safe glob matching without regex (ReDoS-safe)
-   * Supports simple * wildcards only
-   * @param {string} pattern - Pattern with optional * wildcards
-   * @param {string} str - String to match
-   * @returns {boolean} True if pattern matches string
-   */
-  function safeGlobMatch(pattern, str) {
+  function safeGlobMatch(pattern: string, str: string): boolean {
     if (!pattern || !str) return false;
     if (pattern === '*') return true;
     if (!pattern.includes('*')) return pattern === str;
 
-    // Split pattern by * and match segments
     const segments = pattern.split('*');
     let pos = 0;
 
@@ -344,14 +318,11 @@ export function createWebhooks(db) {
 
       const idx = str.indexOf(segment, pos);
       if (idx === -1) return false;
-
-      // First segment must be at start if pattern doesn't start with *
       if (i === 0 && !pattern.startsWith('*') && idx !== 0) return false;
 
       pos = idx + segment.length;
     }
 
-    // Last segment must be at end if pattern doesn't end with *
     if (!pattern.endsWith('*') && segments[segments.length - 1]) {
       return str.endsWith(segments[segments.length - 1]);
     }
@@ -359,63 +330,35 @@ export function createWebhooks(db) {
     return true;
   }
 
-  /**
-   * Trigger webhooks for an event
-   */
-  function trigger(event, data, options = {}) {
+  function trigger(event: string, data: unknown, options: TriggerOptions = {}) {
     const { targetId } = options;
 
-    // Enforce queue size limit to prevent memory exhaustion
     if (deliveryQueue.length >= MAX_QUEUE_SIZE) {
-      return {
-        triggered: 0,
-        error: 'Delivery queue full, try again later'
-      };
+      return { triggered: 0, error: 'Delivery queue full, try again later' };
     }
 
-    // Find matching webhooks
-    const webhooks = stmts.getActive.all().filter(webhook => {
-      const events = JSON.parse(webhook.events);
-
-      // Check event match
+    const webhooks = (stmts.getActive.all() as WebhookRow[]).filter(webhook => {
+      const events = JSON.parse(webhook.events) as string[];
       const eventMatches = events.includes('*') || events.includes(event);
       if (!eventMatches) return false;
 
-      // Check filter pattern if specified (using safe glob matching)
       if (webhook.filter_pattern && targetId) {
-        if (!safeGlobMatch(webhook.filter_pattern, targetId)) {
-          return false;
-        }
+        if (!safeGlobMatch(webhook.filter_pattern, targetId)) return false;
       }
 
       return true;
     });
 
-    if (webhooks.length === 0) {
-      return { triggered: 0 };
-    }
+    if (webhooks.length === 0) return { triggered: 0 };
 
-    const payload = {
-      event,
-      timestamp: Date.now(),
-      data
-    };
+    const payload = { event, timestamp: Date.now(), data };
 
-    // Queue deliveries (with queue size check per webhook)
     let queued = 0;
     for (const webhook of webhooks) {
       if (deliveryQueue.length >= MAX_QUEUE_SIZE) break;
 
       const deliveryId = randomUUID();
-
-      stmts.insertDelivery.run(
-        deliveryId,
-        webhook.id,
-        event,
-        JSON.stringify(payload),
-        'pending',
-        Date.now()
-      );
+      stmts.insertDelivery.run(deliveryId, webhook.id, event, JSON.stringify(payload), 'pending', Date.now());
 
       deliveryQueue.push({
         deliveryId,
@@ -427,45 +370,32 @@ export function createWebhooks(db) {
       queued++;
     }
 
-    // Process queue asynchronously
     processQueue();
-
     return { triggered: queued };
   }
 
-  /**
-   * Process delivery queue
-   */
-  async function processQueue() {
-    if (processingQueue || deliveryQueue.length === 0) {
-      return;
-    }
+  async function processQueue(): Promise<void> {
+    if (processingQueue || deliveryQueue.length === 0) return;
 
     processingQueue = true;
-
     while (deliveryQueue.length > 0) {
-      const delivery = deliveryQueue.shift();
+      const delivery = deliveryQueue.shift()!;
       await deliverWebhook(delivery);
     }
-
     processingQueue = false;
   }
 
-  /**
-   * Deliver a single webhook
-   */
-  async function deliverWebhook(delivery, attempt = 1) {
+  async function deliverWebhook(delivery: QueuedDelivery, attempt = 1): Promise<void> {
     const { deliveryId, webhookId, url, secret, payload } = delivery;
 
     try {
-      const headers = {
+      const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'X-PortDaddy-Event': payload.event,
         'X-PortDaddy-Delivery': deliveryId,
         'X-PortDaddy-Timestamp': String(payload.timestamp)
       };
 
-      // Add signature if secret is configured
       if (secret) {
         headers['X-PortDaddy-Signature'] = `sha256=${signPayload(payload, secret)}`;
       }
@@ -480,27 +410,15 @@ export function createWebhooks(db) {
       const responseBody = await response.text().catch(() => '');
 
       if (response.ok) {
-        // Success
-        stmts.updateDelivery.run(
-          'delivered',
-          Date.now(),
-          response.status,
-          responseBody.slice(0, RESPONSE_BODY_MAX_LENGTH),
-          deliveryId
-        );
+        stmts.updateDelivery.run('delivered', Date.now(), response.status, responseBody.slice(0, RESPONSE_BODY_MAX_LENGTH), deliveryId);
         stmts.updateStats.run(Date.now(), 1, 0, webhookId);
       } else {
-        // HTTP error - retry if attempts remain
         stmts.updateDelivery.run(
           attempt < MAX_RETRY_ATTEMPTS ? 'retrying' : 'failed',
-          Date.now(),
-          response.status,
-          responseBody.slice(0, RESPONSE_BODY_MAX_LENGTH),
-          deliveryId
+          Date.now(), response.status, responseBody.slice(0, RESPONSE_BODY_MAX_LENGTH), deliveryId
         );
 
         if (attempt < MAX_RETRY_ATTEMPTS) {
-          // Exponential backoff: 1s, 2s, 4s, 8s
           const delay = Math.pow(2, attempt - 1) * 1000;
           setTimeout(() => deliverWebhook(delivery, attempt + 1), delay);
         } else {
@@ -508,13 +426,9 @@ export function createWebhooks(db) {
         }
       }
     } catch (error) {
-      // Network error - retry if attempts remain
       stmts.updateDelivery.run(
         attempt < MAX_RETRY_ATTEMPTS ? 'retrying' : 'failed',
-        Date.now(),
-        null,
-        error.message.slice(0, RESPONSE_BODY_MAX_LENGTH),
-        deliveryId
+        Date.now(), null, (error as Error).message.slice(0, RESPONSE_BODY_MAX_LENGTH), deliveryId
       );
 
       if (attempt < MAX_RETRY_ATTEMPTS) {
@@ -526,18 +440,12 @@ export function createWebhooks(db) {
     }
   }
 
-  /**
-   * Get delivery history for a webhook
-   */
-  function getDeliveries(webhookId, options = {}) {
-    // Validate and cap limit to prevent abuse
+  function getDeliveries(webhookId: string, options: GetDeliveriesOptions = {}) {
     let { limit = 50 } = options;
-    if (typeof limit !== 'number' || limit < 1) {
-      limit = 50;
-    }
-    limit = Math.min(limit, 500); // Hard cap at 500
+    if (typeof limit !== 'number' || limit < 1) limit = 50;
+    limit = Math.min(limit, 500);
 
-    const deliveries = stmts.getDeliveries.all(webhookId, limit);
+    const deliveries = stmts.getDeliveries.all(webhookId, limit) as DeliveryRow[];
 
     return {
       success: true,
@@ -554,14 +462,11 @@ export function createWebhooks(db) {
     };
   }
 
-  /**
-   * Retry pending deliveries (called on startup)
-   */
   function retryPending() {
-    const pending = stmts.getPendingDeliveries.all();
+    const pending = stmts.getPendingDeliveries.all() as DeliveryRow[];
 
     for (const delivery of pending) {
-      const webhook = stmts.getById.get(delivery.webhook_id);
+      const webhook = stmts.getById.get(delivery.webhook_id) as WebhookRow | undefined;
       if (!webhook || !webhook.active) continue;
 
       deliveryQueue.push({
@@ -573,42 +478,29 @@ export function createWebhooks(db) {
       });
     }
 
-    if (pending.length > 0) {
-      processQueue();
-    }
+    if (pending.length > 0) processQueue();
 
     return { retrying: pending.length };
   }
 
-  /**
-   * Clean up old deliveries
-   */
   function cleanup() {
     const cutoff = Date.now() - (CLEANUP_RETENTION_DAYS * 24 * 60 * 60 * 1000);
     const result = stmts.cleanupDeliveries.run(cutoff);
     return { cleaned: result.changes };
   }
 
-  /**
-   * Test a webhook by sending a test payload
-   */
-  async function test(id) {
-    const webhook = stmts.getById.get(id);
-    if (!webhook) {
-      return { success: false, error: 'Webhook not found' };
-    }
+  async function test(id: string) {
+    const webhook = stmts.getById.get(id) as WebhookRow | undefined;
+    if (!webhook) return { success: false, error: 'Webhook not found' };
 
     const payload = {
       event: 'webhook.test',
       timestamp: Date.now(),
-      data: {
-        message: 'This is a test webhook delivery from Port Daddy',
-        webhookId: id
-      }
+      data: { message: 'This is a test webhook delivery from Port Daddy', webhookId: id }
     };
 
     try {
-      const headers = {
+      const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'X-PortDaddy-Event': 'webhook.test',
         'X-PortDaddy-Delivery': `test-${randomUUID()}`,
@@ -635,10 +527,7 @@ export function createWebhooks(db) {
         body: responseBody.slice(0, RESPONSE_BODY_MAX_LENGTH)
       };
     } catch (error) {
-      return {
-        success: false,
-        error: error.message
-      };
+      return { success: false, error: (error as Error).message };
     }
   }
 

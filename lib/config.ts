@@ -10,10 +10,33 @@ import { detectStack, suggestIdentity, getDevCommand } from './detect.js';
 
 const CONFIG_NAMES = ['.portdaddyrc', '.portdaddyrc.json', 'portdaddy.config.json'];
 
+export interface ServiceConfig {
+  dev?: string | null;
+  preferredPort?: number;
+  health?: string;
+  needs?: string[];
+  noPort?: boolean;
+  env?: Record<string, string>;
+  _detected?: string;
+  [key: string]: unknown;
+}
+
+export interface PortDaddyRcConfig {
+  project: string;
+  portRange?: [number, number];
+  services: Record<string, ServiceConfig>;
+  tunnel?: {
+    provider?: string;
+    expose?: string[];
+  };
+  _path?: string;
+  [key: string]: unknown;
+}
+
 /**
  * Find config file in directory or parents
  */
-export function findConfig(dir = process.cwd()) {
+export function findConfig(dir: string = process.cwd()): string | null {
   let current = dir;
 
   while (current !== '/') {
@@ -32,23 +55,23 @@ export function findConfig(dir = process.cwd()) {
 /**
  * Load config from file
  */
-export function loadConfig(dir = process.cwd()) {
+export function loadConfig(dir: string = process.cwd()): PortDaddyRcConfig | null {
   const configPath = findConfig(dir);
   if (!configPath) return null;
 
   try {
     const content = readFileSync(configPath, 'utf-8');
-    const config = JSON.parse(content);
+    const config = JSON.parse(content) as PortDaddyRcConfig;
     return { ...config, _path: configPath };
   } catch (err) {
-    throw new Error(`Failed to parse ${configPath}: ${err.message}`);
+    throw new Error(`Failed to parse ${configPath}: ${(err as Error).message}`);
   }
 }
 
 /**
  * Save config to file
  */
-export function saveConfig(config, dir = process.cwd()) {
+export function saveConfig(config: PortDaddyRcConfig, dir: string = process.cwd()): string {
   const configPath = join(dir, '.portdaddyrc');
   const { _path, ...rest } = config; // Remove internal _path
   writeFileSync(configPath, JSON.stringify(rest, null, 2) + '\n');
@@ -58,11 +81,11 @@ export function saveConfig(config, dir = process.cwd()) {
 /**
  * Generate initial config based on detection
  */
-export function generateConfig(dir = process.cwd()) {
+export function generateConfig(dir: string = process.cwd()): PortDaddyRcConfig {
   const stack = detectStack(dir);
   const identity = suggestIdentity(dir);
 
-  const config = {
+  const config: PortDaddyRcConfig = {
     // Project metadata
     project: identity.project,
 
@@ -97,7 +120,7 @@ export function generateConfig(dir = process.cwd()) {
 /**
  * Get service config by ID
  */
-export function getServiceConfig(serviceId, config) {
+export function getServiceConfig(serviceId: string, config: PortDaddyRcConfig | null): ServiceConfig | null {
   if (!config?.services) return null;
 
   // Direct match
@@ -117,18 +140,18 @@ export function getServiceConfig(serviceId, config) {
 /**
  * Expand service command with port
  */
-export function expandCommand(cmd, port) {
+export function expandCommand(cmd: string | null | undefined, port: number | string): string | null {
   if (!cmd) return null;
 
   // Replace ${PORT} placeholder
-  return cmd.replace(/\$\{PORT\}/g, port).replace(/\$PORT/g, port);
+  return cmd.replace(/\$\{PORT\}/g, String(port)).replace(/\$PORT/g, String(port));
 }
 
 /**
  * Validate config structure
  */
-export function validateConfig(config) {
-  const errors = [];
+export function validateConfig(config: PortDaddyRcConfig): string[] {
+  const errors: string[] = [];
 
   if (!config.project) {
     errors.push('Missing required field: project');
@@ -165,7 +188,7 @@ export function validateConfig(config) {
 /**
  * Example config structure (for documentation)
  */
-export const CONFIG_EXAMPLE = {
+export const CONFIG_EXAMPLE: PortDaddyRcConfig = {
   // Project name (used as prefix for service IDs)
   project: 'myapp',
 

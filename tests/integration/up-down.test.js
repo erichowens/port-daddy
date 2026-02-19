@@ -17,6 +17,7 @@ import { tmpdir, homedir } from 'node:os';
 import { request, getDaemonState } from '../helpers/integration-setup.js';
 
 const CLI_PATH = join(import.meta.dirname, '../../bin/port-daddy-cli.js');
+const TSX_PATH = join(import.meta.dirname, '../../node_modules/.bin/tsx');
 const UP_PID_FILE = join(homedir(), '.port-daddy-up.pid');
 
 // Inline server script that reads PORT from env and responds with JSON
@@ -209,7 +210,7 @@ describe('port-daddy up/down Integration', () => {
     }));
 
     // Spawn `port-daddy up`
-    upProcess = spawn('node', [CLI_PATH, 'up', '--dir', tempDir], {
+    upProcess = spawn(TSX_PATH, [CLI_PATH, 'up', '--dir', tempDir], {
       env: cliEnv(),
       stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -250,10 +251,10 @@ describe('port-daddy up/down Integration', () => {
     // Verify api sees FRONTEND_PORT
     expect(apiHealth.siblings.FRONTEND_PORT).toBe(String(portMap.frontend));
 
-    // Verify PID file was written
+    // Verify PID file was written (tsx forks a child, so PID may differ from upProcess.pid)
     expect(existsSync(UP_PID_FILE)).toBe(true);
     const pid = parseInt(readFileSync(UP_PID_FILE, 'utf-8').trim(), 10);
-    expect(pid).toBe(upProcess.pid);
+    expect(pid).toBeGreaterThan(0);
 
     // Verify ports are claimed in daemon
     const services = await getClaimedServices();
@@ -308,7 +309,7 @@ createServer((req, res) => {
       name: 'test-nohealth'
     }));
 
-    upProcess = spawn('node', [CLI_PATH, 'up', '--no-health', '--dir', tempDir], {
+    upProcess = spawn(TSX_PATH, [CLI_PATH, 'up', '--no-health', '--dir', tempDir], {
       env: cliEnv(),
       stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -330,7 +331,7 @@ createServer((req, res) => {
       name: 'empty-project'
     }));
 
-    const result = spawnSync('node', [CLI_PATH, 'up', '--dir', tempDir], {
+    const result = spawnSync(TSX_PATH, [CLI_PATH, 'up', '--dir', tempDir], {
       encoding: 'utf-8',
       timeout: 15000,
       env: cliEnv()
@@ -354,7 +355,7 @@ createServer((req, res) => {
     } catch { /* ok */ }
     try { rmSync(UP_PID_FILE, { force: true }); } catch { /* ok */ }
 
-    const result = spawnSync('node', [CLI_PATH, 'down'], {
+    const result = spawnSync(TSX_PATH, [CLI_PATH, 'down'], {
       encoding: 'utf-8',
       timeout: 10000,
       env: cliEnv()
@@ -410,7 +411,7 @@ createServer((req, res) => {
     }));
 
     // Only start frontend (should also start api as a dependency, but NOT worker)
-    upProcess = spawn('node', [
+    upProcess = spawn(TSX_PATH, [
       CLI_PATH, 'up', '--service', 'frontend', '--dir', tempDir
     ], {
       env: cliEnv(),
@@ -477,7 +478,7 @@ createServer((req, res) => {
       name: 'test-remote'
     }));
 
-    upProcess = spawn('node', [CLI_PATH, 'up', '--no-health', '--dir', tempDir], {
+    upProcess = spawn(TSX_PATH, [CLI_PATH, 'up', '--no-health', '--dir', tempDir], {
       env: cliEnv(),
       stdio: ['ignore', 'pipe', 'pipe']
     });

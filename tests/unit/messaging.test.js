@@ -1189,20 +1189,15 @@ describe('Messaging Module', () => {
 
     it('should reject invalid expiration formats gracefully', () => {
       // Invalid expires should not crash
-      const before = Date.now();
       const result = messaging.publish('test-channel', 'msg', {
         expires: 'invalid-format'
       });
-      const after = Date.now();
 
       expect(result.success).toBe(true);
 
-      // When parseExpires returns null, now + null = now + 0, so message expires immediately
+      // When parseExpires returns null, expiresAt is set to null (no expiration)
       const row = db.prepare('SELECT expires_at FROM messages').get();
-      expect(row.expires_at).toBeDefined();
-      // Should be set to around current time (now + 0)
-      expect(row.expires_at).toBeGreaterThanOrEqual(before);
-      expect(row.expires_at).toBeLessThanOrEqual(after);
+      expect(row.expires_at).toBeNull();
     });
 
     it('should handle getMessages with negative limit', () => {

@@ -5,15 +5,76 @@
  * Pure SQLite operations - no shell commands
  */
 
+import type Database from 'better-sqlite3';
+
 const DEFAULT_HEARTBEAT_INTERVAL = 30000;  // 30 seconds
 const DEFAULT_AGENT_TTL = 120000;          // 2 minutes without heartbeat = dead
 const DEFAULT_MAX_SERVICES_PER_AGENT = 50;
 const DEFAULT_MAX_LOCKS_PER_AGENT = 20;
 
+interface AgentRow {
+  id: string;
+  name: string | null;
+  pid: number;
+  type: string;
+  registered_at: number;
+  last_heartbeat: number;
+  metadata: string | null;
+  max_services: number;
+  max_locks: number;
+}
+
+interface RegisterOptions {
+  name?: string | null;
+  pid?: number;
+  type?: string;
+  metadata?: Record<string, unknown> | null;
+  maxServices?: number;
+  maxLocks?: number;
+}
+
+interface HeartbeatOptions {
+  pid?: number;
+  [key: string]: unknown;
+}
+
+interface AgentFormatted {
+  id: string;
+  name: string | null;
+  pid: number;
+  type: string;
+  registeredAt: number;
+  lastHeartbeat: number;
+  isActive: boolean;
+  maxServices: number;
+  maxLocks: number;
+  metadata: Record<string, unknown> | null;
+}
+
+interface ListOptions {
+  activeOnly?: boolean;
+}
+
+interface ResourceCheck {
+  allowed: boolean;
+  error?: string;
+  current?: number;
+  max?: number;
+}
+
+interface ServicesLike {
+  release(pattern: string, options?: Record<string, unknown>): { released?: number };
+}
+
+interface LocksLike {
+  list(options: { owner: string }): { locks?: Array<{ name: string }> };
+  release(name: string, options: { force: boolean }): void;
+}
+
 /**
  * Initialize agent registry with database connection
  */
-export function createAgents(db) {
+export function createAgents(db: Database.Database) {
   // Ensure agents table exists
   db.exec(`
     CREATE TABLE IF NOT EXISTS agents (
@@ -50,7 +111,7 @@ export function createAgents(db) {
   /**
    * Register an agent
    */
-  function register(agentId, options = {}) {
+  function register(agentId: string, options: RegisterOptions = {}) {
     if (!agentId || typeof agentId !== 'string') {
       return { success: false, error: 'agent ID must be a non-empty string' };
     }
@@ -73,7 +134,7 @@ export function createAgents(db) {
       maxLocks = DEFAULT_MAX_LOCKS_PER_AGENT
     } = options;
 
-    const existing = stmts.get.get(agentId);
+    const existing = stmts.get.get(agentId) as AgentRow | undefined;
 
     try {
       stmts.register.run(
@@ -95,14 +156,14 @@ export function createAgents(db) {
         message: existing ? 'agent updated' : 'agent registered'
       };
     } catch (err) {
-      return { success: false, error: err.message };
+      return { success: false, error: (err as Error).message };
     }
   }
 
   /**
    * Send heartbeat for an agent
    */
-  function heartbeat(agentId, options = {}) {
+  function heartbeat(agentId: string, options: HeartbeatOptions = {}) {
     if (!agentId || typeof agentId !== 'string') {
       return { success: false, error: 'agent ID must be a non-empty string' };
     }
@@ -110,7 +171,7 @@ export function createAgents(db) {
     const { pid = process.pid } = options;
     const now = Date.now();
 
-    const existing = stmts.get.get(agentId);
+    const existing = stmts.get.get(agentId) as AgentRow | undefined;
     if (!existing) {
       // Auto-register on first heartbeat
       return register(agentId, { pid, ...options });
@@ -129,12 +190,12 @@ export function createAgents(db) {
   /**
    * Unregister an agent
    */
-  function unregister(agentId) {
+  function unregister(agentId: string) {
     if (!agentId || typeof agentId !== 'string') {
       return { success: false, error: 'agent ID must be a non-empty string' };
     }
 
-    const existing = stmts.get.get(agentId);
+    const existing = stmts.get.get(agentId) as AgentRow | undefined;
     if (!existing) {
       return { success: true, unregistered: false, message: 'agent not found' };
     }
@@ -152,12 +213,12 @@ export function createAgents(db) {
   /**
    * Get agent info
    */
-  function get(agentId) {
+  function get(agentId: string) {
     if (!agentId || typeof agentId !== 'string') {
       return { success: false, error: 'agent ID must be a non-empty string' };
     }
 
-    const agent = stmts.get.get(agentId);
+    const agent = stmts.get.get(agentId) as AgentRow | undefined;
     if (!agent) {
       return { success: false, error: 'agent not found' };
     }
@@ -186,17 +247,17 @@ export function createAgents(db) {
   /**
    * List all agents
    */
-  function list(options = {}) {
+  function list(options: ListOptions = {}) {
     const { activeOnly = false } = options;
     const now = Date.now();
 
-    const agents = activeOnly
+    const agents = (activeOnly
       ? stmts.listActive.all(now - DEFAULT_AGENT_TTL)
-      : stmts.list.all();
+      : stmts.list.all()) as AgentRow[];
 
     return {
       success: true,
-      agents: agents.map(a => ({
+      agents: agents.map((a): AgentFormatted => ({
         id: a.id,
         name: a.name,
         pid: a.pid,
@@ -214,10 +275,8 @@ export function createAgents(db) {
 
   /**
    * Escape SQL LIKE pattern wildcards
-   * @param {string} str - String to escape
-   * @returns {string} Escaped string safe for LIKE pattern
    */
-  function escapeLikePattern(str) {
+  function escapeLikePattern(str: string): string {
     // Escape SQL LIKE wildcards: % and _
     return str.replace(/[%_]/g, '\\$&');
   }
@@ -225,13 +284,13 @@ export function createAgents(db) {
   /**
    * Check if agent can claim more services
    */
-  function canClaimService(agentId) {
-    const agent = stmts.get.get(agentId);
+  function canClaimService(agentId: string): ResourceCheck {
+    const agent = stmts.get.get(agentId) as AgentRow | undefined;
     if (!agent) return { allowed: true }; // Unregistered agents get default limits
 
     // Escape agentId to prevent SQL injection via LIKE wildcards
     const safeAgentId = escapeLikePattern(agentId);
-    const countResult = stmts.countServices.get(`%"agent":"${safeAgentId}"%`);
+    const countResult = stmts.countServices.get(`%"agent":"${safeAgentId}"%`) as { count: number };
     const currentCount = countResult?.count || 0;
 
     if (currentCount >= agent.max_services) {
@@ -249,11 +308,11 @@ export function createAgents(db) {
   /**
    * Check if agent can acquire more locks
    */
-  function canAcquireLock(agentId) {
-    const agent = stmts.get.get(agentId);
+  function canAcquireLock(agentId: string): ResourceCheck {
+    const agent = stmts.get.get(agentId) as AgentRow | undefined;
     if (!agent) return { allowed: true }; // Unregistered agents get default limits
 
-    const countResult = stmts.countLocks.get(agentId);
+    const countResult = stmts.countLocks.get(agentId) as { count: number };
     const currentCount = countResult?.count || 0;
 
     if (currentCount >= agent.max_locks) {
@@ -271,9 +330,9 @@ export function createAgents(db) {
   /**
    * Cleanup stale agents and release their resources
    */
-  function cleanup(services, locks) {
+  function cleanup(services?: ServicesLike, locks?: LocksLike) {
     const now = Date.now();
-    const staleAgents = stmts.listStale.all(now - DEFAULT_AGENT_TTL);
+    const staleAgents = stmts.listStale.all(now - DEFAULT_AGENT_TTL) as AgentRow[];
 
     let releasedServices = 0;
     let releasedLocks = 0;

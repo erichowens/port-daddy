@@ -4,20 +4,37 @@
  * Format: project:stack:context
  *
  * Examples:
- *   windags              → { project: 'windags', stack: null, context: null }
- *   windags:api          → { project: 'windags', stack: 'api', context: null }
- *   windags:api:main     → { project: 'windags', stack: 'api', context: 'main' }
- *   windags:*:main       → { project: 'windags', stack: '*', context: 'main' }
- *   *:frontend:*         → { project: '*', stack: 'frontend', context: '*' }
+ *   windags              -> { project: 'windags', stack: null, context: null }
+ *   windags:api          -> { project: 'windags', stack: 'api', context: null }
+ *   windags:api:main     -> { project: 'windags', stack: 'api', context: 'main' }
+ *   windags:*:main       -> { project: 'windags', stack: '*', context: 'main' }
+ *   *:frontend:*         -> { project: '*', stack: 'frontend', context: '*' }
  */
 
 const IDENTITY_REGEX = /^[a-zA-Z0-9._*-]+$/;
 const MAX_SEGMENT_LENGTH = 64;
 
+export interface ParsedIdentityValid {
+  valid: true;
+  project: string;
+  stack: string | null;
+  context: string | null;
+  full: string;
+  normalized: string;
+  hasWildcard: boolean;
+}
+
+export interface ParsedIdentityInvalid {
+  valid: false;
+  error: string;
+}
+
+export type ParsedIdentity = ParsedIdentityValid | ParsedIdentityInvalid;
+
 /**
  * Parse a semantic identity string into components
  */
-export function parseIdentity(id) {
+export function parseIdentity(id: string): ParsedIdentity {
   if (!id || typeof id !== 'string') {
     return { valid: false, error: 'identity must be a non-empty string' };
   }
@@ -31,7 +48,7 @@ export function parseIdentity(id) {
   const [project, stack = null, context = null] = parts;
 
   // Validate each segment
-  for (const [name, value] of [['project', project], ['stack', stack], ['context', context]]) {
+  for (const [name, value] of [['project', project], ['stack', stack], ['context', context]] as const) {
     if (value !== null) {
       if (!IDENTITY_REGEX.test(value)) {
         return { valid: false, error: `${name} contains invalid characters` };
@@ -57,10 +74,10 @@ export function parseIdentity(id) {
  * Check if an identity matches a pattern (with wildcards)
  *
  * Pattern: windags:*:main
- * Identity: windags:api:main → true
- * Identity: windags:api:dev → false
+ * Identity: windags:api:main -> true
+ * Identity: windags:api:dev -> false
  */
-export function matchesPattern(pattern, identity) {
+export function matchesPattern(pattern: string, identity: string): boolean {
   const p = parseIdentity(pattern);
   const i = parseIdentity(identity);
 
@@ -77,7 +94,7 @@ export function matchesPattern(pattern, identity) {
 /**
  * Convert identity pattern to SQL LIKE clause
  */
-export function patternToSql(pattern) {
+export function patternToSql(pattern: string): string | null {
   const p = parseIdentity(pattern);
   if (!p.valid) return null;
 
@@ -111,10 +128,26 @@ export function patternToSql(pattern) {
   return sqlPattern;
 }
 
+interface NormalizeDefaults {
+  stack?: string | null;
+  context?: string | null;
+}
+
+interface NormalizedIdentityValid {
+  valid: true;
+  project: string;
+  stack: string | null;
+  context: string | null;
+  full: string;
+  normalized: string;
+}
+
+export type NormalizedIdentity = NormalizedIdentityValid | ParsedIdentityInvalid;
+
 /**
  * Normalize an identity (fill in defaults, validate)
  */
-export function normalizeIdentity(id, defaults = {}) {
+export function normalizeIdentity(id: string, defaults: NormalizeDefaults = {}): NormalizedIdentity {
   const parsed = parseIdentity(id);
   if (!parsed.valid) return parsed;
 
@@ -131,7 +164,7 @@ export function normalizeIdentity(id, defaults = {}) {
 /**
  * Generate a display-friendly identity
  */
-export function displayIdentity(id) {
+export function displayIdentity(id: string): string {
   const parsed = parseIdentity(id);
   if (!parsed.valid) return id;
 

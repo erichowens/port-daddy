@@ -1,7 +1,7 @@
 /**
  * Service Orchestrator
  *
- * Core engine for `port-daddy up` — manages the lifecycle of multiple
+ * Core engine for `port-daddy up` -- manages the lifecycle of multiple
  * services with dependency ordering, port claiming, environment injection,
  * health checking, and colored log output.
  *
@@ -10,17 +10,119 @@
  */
 
 import { spawn } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import http from 'node:http';
 import { existsSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
+import type { Transform } from 'node:stream';
 import { createPrefixer, getServiceColor } from './log-prefix.js';
 
 const DEFAULT_SOCK = '/tmp/port-daddy.sock';
 
+// =============================================================================
+// Internal types
+// =============================================================================
+
+interface SocketTarget {
+  socketPath: string;
+  host?: undefined;
+  port?: undefined;
+}
+
+interface TcpTarget {
+  socketPath?: undefined;
+  host: string;
+  port: number;
+}
+
+type DaemonTarget = SocketTarget | TcpTarget;
+
+interface DaemonResponse {
+  ok: boolean;
+  status: number;
+  data: Record<string, unknown> | null;
+}
+
+/** Raw service config as it appears in a port-daddy manifest */
+interface RawServiceConfig {
+  cmd?: string;
+  dev?: string;
+  port?: number;
+  preferredPort?: number;
+  healthPath?: string;
+  health?: string;
+  needs?: string[];
+  noPort?: boolean;
+  remote?: string | null;
+  dir?: string | null;
+  env?: Record<string, string>;
+  stack?: string | null;
+}
+
+/** Normalized service config produced by normalizeServiceConfig */
+export interface NormalizedServiceConfig {
+  name: string;
+  cmd: string | null;
+  port: number | null;
+  healthPath: string;
+  needs: string[];
+  noPort: boolean;
+  remote: string | null;
+  dir: string | null;
+  env: Record<string, string>;
+  stack: string | null;
+}
+
+type ServiceStatus = 'starting' | 'healthy' | 'crashed' | 'stopped';
+
+/** A record mapping service names to service configs (raw or normalized) */
+type ServiceMap = Record<string, RawServiceConfig | NormalizedServiceConfig>;
+
+/** Options passed to createOrchestrator */
+interface OrchestratorOptions {
+  services: Record<string, NormalizedServiceConfig>;
+  identities: Record<string, string>;
+  config?: OrchestratorConfig;
+}
+
+interface OrchestratorConfig {
+  noHealth?: boolean;
+  healthTimeout?: number;
+  targetService?: string | null;
+}
+
+/** Shape of the topologicalSort return */
+interface TopoSortResult {
+  order: string[];
+  error?: string;
+}
+
+/** Shape of the resolveDependencies return */
+interface ResolveDepsResult {
+  deps: Set<string>;
+  error?: string;
+}
+
+/** Prefixer factory type -- matches createPrefixer return */
+type PrefixerFactory = (name: string, streamType?: 'stdout' | 'stderr') => Transform;
+
+interface OrchestratorStatus {
+  services: Record<string, ServiceStatus>;
+  ports: Record<string, number>;
+  stopping: boolean;
+}
+
+interface OrchestratorInstance {
+  start: () => Promise<void>;
+  stop: () => Promise<void>;
+  getStatus: () => OrchestratorStatus;
+  on: (event: string, fn: (...args: unknown[]) => void) => void;
+}
+
 /**
- * Resolve daemon connection target — socket preferred, TCP fallback.
+ * Resolve daemon connection target -- socket preferred, TCP fallback.
  */
-function resolveDaemonTarget() {
+function resolveDaemonTarget(): DaemonTarget {
   const sockPath = process.env.PORT_DADDY_SOCK || DEFAULT_SOCK;
   if (process.env.PORT_DADDY_URL) {
     const url = new URL(process.env.PORT_DADDY_URL);
@@ -36,26 +138,26 @@ function resolveDaemonTarget() {
  * Make an HTTP request to the daemon via socket or TCP.
  * Returns { ok, status, data }.
  */
-function daemonRequest(method, path, body) {
+function daemonRequest(method: string, path: string, body?: Record<string, unknown>): Promise<DaemonResponse> {
   const target = resolveDaemonTarget();
   const jsonBody = body ? JSON.stringify(body) : null;
-  const headers = { 'Content-Type': 'application/json', 'X-PID': String(process.pid) };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-PID': String(process.pid) };
   if (jsonBody) headers['Content-Length'] = String(Buffer.byteLength(jsonBody));
 
   return new Promise((resolve, reject) => {
-    const reqOpts = {
+    const reqOpts: http.RequestOptions = {
       method, path, headers, timeout: 10000,
       ...(target.socketPath ? { socketPath: target.socketPath } : { host: target.host, port: target.port })
     };
 
     const req = http.request(reqOpts, (res) => {
-      const chunks = [];
-      res.on('data', c => chunks.push(c));
+      const chunks: Buffer[] = [];
+      res.on('data', (c: Buffer) => chunks.push(c));
       res.on('end', () => {
         const text = Buffer.concat(chunks).toString();
-        let data;
-        try { data = JSON.parse(text); } catch { data = null; }
-        resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, data });
+        let data: Record<string, unknown> | null;
+        try { data = JSON.parse(text) as Record<string, unknown>; } catch { data = null; }
+        resolve({ ok: res.statusCode! >= 200 && res.statusCode! < 300, status: res.statusCode!, data });
       });
     });
 
@@ -73,17 +175,14 @@ function daemonRequest(method, path, body) {
 /**
  * Topological sort using Kahn's algorithm.
  * Returns services in dependency-first order.
- *
- * @param {Object.<string, { needs?: string[] }>} services
- * @returns {{ order: string[], error?: string }}
  */
-export function topologicalSort(services) {
+export function topologicalSort(services: ServiceMap): TopoSortResult {
   const names = Object.keys(services);
   if (names.length === 0) return { order: [] };
 
   // Build adjacency list and in-degree map
-  const inDegree = new Map();
-  const dependents = new Map(); // dep → [services that depend on it]
+  const inDegree = new Map<string, number>();
+  const dependents = new Map<string, string[]>(); // dep -> [services that depend on it]
 
   for (const name of names) {
     inDegree.set(name, 0);
@@ -96,24 +195,24 @@ export function topologicalSort(services) {
       if (!inDegree.has(dep)) {
         return { order: [], error: `Unknown dependency: "${name}" needs "${dep}" which is not defined` };
       }
-      inDegree.set(name, inDegree.get(name) + 1);
-      dependents.get(dep).push(name);
+      inDegree.set(name, inDegree.get(name)! + 1);
+      dependents.get(dep)!.push(name);
     }
   }
 
   // Kahn's algorithm: start with nodes that have no dependencies
-  const queue = [];
+  const queue: string[] = [];
   for (const [name, degree] of inDegree) {
     if (degree === 0) queue.push(name);
   }
 
-  const order = [];
+  const order: string[] = [];
   while (queue.length > 0) {
-    const current = queue.shift();
+    const current = queue.shift()!;
     order.push(current);
 
-    for (const dependent of dependents.get(current)) {
-      const newDegree = inDegree.get(dependent) - 1;
+    for (const dependent of dependents.get(current)!) {
+      const newDegree = inDegree.get(dependent)! - 1;
       inDegree.set(dependent, newDegree);
       if (newDegree === 0) queue.push(dependent);
     }
@@ -133,9 +232,9 @@ export function topologicalSort(services) {
 /**
  * Trace a dependency cycle for error reporting.
  */
-function traceCycle(services, cycleMembers) {
+function traceCycle(services: ServiceMap, cycleMembers: string[]): string {
   const start = cycleMembers[0];
-  const visited = new Set();
+  const visited = new Set<string>();
   const path = [start];
   let current = start;
 
@@ -155,21 +254,17 @@ function traceCycle(services, cycleMembers) {
 /**
  * Resolve transitive dependencies for a target service.
  * Used by `--service <name>` to start a service and all its deps.
- *
- * @param {string} target - Service name to resolve deps for
- * @param {Object.<string, { needs?: string[] }>} services
- * @returns {{ deps: Set<string>, error?: string }}
  */
-export function resolveDependencies(target, services) {
+export function resolveDependencies(target: string, services: ServiceMap): ResolveDepsResult {
   if (!services[target]) {
     return { deps: new Set(), error: `Service "${target}" not found` };
   }
 
-  const deps = new Set();
+  const deps = new Set<string>();
   const stack = [target];
 
   while (stack.length > 0) {
-    const current = stack.pop();
+    const current = stack.pop()!;
     if (deps.has(current)) continue;
     deps.add(current);
 
@@ -188,16 +283,12 @@ export function resolveDependencies(target, services) {
 }
 
 /**
- * Normalize service config — handle both old and new field names.
+ * Normalize service config -- handle both old and new field names.
  *
  * Old: { dev, preferredPort, health }
  * New: { cmd, port, healthPath }
- *
- * @param {string} name - Service name
- * @param {Object} svc - Raw service config
- * @returns {Object} Normalized config
  */
-export function normalizeServiceConfig(name, svc) {
+export function normalizeServiceConfig(name: string, svc: RawServiceConfig): NormalizedServiceConfig {
   return {
     name,
     cmd: svc.cmd || svc.dev || null,
@@ -218,16 +309,15 @@ export function normalizeServiceConfig(name, svc) {
  * - PORT=<its own port>
  * - {SIBLING}_PORT=<port> and {SIBLING}_URL=<url> for every other local service
  * - {SIBLING}_URL=<remote url> for remote services (no PORT var)
- *
- * @param {Object.<string, Object>} services - Normalized service configs
- * @param {Object.<string, number>} portMap - service name → assigned port
- * @returns {Object.<string, Object>} service name → env vars
  */
-export function buildEnvMap(services, portMap) {
-  const envMaps = {};
+export function buildEnvMap(
+  services: Record<string, NormalizedServiceConfig>,
+  portMap: Record<string, number>
+): Record<string, Record<string, string>> {
+  const envMaps: Record<string, Record<string, string>> = {};
 
   for (const [name, svc] of Object.entries(services)) {
-    const env = { ...svc.env };
+    const env: Record<string, string> = { ...svc.env };
 
     // Own port
     if (portMap[name]) {
@@ -241,10 +331,10 @@ export function buildEnvMap(services, portMap) {
       const varPrefix = siblingName.toUpperCase().replace(/[^A-Z0-9]/g, '_');
 
       if (siblingSvc.remote) {
-        // Remote service — inject URL only
+        // Remote service -- inject URL only
         env[`${varPrefix}_URL`] = siblingSvc.remote;
       } else if (portMap[siblingName]) {
-        // Local service — inject both port and URL
+        // Local service -- inject both port and URL
         env[`${varPrefix}_PORT`] = String(portMap[siblingName]);
         env[`${varPrefix}_URL`] = `http://localhost:${portMap[siblingName]}`;
       }
@@ -262,17 +352,8 @@ export function buildEnvMap(services, portMap) {
 
 /**
  * Create an orchestrator instance.
- *
- * @param {Object} options
- * @param {Object.<string, Object>} options.services - Normalized service configs
- * @param {Object.<string, string>} options.identities - service name → semantic ID
- * @param {Object} [options.config] - Additional options
- * @param {boolean} [options.config.noHealth] - Skip health checks
- * @param {number} [options.config.healthTimeout] - Health check timeout (ms)
- * @param {string} [options.config.targetService] - Start only this service + deps
- * @returns {{ start: Function, stop: Function, getStatus: Function, on: Function }}
  */
-export function createOrchestrator(options) {
+export function createOrchestrator(options: OrchestratorOptions): OrchestratorInstance {
   const {
     services,
     identities,
@@ -286,15 +367,15 @@ export function createOrchestrator(options) {
   } = orchestratorConfig;
 
   const emitter = new EventEmitter();
-  const processes = new Map();       // name → ChildProcess
-  const portMap = {};                // name → port number
-  const statuses = new Map();        // name → 'starting'|'healthy'|'crashed'|'stopped'
+  const processes = new Map<string, ChildProcess>();       // name -> ChildProcess
+  const portMap: Record<string, number> = {};              // name -> port number
+  const statuses = new Map<string, ServiceStatus>();       // name -> status
   let stopping = false;
 
   /**
    * Determine which services to start (respecting --service flag).
    */
-  function getServicesToStart() {
+  function getServicesToStart(): Record<string, NormalizedServiceConfig> {
     if (targetService) {
       const { deps, error } = resolveDependencies(targetService, services);
       if (error) throw new Error(error);
@@ -308,23 +389,23 @@ export function createOrchestrator(options) {
   /**
    * Claim a port from the daemon for a service.
    */
-  async function claimPort(name, identity, preferredPort) {
-    const body = { id: identity };
+  async function claimPort(name: string, identity: string, preferredPort: number | null): Promise<number> {
+    const body: Record<string, unknown> = { id: identity };
     if (preferredPort) body.port = preferredPort;
 
     const res = await daemonRequest('POST', '/claim', body);
 
     if (!res.ok) {
-      throw new Error(`Failed to claim port for ${name}: ${res.data?.error || 'unknown error'}`);
+      throw new Error(`Failed to claim port for ${name}: ${(res.data as Record<string, string> | null)?.error || 'unknown error'}`);
     }
 
-    return res.data.port;
+    return (res.data as Record<string, unknown>)!.port as number;
   }
 
   /**
    * Release a port back to the daemon.
    */
-  async function releasePort(identity) {
+  async function releasePort(identity: string): Promise<void> {
     try {
       await daemonRequest('DELETE', '/release', { id: identity });
     } catch { /* best effort on shutdown */ }
@@ -333,7 +414,12 @@ export function createOrchestrator(options) {
   /**
    * Spawn a service process.
    */
-  function spawnService(name, svc, env, prefixer) {
+  function spawnService(
+    name: string,
+    svc: NormalizedServiceConfig,
+    env: Record<string, string>,
+    prefixer: PrefixerFactory | null
+  ): ChildProcess | null {
     const cmd = svc.cmd;
     if (!cmd) {
       emitter.emit('error', { name, error: `No command defined for service "${name}"` });
@@ -342,10 +428,10 @@ export function createOrchestrator(options) {
     }
 
     // Replace ${PORT} in command string
-    const resolvedCmd = cmd.replace(/\$\{PORT\}/g, portMap[name] || '');
+    const resolvedCmd = cmd.replace(/\$\{PORT\}/g, String(portMap[name] || ''));
     const [shell, shellFlag] = process.platform === 'win32'
-      ? ['cmd', '/c']
-      : ['sh', '-c'];
+      ? ['cmd', '/c'] as const
+      : ['sh', '-c'] as const;
 
     const child = spawn(shell, [shellFlag, resolvedCmd], {
       cwd: svc.dir || process.cwd(),
@@ -354,14 +440,16 @@ export function createOrchestrator(options) {
     });
 
     // Pipe through prefixer
-    const stdoutPrefix = prefixer(name, 'stdout');
-    const stderrPrefix = prefixer(name, 'stderr');
-    child.stdout.pipe(stdoutPrefix).pipe(process.stdout, { end: false });
-    child.stderr.pipe(stderrPrefix).pipe(process.stderr, { end: false });
+    if (prefixer && child.stdout && child.stderr) {
+      const stdoutPrefix = prefixer(name, 'stdout');
+      const stderrPrefix = prefixer(name, 'stderr');
+      child.stdout.pipe(stdoutPrefix).pipe(process.stdout, { end: false });
+      child.stderr.pipe(stderrPrefix).pipe(process.stderr, { end: false });
+    }
 
     // Track early crash: if process exits within 1.5s, it's a crash
     const startTime = Date.now();
-    child.on('exit', (code, signal) => {
+    child.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {
       if (stopping) return;
 
       const wasEarly = Date.now() - startTime < 1500;
@@ -377,7 +465,7 @@ export function createOrchestrator(options) {
   /**
    * Poll health endpoint until healthy or timeout.
    */
-  async function waitForHealth(name, port, healthPath) {
+  async function waitForHealth(name: string, port: number, healthPath: string): Promise<boolean> {
     if (noHealth || !port) return true;
 
     const url = `http://localhost:${port}${healthPath}`;
@@ -403,7 +491,7 @@ export function createOrchestrator(options) {
   /**
    * Start all services in dependency order.
    */
-  async function start() {
+  async function start(): Promise<void> {
     const toStart = getServicesToStart();
     const serviceNames = Object.keys(toStart);
 
@@ -430,7 +518,7 @@ export function createOrchestrator(options) {
 
     // Create prefixer for all local services
     const localNames = localServices.map(([name]) => name);
-    const prefixer = localNames.length > 0 ? createPrefixer(localNames) : null;
+    const prefixer: PrefixerFactory | null = localNames.length > 0 ? createPrefixer(localNames) : null;
 
     emitter.emit('portsReady', { portMap: { ...portMap } });
 
@@ -464,9 +552,9 @@ export function createOrchestrator(options) {
 
   /**
    * Stop all services gracefully.
-   * SIGTERM in reverse order → 5s grace → SIGKILL survivors.
+   * SIGTERM in reverse order -> 5s grace -> SIGKILL survivors.
    */
-  async function stop() {
+  async function stop(): Promise<void> {
     if (stopping) return;
     stopping = true;
 
@@ -513,9 +601,9 @@ export function createOrchestrator(options) {
     emitter.emit('stopped', { services: names });
   }
 
-  function getStatus() {
+  function getStatus(): OrchestratorStatus {
     return {
-      services: Object.fromEntries(statuses),
+      services: Object.fromEntries(statuses) as Record<string, ServiceStatus>,
       ports: { ...portMap },
       stopping
     };
@@ -525,6 +613,6 @@ export function createOrchestrator(options) {
     start,
     stop,
     getStatus,
-    on: (event, fn) => emitter.on(event, fn)
+    on: (event: string, fn: (...args: unknown[]) => void) => emitter.on(event, fn)
   };
 }

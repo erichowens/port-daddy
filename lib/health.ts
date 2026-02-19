@@ -6,24 +6,65 @@
 
 import http from 'http';
 import https from 'https';
+import type Database from 'better-sqlite3';
+
+interface HealthCheckResult {
+  healthy: boolean;
+  statusCode?: number;
+  error?: string;
+  latency?: number;
+  checkedAt: number;
+}
+
+interface CachedHealth extends HealthCheckResult {
+  serviceId: string;
+  url: string;
+}
+
+interface ServiceInfo {
+  port: number;
+  healthUrl?: string | null;
+  urls?: { local?: string } | null;
+}
+
+interface ServiceGetResult {
+  success: boolean;
+  error?: string;
+  service?: ServiceInfo;
+}
+
+interface ServicesLike {
+  get(serviceId: string): ServiceGetResult;
+}
+
+interface WaitForOptions {
+  timeout?: number;
+  checkInterval?: number;
+}
+
+interface Waiter {
+  resolve: (result: Record<string, unknown>) => void;
+  reject: (err: Error) => void;
+  timeoutId: ReturnType<typeof setTimeout>;
+}
 
 /**
  * Initialize health monitoring with a database connection
  */
-export function createHealth(db, services) {
+export function createHealth(_db: Database.Database, services: ServicesLike) {
   // Track health check intervals
-  const intervals = new Map();
+  const intervals = new Map<string, ReturnType<typeof setInterval>>();
 
   // In-memory health status cache
-  const healthCache = new Map();
+  const healthCache = new Map<string, CachedHealth>();
 
   // Callbacks waiting for services to be healthy
-  const waiters = new Map(); // serviceId -> Set<{resolve, reject, timeout}>
+  const waiters = new Map<string, Set<Waiter>>();
 
   /**
    * Perform a health check on a URL
    */
-  function checkUrl(url, timeout = 5000) {
+  function checkUrl(url: string, timeout = 5000): Promise<HealthCheckResult> {
     return new Promise((resolve) => {
       const startTime = Date.now();
 
@@ -33,7 +74,7 @@ export function createHealth(db, services) {
 
         const req = client.get(url, { timeout }, (res) => {
           const latency = Date.now() - startTime;
-          const healthy = res.statusCode >= 200 && res.statusCode < 400;
+          const healthy = (res.statusCode ?? 0) >= 200 && (res.statusCode ?? 0) < 400;
 
           // Consume response body to free socket
           res.resume();
@@ -67,7 +108,7 @@ export function createHealth(db, services) {
       } catch (err) {
         resolve({
           healthy: false,
-          error: err.message,
+          error: (err as Error).message,
           checkedAt: Date.now()
         });
       }
@@ -77,13 +118,13 @@ export function createHealth(db, services) {
   /**
    * Check health of a service
    */
-  async function check(serviceId) {
+  async function check(serviceId: string) {
     const svc = services.get(serviceId);
     if (!svc.success) {
       return { success: false, error: svc.error };
     }
 
-    const service = svc.service;
+    const service = svc.service!;
     const healthUrl = service.healthUrl;
 
     if (!healthUrl) {
@@ -129,7 +170,7 @@ export function createHealth(db, services) {
   /**
    * Get cached health status
    */
-  function getStatus(serviceId) {
+  function getStatus(serviceId: string) {
     const cached = healthCache.get(serviceId);
     if (!cached) {
       return { success: true, serviceId, healthy: null, reason: 'not checked' };
@@ -140,7 +181,7 @@ export function createHealth(db, services) {
   /**
    * Start periodic health checking for a service
    */
-  function startMonitoring(serviceId, intervalMs = 10000) {
+  function startMonitoring(serviceId: string, intervalMs = 10000) {
     // Stop existing monitoring
     stopMonitoring(serviceId);
 
@@ -160,7 +201,7 @@ export function createHealth(db, services) {
   /**
    * Stop health monitoring for a service
    */
-  function stopMonitoring(serviceId) {
+  function stopMonitoring(serviceId: string) {
     const interval = intervals.get(serviceId);
     if (interval) {
       clearInterval(interval);
@@ -173,7 +214,7 @@ export function createHealth(db, services) {
   /**
    * Wait for a service to become healthy
    */
-  function waitFor(serviceId, options = {}) {
+  function waitFor(serviceId: string, options: WaitForOptions = {}) {
     const { timeout = 60000, checkInterval = 1000 } = options;
 
     return new Promise(async (resolve, reject) => {
@@ -191,7 +232,7 @@ export function createHealth(db, services) {
       }, timeout);
 
       // Set up waiter
-      const waiter = {
+      const waiter: Waiter = {
         resolve: (result) => {
           clearTimeout(timeoutId);
           clearInterval(checkId);
@@ -204,7 +245,7 @@ export function createHealth(db, services) {
       if (!waiters.has(serviceId)) {
         waiters.set(serviceId, new Set());
       }
-      waiters.get(serviceId).add(waiter);
+      waiters.get(serviceId)!.add(waiter);
 
       // Poll until healthy
       const checkId = setInterval(async () => {
@@ -222,12 +263,12 @@ export function createHealth(db, services) {
   /**
    * Wait for multiple services to become healthy
    */
-  async function waitForAll(serviceIds, options = {}) {
+  async function waitForAll(serviceIds: string[], options: WaitForOptions = {}) {
     const { timeout = 60000 } = options;
 
     const results = await Promise.all(
       serviceIds.map(id => waitFor(id, { ...options, timeout }))
-    );
+    ) as Array<Record<string, unknown>>;
 
     return {
       success: true,
@@ -239,7 +280,7 @@ export function createHealth(db, services) {
   /**
    * Notify waiters that a service is healthy
    */
-  function notifyWaiters(serviceId, result) {
+  function notifyWaiters(serviceId: string, result: HealthCheckResult) {
     const waiting = waiters.get(serviceId);
     if (waiting) {
       for (const waiter of waiting) {
@@ -252,7 +293,7 @@ export function createHealth(db, services) {
   /**
    * Remove a waiter
    */
-  function removeWaiter(serviceId, waiter) {
+  function removeWaiter(serviceId: string, waiter: Waiter) {
     const waiting = waiters.get(serviceId);
     if (waiting) {
       waiting.delete(waiter);
@@ -266,9 +307,9 @@ export function createHealth(db, services) {
    * Get all health statuses
    */
   function listStatus() {
-    const statuses = [];
-    for (const [serviceId, status] of healthCache) {
-      statuses.push({ serviceId, ...status });
+    const statuses: CachedHealth[] = [];
+    for (const [_serviceId, status] of healthCache) {
+      statuses.push(status);
     }
     return { success: true, statuses };
   }
@@ -285,7 +326,7 @@ export function createHealth(db, services) {
    * Stop all monitoring
    */
   function stopAll() {
-    for (const [serviceId, interval] of intervals) {
+    for (const [_serviceId, interval] of intervals) {
       clearInterval(interval);
     }
     intervals.clear();

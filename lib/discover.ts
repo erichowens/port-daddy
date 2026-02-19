@@ -11,12 +11,46 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, basename, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import type { DetectedStack } from '../shared/types.js';
 import { detectStack } from './detect.js';
+
+// =============================================================================
+// Types
+// =============================================================================
+
+interface WorkspaceConfig {
+  type: 'workspaces' | 'pnpm' | 'lerna' | null;
+  patterns: string[];
+}
+
+export interface DiscoveredService {
+  dir: string;
+  stack: DetectedStack;
+  dev: string | null;
+  health: string;
+  preferredPort: number;
+  [key: string]: unknown;
+}
+
+interface NameSuggestion {
+  project: string;
+  stack: string;
+  context: string;
+  full: string;
+}
+
+interface SuggestNamesOptions {
+  useBranch?: boolean;
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
 
 /**
  * Read and parse JSON from a file, returning null on failure.
  */
-function readJson(filePath) {
+function readJson(filePath: string): unknown {
   try {
     return JSON.parse(readFileSync(filePath, 'utf8'));
   } catch {
@@ -28,8 +62,8 @@ function readJson(filePath) {
  * Expand simple globs (e.g. "packages/*") to actual directories.
  * Supports trailing /* only — no ** or complex patterns.
  */
-function expandWorkspaceGlobs(rootDir, patterns) {
-  const dirs = [];
+function expandWorkspaceGlobs(rootDir: string, patterns: string[]): string[] {
+  const dirs: string[] = [];
   for (const pattern of patterns) {
     const clean = pattern.replace(/\/?\*$/, '');
     const base = join(rootDir, clean);
@@ -50,20 +84,22 @@ function expandWorkspaceGlobs(rootDir, patterns) {
   return dirs;
 }
 
+// =============================================================================
+// Exported Functions
+// =============================================================================
+
 /**
  * Detect workspace roots for a monorepo.
  * Checks npm/yarn workspaces, pnpm-workspace.yaml, and lerna.json.
- *
- * @param {string} dir - Project root directory
- * @returns {{ type: 'workspaces'|'pnpm'|'lerna'|null, patterns: string[] }}
  */
-export function detectWorkspaceConfig(dir) {
+export function detectWorkspaceConfig(dir: string): WorkspaceConfig {
   // npm/yarn workspaces in package.json
-  const pkg = readJson(join(dir, 'package.json'));
+  const pkg = readJson(join(dir, 'package.json')) as Record<string, unknown> | null;
   if (pkg?.workspaces) {
-    const patterns = Array.isArray(pkg.workspaces)
-      ? pkg.workspaces
-      : pkg.workspaces.packages || [];
+    const workspaces = pkg.workspaces;
+    const patterns = Array.isArray(workspaces)
+      ? workspaces as string[]
+      : ((workspaces as Record<string, unknown>).packages as string[] || []);
     return { type: 'workspaces', patterns };
   }
 
@@ -87,9 +123,9 @@ export function detectWorkspaceConfig(dir) {
   // lerna.json
   const lernaPath = join(dir, 'lerna.json');
   if (existsSync(lernaPath)) {
-    const lerna = readJson(lernaPath);
+    const lerna = readJson(lernaPath) as Record<string, unknown> | null;
     if (lerna?.packages) {
-      return { type: 'lerna', patterns: lerna.packages };
+      return { type: 'lerna', patterns: lerna.packages as string[] };
     }
   }
 
@@ -98,24 +134,21 @@ export function detectWorkspaceConfig(dir) {
 
 /**
  * Discover all services in a project directory.
- *
- * @param {string} dir - Project root
- * @returns {{ type: 'single'|'monorepo', services: Object.<string, Object> }}
  */
-export function discoverServices(dir) {
+export function discoverServices(dir: string): { type: 'single' | 'monorepo'; services: Record<string, DiscoveredService> } {
   const workspaces = detectWorkspaceConfig(dir);
 
   if (workspaces.type) {
     // Monorepo: scan each workspace package
     const expanded = expandWorkspaceGlobs(dir, workspaces.patterns);
-    const services = {};
+    const services: Record<string, DiscoveredService> = {};
 
     for (const wsDir of expanded) {
       const stack = detectStack(wsDir);
       if (!stack) continue;
 
-      const pkg = readJson(join(wsDir, 'package.json'));
-      const name = pkg?.name?.replace(/^@[^/]+\//, '') || basename(wsDir);
+      const pkg = readJson(join(wsDir, 'package.json')) as Record<string, unknown> | null;
+      const name = (pkg?.name as string)?.replace(/^@[^/]+\//, '') || basename(wsDir);
 
       services[name] = {
         dir: wsDir,
@@ -135,11 +168,11 @@ export function discoverServices(dir) {
     return { type: 'single', services: {} };
   }
 
-  const pkg = readJson(join(dir, 'package.json'));
-  const name = pkg?.name || basename(resolve(dir));
+  const pkg = readJson(join(dir, 'package.json')) as Record<string, unknown> | null;
+  const name = (pkg?.name as string) || basename(resolve(dir));
   const shortName = name.replace(/^@[^/]+\//, '');
 
-  const services = {
+  const services: Record<string, DiscoveredService> = {
     [shortName]: {
       dir,
       stack,
@@ -156,8 +189,9 @@ export function discoverServices(dir) {
  * Build the dev command from package.json scripts or stack defaults.
  * Prefers npm script "dev" if it exists, otherwise uses stack detection.
  */
-function buildDevCommand(pkg, stack) {
-  if (pkg?.scripts?.dev) {
+function buildDevCommand(pkg: Record<string, unknown> | null, stack: DetectedStack): string | null {
+  const scripts = pkg?.scripts as Record<string, string> | undefined;
+  if (scripts?.dev) {
     return `npm run dev`;
   }
   return stack.devCmd || null;
@@ -166,11 +200,8 @@ function buildDevCommand(pkg, stack) {
 /**
  * Get the current git branch name safely.
  * Uses execFileSync (not execSync) to avoid shell injection.
- *
- * @param {string} cwd - Directory to run git from
- * @returns {string|null} Branch name, or null on failure
  */
-function getGitBranch(cwd) {
+function getGitBranch(cwd: string): string | null {
   try {
     return execFileSync('git', ['branch', '--show-current'], {
       cwd,
@@ -185,16 +216,14 @@ function getGitBranch(cwd) {
 
 /**
  * Suggest semantic identity names for discovered services.
- *
- * @param {Object.<string, Object>} services - Discovered services
- * @param {string} dir - Project root
- * @param {Object} [options]
- * @param {boolean} [options.useBranch=false] - Use git branch as context
- * @returns {Object.<string, { project: string, stack: string, context: string, full: string }>}
  */
-export function suggestNames(services, dir, options = {}) {
-  const pkg = readJson(join(dir, 'package.json'));
-  const project = (pkg?.name || basename(resolve(dir)))
+export function suggestNames(
+  services: Record<string, DiscoveredService>,
+  dir: string,
+  options: SuggestNamesOptions = {}
+): Record<string, NameSuggestion> {
+  const pkg = readJson(join(dir, 'package.json')) as Record<string, unknown> | null;
+  const project = ((pkg?.name as string) || basename(resolve(dir)))
     .replace(/^@[^/]+\//, '')
     .replace(/[^a-z0-9-]/gi, '-')
     .toLowerCase();
@@ -207,7 +236,7 @@ export function suggestNames(services, dir, options = {}) {
     }
   }
 
-  const suggestions = {};
+  const suggestions: Record<string, NameSuggestion> = {};
   for (const [name, svc] of Object.entries(services)) {
     const stackType = inferStackType(svc.stack);
 
@@ -225,7 +254,7 @@ export function suggestNames(services, dir, options = {}) {
 /**
  * Infer the stack type name (frontend/api/worker/static) from framework detection.
  */
-function inferStackType(stack) {
+function inferStackType(stack: DetectedStack | null): string {
   if (!stack) return 'app';
 
   const frontendFrameworks = [
@@ -250,23 +279,23 @@ function inferStackType(stack) {
 /**
  * Merge discovered services with .portdaddyrc config.
  * Config always wins — discovery fills in gaps.
- *
- * @param {Object.<string, Object>} discovered - Auto-discovered services
- * @param {Object} config - Parsed .portdaddyrc contents
- * @returns {Object.<string, Object>} - Merged services
  */
-export function mergeWithConfig(discovered, config) {
+export function mergeWithConfig(
+  discovered: Record<string, unknown>,
+  config: Record<string, unknown> | null
+): Record<string, unknown> {
   if (!config || !config.services) {
     return discovered;
   }
 
-  const merged = { ...discovered };
+  const merged: Record<string, unknown> = { ...discovered };
+  const configServices = config.services as Record<string, Record<string, unknown>>;
 
-  for (const [name, svcConfig] of Object.entries(config.services)) {
+  for (const [name, svcConfig] of Object.entries(configServices)) {
     if (merged[name]) {
       // Config overrides discovery, but discovery fills gaps
       merged[name] = {
-        ...merged[name],
+        ...(merged[name] as Record<string, unknown>),
         ...svcConfig
       };
     } else {

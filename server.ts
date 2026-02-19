@@ -11,6 +11,7 @@
  */
 
 import express from 'express';
+import type { Request, Response, NextFunction, Express } from 'express';
 import Database from 'better-sqlite3';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
@@ -36,15 +37,23 @@ import { createRoutes } from './routes/index.js';
 // Shared utilities
 import { getSystemPorts } from './shared/port-utils.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __dirname: string = dirname(fileURLToPath(import.meta.url));
 
 // =============================================================================
 // CONFIGURATION
 // =============================================================================
 
-const configPath = join(__dirname, 'config.json');
-const config = existsSync(configPath)
-  ? JSON.parse(readFileSync(configPath, 'utf8'))
+interface PortDaddyServerConfig {
+  service: { port: number; host: string };
+  ports: { range_start: number; range_end: number; reserved: number[] };
+  cleanup: { interval_ms: number };
+  logging: { level: string; file: string; error_file: string };
+  security: { rate_limit: { window_ms: number; max_requests: number } };
+}
+
+const configPath: string = join(__dirname, 'config.json');
+const config: PortDaddyServerConfig = existsSync(configPath)
+  ? JSON.parse(readFileSync(configPath, 'utf8')) as PortDaddyServerConfig
   : {
       service: { port: 9876, host: 'localhost' },
       ports: { range_start: 3100, range_end: 9999, reserved: [8080, 8000, 9876] },
@@ -53,25 +62,25 @@ const config = existsSync(configPath)
       security: { rate_limit: { window_ms: 60000, max_requests: 100 } }
     };
 
-const pkgPath = join(__dirname, 'package.json');
-const pkg = existsSync(pkgPath) ? JSON.parse(readFileSync(pkgPath, 'utf8')) : { version: '2.0.0' };
-const VERSION = pkg.version;
+const pkgPath: string = join(__dirname, 'package.json');
+const pkg: { version: string } = existsSync(pkgPath) ? JSON.parse(readFileSync(pkgPath, 'utf8')) as { version: string } : { version: '2.0.0' };
+const VERSION: string = pkg.version;
 
 // =============================================================================
 // CODE HASH (stale daemon detection)
 // =============================================================================
 
-function calculateCodeHash() {
+function calculateCodeHash(): string {
   // Dynamically discover all .js files in lib/ — no more parallel lists to maintain
-  const libDir = join(__dirname, 'lib');
-  const libFiles = existsSync(libDir)
-    ? readdirSync(libDir).filter(f => f.endsWith('.js')).sort().map(f => `lib/${f}`)
+  const libDir: string = join(__dirname, 'lib');
+  const libFiles: string[] = existsSync(libDir)
+    ? readdirSync(libDir).filter((f: string) => f.endsWith('.js')).sort().map((f: string) => `lib/${f}`)
     : [];
-  const filesToHash = ['server.js', ...libFiles];
+  const filesToHash: string[] = ['server.js', ...libFiles];
 
   const hash = createHash('sha256');
   for (const file of filesToHash) {
-    const filePath = join(__dirname, file);
+    const filePath: string = join(__dirname, file);
     if (existsSync(filePath)) {
       hash.update(readFileSync(filePath));
     }
@@ -79,16 +88,16 @@ function calculateCodeHash() {
   return hash.digest('hex').slice(0, 12);
 }
 
-const CODE_HASH = calculateCodeHash();
-const STARTED_AT = Date.now();
+const CODE_HASH: string = calculateCodeHash();
+const STARTED_AT: number = Date.now();
 
 // =============================================================================
 // LOGGING
 // =============================================================================
 
-const isSilent = process.env.PORT_DADDY_SILENT === '1';
+const isSilent: boolean = process.env.PORT_DADDY_SILENT === '1';
 
-const logger = winston.createLogger({
+const logger: winston.Logger = winston.createLogger({
   level: isSilent ? 'error' : config.logging.level,
   silent: isSilent,
   format: winston.format.combine(
@@ -120,11 +129,11 @@ if (!isSilent && process.env.NODE_ENV !== 'production') {
 // DATABASE
 // =============================================================================
 
-const DB_PATH = process.env.PORT_DADDY_DB || join(__dirname, 'port-registry.db');
-const PORT = parseInt(process.env.PORT_DADDY_PORT, 10) || config.service.port;
-const SOCK_PATH = process.env.PORT_DADDY_SOCK || '/tmp/port-daddy.sock';
-const DISABLE_TCP = process.env.PORT_DADDY_NO_TCP === '1';
-const db = new Database(DB_PATH);
+const DB_PATH: string = process.env.PORT_DADDY_DB || join(__dirname, 'port-registry.db');
+const PORT: number = parseInt(process.env.PORT_DADDY_PORT as string, 10) || config.service.port;
+const SOCK_PATH: string = process.env.PORT_DADDY_SOCK || '/tmp/port-daddy.sock';
+const DISABLE_TCP: boolean = process.env.PORT_DADDY_NO_TCP === '1';
+const db: Database.Database = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 
 db.exec(`
@@ -186,13 +195,27 @@ db.exec(`
 const services = createServices(db);
 const messaging = createMessaging(db);
 const locks = createLocks(db);
-const health = createHealth(db, services);
+// Cast services to the shape expected by createHealth — the actual runtime
+// object satisfies the interface but TS can't verify discriminated union compat.
+const health = createHealth(db, services as Parameters<typeof createHealth>[1]);
 const agents = createAgents(db);
 const activityLog = createActivityLog(db);
 const webhooks = createWebhooks(db);
 const projects = createProjects(db);
 
-const metrics = {
+interface DaemonMetrics {
+  total_assignments: number;
+  total_releases: number;
+  total_cleanups: number;
+  ports_freed_by_cleanup: number;
+  validation_failures: number;
+  race_condition_retries: number;
+  messages_published: number;
+  errors: number;
+  uptime_start: number;
+}
+
+const metrics: DaemonMetrics = {
   total_assignments: 0,
   total_releases: 0,
   total_cleanups: 0,
@@ -208,12 +231,17 @@ const metrics = {
 // CLEANUP
 // =============================================================================
 
-function cleanupStale() {
+function cleanupStale(): ReturnType<typeof services.cleanup> {
   // Cleanup V2 services and expired messages
   const serviceResult = services.cleanup();
   messaging.cleanup();
 
-  const agentCleanup = agents.cleanup(services, locks);
+  // Cast to satisfy agents.cleanup's ServicesLike/LocksLike structural interfaces.
+  // The runtime objects are compatible; the TS types have a minor mismatch in optional fields.
+  const agentCleanup = agents.cleanup(
+    services as unknown as Parameters<typeof agents.cleanup>[0],
+    locks as unknown as Parameters<typeof agents.cleanup>[1]
+  );
   if (agentCleanup.cleaned > 0) {
     logger.info('agent_cleanup', agentCleanup);
     activityLog.log(ActivityType.AGENT_CLEANUP, {
@@ -233,12 +261,12 @@ function cleanupStale() {
 // EXPRESS APP + ROUTES
 // =============================================================================
 
-const app = express();
+const app: Express = express();
 
 app.use(rateLimit({
   windowMs: config.security.rate_limit.window_ms,
   max: config.security.rate_limit.max_requests,
-  keyGenerator: (req) => {
+  keyGenerator: (req: Request): string => {
     if (req.body?.project && typeof req.body.project === 'string') {
       return `project:${req.body.project.substring(0, 50)}`;
     }
@@ -247,7 +275,7 @@ app.use(rateLimit({
     }
     return `pid:${req.headers['x-pid'] || 'unknown'}`;
   },
-  skip: (req) => req.path === '/health' || req.path === '/version',
+  skip: (req: Request): boolean => req.path === '/health' || req.path === '/version',
   message: { error: 'Too many requests, please slow down' },
   standardHeaders: true,
   legacyHeaders: false
@@ -261,8 +289,8 @@ app.use(cors({
 app.use(express.json({ limit: '10kb' }));
 app.use(express.static(join(__dirname, 'public')));
 
-app.use((req, res, next) => {
-  const start = Date.now();
+app.use((req: Request, res: Response, next: NextFunction): void => {
+  const start: number = Date.now();
   res.on('finish', () => {
     logger.info('request', {
       method: req.method,
@@ -283,7 +311,7 @@ app.use(createRoutes({
 }));
 
 // Global error handler
-app.use((err, req, res, next) => {
+app.use((err: Error & { type?: string }, req: Request, res: Response, _next: NextFunction): void => {
   logger.error('unhandled_error', {
     error: err.message,
     type: err.type || err.name,
@@ -292,10 +320,12 @@ app.use((err, req, res, next) => {
   });
 
   if (err.type === 'entity.too.large') {
-    return res.status(413).json({ error: 'request payload too large' });
+    res.status(413).json({ error: 'request payload too large' });
+    return;
   }
   if (err.type === 'entity.parse.failed') {
-    return res.status(400).json({ error: 'invalid JSON' });
+    res.status(400).json({ error: 'invalid JSON' });
+    return;
   }
   res.status(500).json({ error: 'internal server error' });
 });
@@ -306,7 +336,7 @@ app.use((err, req, res, next) => {
 
 setInterval(() => cleanupStale(), config.cleanup.interval_ms);
 
-function shutdown(signal) {
+function shutdown(signal: string): void {
   logger.info('shutdown_initiated', { signal });
   try {
     activityLog.log(ActivityType.DAEMON_STOP, {
@@ -326,7 +356,7 @@ function shutdown(signal) {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
-function onReady() {
+function onReady(): void {
   activityLog.log(ActivityType.DAEMON_START, {
     details: `Port Daddy v${VERSION} started`,
     metadata: { port: PORT, pid: process.pid, codeHash: CODE_HASH, socket: SOCK_PATH }

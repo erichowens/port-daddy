@@ -2,13 +2,49 @@
  * Distributed Locks Module
  *
  * Simple mutex locks for multi-agent coordination
- * No shell execution - pure SQLite-backed locking
+ * No shell commands - pure SQLite-backed locking
  */
+
+import type Database from 'better-sqlite3';
+
+interface LockRow {
+  name: string;
+  owner: string;
+  pid: number | null;
+  acquired_at: number;
+  expires_at: number | null;
+  metadata: string | null;
+}
+
+interface AcquireOptions {
+  owner?: string;
+  pid?: number;
+  ttl?: number;
+  metadata?: Record<string, unknown> | null;
+}
+
+interface ReleaseOptions {
+  owner?: string | null;
+  force?: boolean;
+}
+
+interface ListOptions {
+  owner?: string | null;
+}
+
+interface ExtendOptions {
+  owner?: string | null;
+  ttl?: number;
+}
+
+interface SqliteError extends Error {
+  code?: string;
+}
 
 /**
  * Initialize the locks module with a database connection
  */
-export function createLocks(db) {
+export function createLocks(db: Database.Database) {
   // Ensure locks table exists
   db.exec(`
     CREATE TABLE IF NOT EXISTS locks (
@@ -38,7 +74,7 @@ export function createLocks(db) {
    * Try to acquire a lock
    * Returns immediately with success/failure
    */
-  function acquire(name, options = {}) {
+  function acquire(name: string, options: AcquireOptions = {}) {
     if (!name || typeof name !== 'string') {
       return { success: false, error: 'lock name must be a non-empty string' };
     }
@@ -60,7 +96,7 @@ export function createLocks(db) {
     stmts.releaseExpired.run(now);
 
     // Check if lock exists
-    const existing = stmts.get.get(name);
+    const existing = stmts.get.get(name) as LockRow | undefined;
 
     if (existing) {
       // Lock is held by someone else
@@ -95,9 +131,9 @@ export function createLocks(db) {
         message: `acquired lock: ${name}`
       };
     } catch (err) {
-      if (err.code === 'SQLITE_CONSTRAINT') {
+      if ((err as SqliteError).code === 'SQLITE_CONSTRAINT') {
         // Race condition - someone else got it
-        const holder = stmts.get.get(name);
+        const holder = stmts.get.get(name) as LockRow | undefined;
         return {
           success: false,
           error: 'lock is held',
@@ -112,14 +148,14 @@ export function createLocks(db) {
   /**
    * Release a lock
    */
-  function release(name, options = {}) {
+  function release(name: string, options: ReleaseOptions = {}) {
     if (!name || typeof name !== 'string') {
       return { success: false, error: 'lock name must be a non-empty string' };
     }
 
     const { owner = null, force = false } = options;
 
-    const existing = stmts.get.get(name);
+    const existing = stmts.get.get(name) as LockRow | undefined;
     if (!existing) {
       return { success: true, released: false, message: 'lock not held' };
     }
@@ -149,7 +185,7 @@ export function createLocks(db) {
   /**
    * Check if a lock is held
    */
-  function check(name) {
+  function check(name: string) {
     if (!name || typeof name !== 'string') {
       return { success: false, error: 'lock name must be a non-empty string' };
     }
@@ -157,7 +193,7 @@ export function createLocks(db) {
     // Clean expired first
     stmts.releaseExpired.run(Date.now());
 
-    const lock = stmts.get.get(name);
+    const lock = stmts.get.get(name) as LockRow | undefined;
 
     if (!lock) {
       return { success: true, held: false, name };
@@ -178,15 +214,15 @@ export function createLocks(db) {
   /**
    * List all active locks
    */
-  function list(options = {}) {
+  function list(options: ListOptions = {}) {
     const { owner = null } = options;
 
     // Clean expired first
     stmts.releaseExpired.run(Date.now());
 
-    const locks = owner
+    const locks = (owner
       ? stmts.listByOwner.all(owner)
-      : stmts.list.all();
+      : stmts.list.all()) as LockRow[];
 
     return {
       success: true,
@@ -205,7 +241,7 @@ export function createLocks(db) {
   /**
    * Extend a lock's TTL
    */
-  function extend(name, options = {}) {
+  function extend(name: string, options: ExtendOptions = {}) {
     if (!name || typeof name !== 'string') {
       return { success: false, error: 'lock name must be a non-empty string' };
     }
@@ -213,7 +249,7 @@ export function createLocks(db) {
     const { owner = null, ttl = 300000 } = options;
     const now = Date.now();
 
-    const existing = stmts.get.get(name);
+    const existing = stmts.get.get(name) as LockRow | undefined;
     if (!existing) {
       return { success: false, error: 'lock not held' };
     }

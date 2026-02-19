@@ -16,7 +16,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import http from 'node:http';
 
-const SERVER_PATH = join(import.meta.dirname, '../../server.js');
+const SERVER_PATH = join(import.meta.dirname, '../../server.ts');
+const TSX_PATH = join(import.meta.dirname, '../../node_modules/.bin/tsx');
 
 /**
  * Start an ephemeral Port Daddy daemon for testing.
@@ -33,8 +34,8 @@ export async function startEphemeralDaemon(options = {}) {
   const dbPath = join(tmpDir, 'test.db');
   const sockPath = join(tmpDir, 'test.sock');
 
-  // Spawn daemon process
-  const child = spawn('node', [SERVER_PATH], {
+  // Spawn daemon process (use tsx to handle .ts imports)
+  const child = spawn(TSX_PATH, [SERVER_PATH], {
     env: {
       ...process.env,
       PORT_DADDY_DB: dbPath,

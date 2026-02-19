@@ -7,6 +7,7 @@
  */
 
 import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { validateChannel } from '../shared/validators.js';
 import {
   canOpenConnection,
@@ -15,23 +16,36 @@ import {
   connectionLimits
 } from '../shared/connection-tracking.js';
 
+interface MessagingRouteDeps {
+  logger: {
+    info(msg: string, meta?: Record<string, unknown>): void;
+    error?(msg: string, meta?: Record<string, unknown>): void;
+  };
+  metrics: { errors: number; messages_published: number };
+  messaging: {
+    listChannels(): unknown;
+    publish(channel: string, payload: unknown, opts: { sender?: string; expires?: unknown }): Record<string, unknown>;
+    getMessages(channel: string, opts: { limit: number; after: number | null }): unknown;
+    poll(channel: string, afterId: number): Record<string, unknown>;
+    subscribe(channel: string, callback: (message: unknown) => void): (() => void) | null;
+    clear(channel: string): unknown;
+  };
+}
+
 /**
  * Create messaging routes
  *
- * @param {Object} deps - Dependencies
- * @param {Object} deps.logger - Winston logger
- * @param {Object} deps.metrics - Metrics tracking object
- * @param {Object} deps.messaging - Messaging module instance
- * @returns {Router} Express router
+ * @param deps - Dependencies
+ * @returns Express router
  */
-export function createMessagingRoutes(deps) {
+export function createMessagingRoutes(deps: MessagingRouteDeps): Router {
   const { logger, metrics, messaging } = deps;
   const router = Router();
 
   // =========================================================================
   // GET /msg - List all channels
   // =========================================================================
-  router.get('/msg', (req, res) => {
+  router.get('/msg', (_req: Request, res: Response) => {
     try {
       const result = messaging.listChannels();
       res.json(result);
@@ -44,22 +58,22 @@ export function createMessagingRoutes(deps) {
   // =========================================================================
   // POST /msg/:channel - Publish message
   // =========================================================================
-  router.post('/msg/:channel', (req, res) => {
+  router.post('/msg/:channel', (req: Request, res: Response) => {
     try {
-      const channelValidation = validateChannel(req.params.channel);
+      const channelValidation = validateChannel((req.params.channel as string));
       if (!channelValidation.valid) {
         return res.status(400).json({ error: channelValidation.error });
       }
 
       const { payload, sender, expires } = req.body;
 
-      const result = messaging.publish(req.params.channel, payload || {}, { sender, expires });
+      const result = messaging.publish((req.params.channel as string), payload || {}, { sender, expires });
       if (!result.success) {
         return res.status(400).json({ error: result.error });
       }
 
       metrics.messages_published++;
-      logger.info('message_published', { channel: req.params.channel, id: result.id });
+      logger.info('message_published', { channel: (req.params.channel as string), id: result.id as number });
 
       res.json(result);
 
@@ -72,9 +86,9 @@ export function createMessagingRoutes(deps) {
   // =========================================================================
   // GET /msg/:channel - Get messages from channel
   // =========================================================================
-  router.get('/msg/:channel', (req, res) => {
+  router.get('/msg/:channel', (req: Request, res: Response) => {
     try {
-      const channelValidation = validateChannel(req.params.channel);
+      const channelValidation = validateChannel((req.params.channel as string));
       if (!channelValidation.valid) {
         return res.status(400).json({ error: channelValidation.error });
       }
@@ -83,12 +97,12 @@ export function createMessagingRoutes(deps) {
 
       // Security: Cap limit to prevent resource exhaustion
       const MAX_MESSAGE_LIMIT = 1000;
-      const requestedLimit = limit ? parseInt(limit, 10) : 50;
+      const requestedLimit = limit ? parseInt(limit as string, 10) : 50;
       const safeLimit = Math.min(Math.max(1, requestedLimit), MAX_MESSAGE_LIMIT);
 
-      const result = messaging.getMessages(req.params.channel, {
+      const result = messaging.getMessages((req.params.channel as string), {
         limit: safeLimit,
-        after: after ? parseInt(after, 10) : null
+        after: after ? parseInt(after as string, 10) : null
       });
 
       res.json(result);
@@ -102,11 +116,11 @@ export function createMessagingRoutes(deps) {
   // =========================================================================
   // GET /msg/:channel/poll - Long-poll for next message
   // =========================================================================
-  router.get('/msg/:channel/poll', (req, res) => {
-    const clientIp = req.ip || 'unknown';
+  router.get('/msg/:channel/poll', (req: Request, res: Response) => {
+    const clientIp: string = req.ip || 'unknown';
 
     try {
-      const channelValidation = validateChannel(req.params.channel);
+      const channelValidation = validateChannel((req.params.channel as string));
       if (!channelValidation.valid) {
         return res.status(400).json({ error: channelValidation.error });
       }
@@ -116,11 +130,11 @@ export function createMessagingRoutes(deps) {
         return res.status(429).json({ error: 'too many concurrent connections' });
       }
 
-      const afterId = req.query.after ? parseInt(req.query.after, 10) : 0;
-      const timeout = Math.min(parseInt(req.query.timeout, 10) || 30000, 60000);
+      const afterId: number = req.query.after ? parseInt(req.query.after as string, 10) : 0;
+      const timeout: number = Math.min(parseInt(req.query.timeout as string, 10) || 30000, 60000);
 
       // Check for immediate message
-      const immediate = messaging.poll(req.params.channel, afterId);
+      const immediate = messaging.poll((req.params.channel as string), afterId);
       if (immediate.message) {
         return res.json(immediate);
       }
@@ -129,9 +143,9 @@ export function createMessagingRoutes(deps) {
       trackConnection(clientIp, 'longPoll');
 
       // Set up long-poll with timeout (1000ms interval to reduce DB load)
-      const startTime = Date.now();
+      const startTime: number = Date.now();
       const checkInterval = setInterval(() => {
-        const result = messaging.poll(req.params.channel, afterId);
+        const result = messaging.poll((req.params.channel as string), afterId);
         if (result.message || (Date.now() - startTime) >= timeout) {
           clearInterval(checkInterval);
           untrackConnection(clientIp, 'longPoll');
@@ -154,11 +168,11 @@ export function createMessagingRoutes(deps) {
   // =========================================================================
   // GET /msg/:channel/subscribe - Subscribe to channel (SSE)
   // =========================================================================
-  router.get('/msg/:channel/subscribe', (req, res) => {
-    const clientIp = req.ip || 'unknown';
+  router.get('/msg/:channel/subscribe', (req: Request, res: Response) => {
+    const clientIp: string = req.ip || 'unknown';
 
     try {
-      const channelValidation = validateChannel(req.params.channel);
+      const channelValidation = validateChannel((req.params.channel as string));
       if (!channelValidation.valid) {
         return res.status(400).json({ error: channelValidation.error });
       }
@@ -178,7 +192,7 @@ export function createMessagingRoutes(deps) {
       res.flushHeaders();
 
       // Subscribe to messages (may fail if limits exceeded)
-      const unsubscribe = messaging.subscribe(req.params.channel, (message) => {
+      const unsubscribe = messaging.subscribe((req.params.channel as string), (message: unknown) => {
         res.write(`data: ${JSON.stringify(message)}\n\n`);
       });
 
@@ -188,7 +202,7 @@ export function createMessagingRoutes(deps) {
       }
 
       // Send initial ping
-      res.write('event: connected\ndata: {"channel":"' + req.params.channel + '"}\n\n');
+      res.write('event: connected\ndata: {"channel":"' + (req.params.channel as string) + '"}\n\n');
 
       // Heartbeat
       const heartbeat = setInterval(() => {
@@ -210,10 +224,10 @@ export function createMessagingRoutes(deps) {
         clearTimeout(connectionTimeout);
         unsubscribe();
         untrackConnection(clientIp, 'sse', res);
-        logger.info('sse_disconnected', { channel: req.params.channel, ip: clientIp });
+        logger.info('sse_disconnected', { channel: (req.params.channel as string), ip: clientIp });
       });
 
-      logger.info('sse_connected', { channel: req.params.channel, ip: clientIp });
+      logger.info('sse_connected', { channel: (req.params.channel as string), ip: clientIp });
 
     } catch (error) {
       metrics.errors++;
@@ -224,7 +238,7 @@ export function createMessagingRoutes(deps) {
   // =========================================================================
   // GET /channels - List channels (alias)
   // =========================================================================
-  router.get('/channels', (req, res) => {
+  router.get('/channels', (_req: Request, res: Response) => {
     try {
       const result = messaging.listChannels();
       res.json(result);
@@ -237,14 +251,14 @@ export function createMessagingRoutes(deps) {
   // =========================================================================
   // DELETE /msg/:channel - Clear channel
   // =========================================================================
-  router.delete('/msg/:channel', (req, res) => {
+  router.delete('/msg/:channel', (req: Request, res: Response) => {
     try {
-      const channelValidation = validateChannel(req.params.channel);
+      const channelValidation = validateChannel((req.params.channel as string));
       if (!channelValidation.valid) {
         return res.status(400).json({ error: channelValidation.error });
       }
 
-      const result = messaging.clear(req.params.channel);
+      const result = messaging.clear((req.params.channel as string));
       res.json(result);
 
     } catch (error) {

@@ -8,30 +8,56 @@
  */
 
 import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { scanProject, buildConfigFromScan } from '../lib/scan.js';
 import { saveConfig } from '../lib/config.js';
+import type { PortDaddyRcConfig } from '../lib/config.js';
+
+interface ProjectEntry {
+  id: string;
+  root: string;
+  type: string;
+  services: Record<string, unknown> | null;
+  config: unknown;
+  last_scanned: string;
+  created_at: string;
+  metadata: { frameworks?: string[]; [key: string]: unknown } | null;
+}
+
+interface ProjectsRouteDeps {
+  projects: {
+    register(entry: Record<string, unknown>): void;
+    get(id: string): ProjectEntry | undefined;
+    list(): ProjectEntry[];
+    remove(id: string): boolean;
+  };
+  metrics: { errors: number };
+  logger: {
+    info(msg: string, meta?: Record<string, unknown>): void;
+    error(msg: string, meta?: Record<string, unknown>): void;
+  };
+  activityLog: {
+    log?(type: string, opts: { details: string; metadata: Record<string, unknown> }): void;
+  };
+}
 
 /**
  * Create projects routes
  *
- * @param {Object} deps - Route dependencies
- * @param {Object} deps.projects - Projects module
- * @param {Object} deps.metrics - Metrics tracking object
- * @param {Object} deps.logger - Winston logger
- * @param {Object} deps.activityLog - Activity log module
- * @returns {Router} Express router with project routes
+ * @param deps - Route dependencies
+ * @returns Express router with project routes
  */
-export function createProjectsRoutes(deps) {
+export function createProjectsRoutes(deps: ProjectsRouteDeps): Router {
   const { projects, metrics, logger, activityLog } = deps;
   const router = Router();
 
   // ==========================================================================
   // POST /scan - Deep scan a directory for services
   // ==========================================================================
-  router.post('/scan', (req, res) => {
+  router.post('/scan', (req: Request, res: Response) => {
     try {
       const { dir, save = true, dryRun = false, useBranch = false } = req.body;
-      const targetDir = dir || process.cwd();
+      const targetDir: string = dir || process.cwd();
 
       // Run the deep scan
       const result = scanProject(targetDir, { useBranch });
@@ -49,14 +75,14 @@ export function createProjectsRoutes(deps) {
         metadata: {
           workspaceType: result.workspaceType,
           serviceCount: result.serviceCount,
-          frameworks: Object.values(result.services).map(s => s.stack.name)
+          frameworks: Object.values(result.services).map((s: Record<string, unknown>) => (s.stack as Record<string, unknown>).name)
         }
       });
 
       // Save .portdaddyrc unless dry-run
-      let savedPath = null;
+      let savedPath: string | null = null;
       if (save && !dryRun && result.serviceCount > 0) {
-        savedPath = saveConfig(config, targetDir);
+        savedPath = saveConfig(config as PortDaddyRcConfig, targetDir);
       }
 
       logger.info('project_scanned', {
@@ -80,11 +106,11 @@ export function createProjectsRoutes(deps) {
         type: result.type,
         serviceCount: result.serviceCount,
         services: Object.fromEntries(
-          Object.entries(result.services).map(([name, svc]) => [
+          Object.entries(result.services).map(([name, svc]: [string, Record<string, unknown>]) => [
             name,
             {
               dir: svc.relativePath || svc.dir,
-              framework: svc.stack.name,
+              framework: (svc.stack as Record<string, unknown>).name,
               dev: svc.dev,
               health: svc.health,
               preferredPort: svc.preferredPort
@@ -98,29 +124,29 @@ export function createProjectsRoutes(deps) {
         dryRun,
         guidance: result.guidance,
         existingConfig: result.existingConfig ? {
-          path: result.existingConfig._path,
-          serviceCount: Object.keys(result.existingConfig.services || {}).length
+          path: (result.existingConfig as Record<string, unknown>)._path,
+          serviceCount: Object.keys((result.existingConfig as Record<string, unknown>).services || {}).length
         } : null
       });
 
     } catch (error) {
       metrics.errors++;
-      logger.error('scan_error', { error: error.message });
-      res.status(500).json({ error: 'scan failed', details: error.message });
+      logger.error('scan_error', { error: (error as Error).message });
+      res.status(500).json({ error: 'scan failed', details: (error as Error).message });
     }
   });
 
   // ==========================================================================
   // GET /projects - List all registered projects
   // ==========================================================================
-  router.get('/projects', (req, res) => {
+  router.get('/projects', (_req: Request, res: Response) => {
     try {
       const all = projects.list();
 
       res.json({
         success: true,
         count: all.length,
-        projects: all.map(p => ({
+        projects: all.map((p: ProjectEntry) => ({
           id: p.id,
           root: p.root,
           type: p.type,
@@ -140,9 +166,9 @@ export function createProjectsRoutes(deps) {
   // ==========================================================================
   // GET /projects/:id - Get project details
   // ==========================================================================
-  router.get('/projects/:id', (req, res) => {
+  router.get('/projects/:id', (req: Request, res: Response) => {
     try {
-      const project = projects.get(req.params.id);
+      const project = projects.get((req.params.id as string));
 
       if (!project) {
         return res.status(404).json({
@@ -175,9 +201,9 @@ export function createProjectsRoutes(deps) {
   // ==========================================================================
   // DELETE /projects/:id - Remove a project
   // ==========================================================================
-  router.delete('/projects/:id', (req, res) => {
+  router.delete('/projects/:id', (req: Request, res: Response) => {
     try {
-      const removed = projects.remove(req.params.id);
+      const removed = projects.remove((req.params.id as string));
 
       if (!removed) {
         return res.status(404).json({
@@ -186,11 +212,11 @@ export function createProjectsRoutes(deps) {
         });
       }
 
-      logger.info('project_removed', { id: req.params.id });
+      logger.info('project_removed', { id: (req.params.id as string) });
 
       res.json({
         success: true,
-        message: `Project "${req.params.id}" removed`
+        message: `Project "${(req.params.id as string)}" removed`
       });
 
     } catch (error) {

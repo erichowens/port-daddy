@@ -8,13 +8,18 @@
  */
 
 import { spawn, spawnSync } from 'node:child_process';
+import type { ChildProcess, SpawnSyncReturns } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import http from 'node:http';
+import type { IncomingMessage, ClientRequest } from 'node:http';
 import { readFileSync, readdirSync, writeFileSync as fsWriteFileSync, existsSync, unlinkSync, watch } from 'node:fs';
+import type { FSWatcher } from 'node:fs';
 import { discoverServices, suggestNames, mergeWithConfig } from '../lib/discover.js';
+import type { DiscoveredService } from '../lib/discover.js';
 import { loadConfig } from '../lib/config.js';
+import type { PortDaddyRcConfig, ServiceConfig } from '../lib/config.js';
 import {
   topologicalSort,
   normalizeServiceConfig,
@@ -22,18 +27,44 @@ import {
   createOrchestrator
 } from '../lib/orchestrator.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const PORT_DADDY_URL = process.env.PORT_DADDY_URL || 'http://localhost:9876';
+const __dirname: string = dirname(fileURLToPath(import.meta.url));
+const PORT_DADDY_URL: string = process.env.PORT_DADDY_URL || 'http://localhost:9876';
 
-// Default Unix socket path — the primary transport for CLI→daemon communication.
+// Default Unix socket path — the primary transport for CLI->daemon communication.
 // Falls back to TCP (PORT_DADDY_URL) if socket doesn't exist.
-const DEFAULT_SOCK = '/tmp/port-daddy.sock';
-const SOCK_PATH = process.env.PORT_DADDY_SOCK || DEFAULT_SOCK;
+const DEFAULT_SOCK: string = '/tmp/port-daddy.sock';
+const SOCK_PATH: string = process.env.PORT_DADDY_SOCK || DEFAULT_SOCK;
+
+// =============================================================================
+// Types
+// =============================================================================
+
+interface ConnectionTarget {
+  socketPath?: string;
+  host?: string;
+  port?: number;
+}
+
+interface PdFetchResponse {
+  ok: boolean;
+  status: number | undefined;
+  headers: http.IncomingHttpHeaders;
+  json: () => Promise<Record<string, unknown>>;
+  text: () => Promise<string>;
+}
+
+interface CLIOptions {
+  [key: string]: string | boolean | undefined;
+}
+
+// =============================================================================
+// Connection & Fetch
+// =============================================================================
 
 /**
  * Resolve connection target: Unix socket or TCP.
  */
-function resolveTarget() {
+function resolveTarget(): ConnectionTarget {
   // Explicit TCP URL overrides socket
   if (process.env.PORT_DADDY_URL) {
     const url = new URL(process.env.PORT_DADDY_URL);
@@ -52,9 +83,9 @@ function resolveTarget() {
  * Returns an object matching the subset of the fetch Response API that the CLI uses:
  *   .ok, .status, .json(), .text(), .headers
  */
-function pdFetch(urlOrPath, options = {}) {
+function pdFetch(urlOrPath: string, options: { method?: string; headers?: Record<string, string | number>; body?: string | null } = {}): Promise<PdFetchResponse> {
   // Extract just the path from a full URL or use as-is if already a path
-  let path;
+  let path: string;
   if (urlOrPath.startsWith('/')) {
     path = urlOrPath;
   } else {
@@ -62,33 +93,33 @@ function pdFetch(urlOrPath, options = {}) {
     catch { path = urlOrPath; }
   }
 
-  const target = resolveTarget();
+  const target: ConnectionTarget = resolveTarget();
   const { method = 'GET', headers = {}, body = null } = options;
 
-  const reqHeaders = { ...headers };
+  const reqHeaders: Record<string, string | number> = { ...headers };
   if (body && !reqHeaders['Content-Length']) {
     reqHeaders['Content-Length'] = Buffer.byteLength(body);
   }
 
   return new Promise((resolve, reject) => {
-    const reqOpts = {
+    const reqOpts: http.RequestOptions = {
       method,
       path,
-      headers: reqHeaders,
+      headers: reqHeaders as http.OutgoingHttpHeaders,
       timeout: 10000,
       ...(target.socketPath ? { socketPath: target.socketPath } : { host: target.host, port: target.port })
     };
 
-    const req = http.request(reqOpts, (res) => {
-      const chunks = [];
-      res.on('data', chunk => chunks.push(chunk));
+    const req: ClientRequest = http.request(reqOpts, (res: IncomingMessage) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk: Buffer) => chunks.push(chunk));
       res.on('end', () => {
-        const text = Buffer.concat(chunks).toString();
+        const text: string = Buffer.concat(chunks).toString();
         resolve({
-          ok: res.statusCode >= 200 && res.statusCode < 300,
+          ok: (res.statusCode ?? 0) >= 200 && (res.statusCode ?? 0) < 300,
           status: res.statusCode,
           headers: res.headers,
-          json: async () => JSON.parse(text),
+          json: async () => JSON.parse(text) as Record<string, unknown>,
           text: async () => text
         });
       });
@@ -103,18 +134,18 @@ function pdFetch(urlOrPath, options = {}) {
 }
 
 // Calculate local code hash to compare with daemon
-function getLocalCodeHash() {
-  const libDir = join(__dirname, '..');
+function getLocalCodeHash(): string {
+  const libDir: string = join(__dirname, '..');
   // Dynamically discover all .js files in lib/ — must match server.js logic exactly
-  const libDirPath = join(libDir, 'lib');
-  const libFiles = existsSync(libDirPath)
-    ? readdirSync(libDirPath).filter(f => f.endsWith('.js')).sort().map(f => `lib/${f}`)
+  const libDirPath: string = join(libDir, 'lib');
+  const libFiles: string[] = existsSync(libDirPath)
+    ? readdirSync(libDirPath).filter((f: string) => f.endsWith('.js')).sort().map((f: string) => `lib/${f}`)
     : [];
-  const filesToHash = ['server.js', ...libFiles];
+  const filesToHash: string[] = ['server.js', ...libFiles];
 
   const hash = createHash('sha256');
   for (const file of filesToHash) {
-    const filePath = join(libDir, file);
+    const filePath: string = join(libDir, file);
     if (existsSync(filePath)) {
       hash.update(readFileSync(filePath));
     }
@@ -124,17 +155,17 @@ function getLocalCodeHash() {
 
 // Check if daemon is running stale code
 // Returns true if daemon was restarted
-async function checkDaemonFreshness(autoRestart = true) {
+async function checkDaemonFreshness(autoRestart: boolean = true): Promise<boolean> {
   try {
-    const res = await pdFetch(`${PORT_DADDY_URL}/version`);
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/version`);
     if (!res.ok) return false;
 
     const data = await res.json();
-    const localHash = getLocalCodeHash();
+    const localHash: string = getLocalCodeHash();
 
     if (data.codeHash && data.codeHash !== localHash) {
       console.error('');
-      console.error('⚠️  Daemon is running stale code');
+      console.error('\u26a0\ufe0f  Daemon is running stale code');
       console.error(`   Daemon: ${data.codeHash}  Local: ${localHash}`);
 
       if (autoRestart) {
@@ -143,15 +174,15 @@ async function checkDaemonFreshness(autoRestart = true) {
 
         // Kill the old daemon
         try {
-          process.kill(data.pid, 'SIGTERM');
+          process.kill(data.pid as number, 'SIGTERM');
         } catch {}
 
         // Wait for it to die
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise<void>(r => setTimeout(r, 500));
 
         // Start fresh daemon
-        const serverScript = join(__dirname, '..', 'server.js');
-        const child = spawn('node', [serverScript], {
+        const serverScript: string = join(__dirname, '..', 'server.js');
+        const child: ChildProcess = spawn('node', [serverScript], {
           stdio: 'ignore',
           detached: true
         });
@@ -159,17 +190,17 @@ async function checkDaemonFreshness(autoRestart = true) {
 
         // Wait for it to be ready
         for (let i = 0; i < 30; i++) {
-          await new Promise(r => setTimeout(r, 100));
+          await new Promise<void>(r => setTimeout(r, 100));
           try {
-            const healthRes = await pdFetch(`${PORT_DADDY_URL}/health`);
+            const healthRes: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/health`);
             if (healthRes.ok) {
-              console.error('   ✓ Daemon restarted with fresh code');
+              console.error('   \u2713 Daemon restarted with fresh code');
               console.error('');
               return true;
             }
           } catch {}
         }
-        console.error('   ✗ Failed to restart daemon');
+        console.error('   \u2717 Failed to restart daemon');
         process.exit(1);
       } else {
         // No auto-restart (CI mode)
@@ -185,20 +216,20 @@ async function checkDaemonFreshness(autoRestart = true) {
 }
 
 // CI mode: fail hard if daemon is stale
-async function ciGateCheck() {
+async function ciGateCheck(): Promise<void> {
   try {
-    const res = await pdFetch(`${PORT_DADDY_URL}/version`);
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/version`);
     if (!res.ok) {
       console.error('CI GATE FAILED: Daemon not running');
       process.exit(1);
     }
 
     const data = await res.json();
-    const localHash = getLocalCodeHash();
+    const localHash: string = getLocalCodeHash();
 
     if (data.codeHash !== localHash) {
       console.error('');
-      console.error('❌ CI GATE FAILED: Daemon is running stale code!');
+      console.error('\u274c CI GATE FAILED: Daemon is running stale code!');
       console.error(`   Daemon hash: ${data.codeHash}`);
       console.error(`   Local hash:  ${localHash}`);
       console.error('');
@@ -208,14 +239,14 @@ async function ciGateCheck() {
       process.exit(1);
     }
 
-    console.log('✓ CI gate passed: daemon code hash matches');
-  } catch (err) {
+    console.log('\u2713 CI gate passed: daemon code hash matches');
+  } catch (err: unknown) {
     console.error('CI GATE FAILED: Cannot connect to daemon');
     process.exit(1);
   }
 }
 
-const HELP = `
+const HELP: string = `
 Port Daddy — Semantic Port Management for Multi-Agent Development
 
 Usage: port-daddy <command> [identity] [options]
@@ -336,11 +367,11 @@ Examples:
   port-daddy install                        # Install as system service
 `;
 
-let autoStartAttempted = false;
+let autoStartAttempted: boolean = false;
 
-async function main() {
-  const args = process.argv.slice(2);
-  const command = args[0];
+async function main(): Promise<void> {
+  const args: string[] = process.argv.slice(2);
+  const command: string | undefined = args[0];
 
   if (!command || command === 'help' || command === '--help' || command === '-h') {
     console.log(HELP);
@@ -348,24 +379,24 @@ async function main() {
   }
 
   if (command === '--version' || command === '-V') {
-    const pkgPath = join(__dirname, '..', 'package.json');
-    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+    const pkgPath: string = join(__dirname, '..', 'package.json');
+    const pkg: { version: string } = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version: string };
     console.log(pkg.version);
     process.exit(0);
   }
 
   // Check for stale daemon before running commands (skip for daemon management)
-  const skipFreshnessCheck = ['start', 'stop', 'restart', 'install', 'uninstall', 'status', 'version', 'dev', 'ci-gate', 'doctor', 'diagnose', 'up', 'down'].includes(command);
+  const skipFreshnessCheck: boolean = ['start', 'stop', 'restart', 'install', 'uninstall', 'status', 'version', 'dev', 'ci-gate', 'doctor', 'diagnose', 'up', 'down'].includes(command);
   if (!skipFreshnessCheck) {
     await checkDaemonFreshness();
   }
 
   // Parse options
-  const options = {};
-  const positional = [];
+  const options: CLIOptions = {};
+  const positional: string[] = [];
 
   // Short flag mappings
-  const shortFlags = {
+  const shortFlags: Record<string, string> = {
     p: 'port',
     e: 'env',
     j: 'json',
@@ -374,18 +405,18 @@ async function main() {
   };
 
   for (let i = 1; i < args.length; i++) {
-    const arg = args[i];
+    const arg: string = args[i];
 
     if (arg.startsWith('--')) {
       // Handle --flag=value syntax
-      const eqIndex = arg.indexOf('=');
+      const eqIndex: number = arg.indexOf('=');
       if (eqIndex !== -1) {
-        const key = arg.slice(2, eqIndex);
-        const value = arg.slice(eqIndex + 1);
+        const key: string = arg.slice(2, eqIndex);
+        const value: string = arg.slice(eqIndex + 1);
         options[key] = value;
       } else {
-        const key = arg.slice(2);
-        const next = args[i + 1];
+        const key: string = arg.slice(2);
+        const next: string | undefined = args[i + 1];
         if (next && !next.startsWith('-')) {
           options[key] = next;
           i++;
@@ -395,21 +426,21 @@ async function main() {
       }
     } else if (arg.startsWith('-') && arg.length > 1) {
       // Handle short flags: -q, -p 3000, -p=3000
-      const flagPart = arg.slice(1);
-      const eqIndex = flagPart.indexOf('=');
+      const flagPart: string = arg.slice(1);
+      const eqIndex: number = flagPart.indexOf('=');
 
       if (eqIndex !== -1) {
         // -p=3000 style
-        const shortKey = flagPart.slice(0, eqIndex);
-        const value = flagPart.slice(eqIndex + 1);
-        const longKey = shortFlags[shortKey] || shortKey;
+        const shortKey: string = flagPart.slice(0, eqIndex);
+        const value: string = flagPart.slice(eqIndex + 1);
+        const longKey: string = shortFlags[shortKey] || shortKey;
         options[longKey] = value;
       } else if (flagPart.length === 1) {
         // Single short flag: -q, -j, or -p 3000
-        const longKey = shortFlags[flagPart] || flagPart;
-        const next = args[i + 1];
+        const longKey: string = shortFlags[flagPart] || flagPart;
+        const next: string | undefined = args[i + 1];
         // Check if this flag expects a value
-        const expectsValue = ['p', 'e'].includes(flagPart);
+        const expectsValue: boolean = ['p', 'e'].includes(flagPart);
         if (expectsValue && next && !next.startsWith('-')) {
           options[longKey] = next;
           i++;
@@ -419,7 +450,7 @@ async function main() {
       } else {
         // Multiple short flags combined: -qj (quiet + json)
         for (const char of flagPart) {
-          const longKey = shortFlags[char] || char;
+          const longKey: string = shortFlags[char] || char;
           options[longKey] = true;
         }
       }
@@ -456,7 +487,7 @@ async function main() {
       // Agent coordination
       case 'pub':
       case 'publish':
-        await handlePub(positional[0], positional.slice(1).join(' ') || options.message, options);
+        await handlePub(positional[0], positional.slice(1).join(' ') || (options.message as string | undefined), options);
         break;
 
       case 'sub':
@@ -575,8 +606,9 @@ async function main() {
           process.exit(1);
         }
     }
-  } catch (err) {
-    if (err.cause?.code === 'ECONNREFUSED') {
+  } catch (err: unknown) {
+    const error = err as Error & { cause?: { code?: string } };
+    if (error.cause?.code === 'ECONNREFUSED') {
       if (!autoStartAttempted) {
         // Auto-start daemon on first use
         autoStartAttempted = true;
@@ -599,7 +631,7 @@ async function main() {
         process.exit(1);
       }
     } else {
-      console.error('Error:', err.message);
+      console.error('Error:', error.message);
     }
     process.exit(1);
   }
@@ -609,23 +641,23 @@ async function main() {
 // Service Commands
 // =============================================================================
 
-async function handleClaim(id, options) {
+async function handleClaim(id: string | undefined, options: CLIOptions): Promise<void> {
   if (!id) {
     console.error('Usage: port-daddy claim <identity> [options]');
     process.exit(1);
   }
 
-  const body = { id };
-  if (options.port) body.port = parseInt(options.port, 10);
+  const body: Record<string, unknown> = { id };
+  if (options.port) body.port = parseInt(options.port as string, 10);
   if (options.range) {
-    const [min, max] = options.range.split('-').map(n => parseInt(n, 10));
+    const [min, max] = (options.range as string).split('-').map((n: string) => parseInt(n, 10));
     body.range = [min, max];
   }
   if (options.expires) body.expires = options.expires;
   if (options.pair) body.pair = options.pair;
   if (options.cmd) body.cmd = options.cmd;
 
-  const res = await pdFetch(`${PORT_DADDY_URL}/claim`, {
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/claim`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -637,7 +669,7 @@ async function handleClaim(id, options) {
   const data = await res.json();
 
   if (!res.ok) {
-    console.error(data.error || 'Failed to claim port');
+    console.error((data.error as string) || 'Failed to claim port');
     process.exit(1);
   }
 
@@ -651,14 +683,14 @@ async function handleClaim(id, options) {
     // Normal mode: friendly message to stderr, port to stdout
     // This allows: PORT=$(port-daddy claim myapp) to work
     // while still showing the user what happened
-    console.error(`${data.id} → port ${data.port}`);
+    console.error(`${data.id} \u2192 port ${data.port}`);
     if (data.existing) console.error('  (reused existing)');
     console.log(data.port);
   }
 }
 
-async function handleRelease(id, options) {
-  const body = {};
+async function handleRelease(id: string | undefined, options: CLIOptions): Promise<void> {
+  const body: Record<string, unknown> = {};
 
   if (options.expired) {
     body.expired = true;
@@ -670,7 +702,7 @@ async function handleRelease(id, options) {
     body.id = id;
   }
 
-  const res = await pdFetch(`${PORT_DADDY_URL}/release`, {
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/release`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -679,7 +711,7 @@ async function handleRelease(id, options) {
   const data = await res.json();
 
   if (!res.ok) {
-    console.error(data.error || 'Failed to release');
+    console.error((data.error as string) || 'Failed to release');
     process.exit(1);
   }
 
@@ -692,19 +724,19 @@ async function handleRelease(id, options) {
   }
 }
 
-async function handleFind(pattern, options) {
+async function handleFind(pattern: string | undefined, options: CLIOptions): Promise<void> {
   const params = new URLSearchParams();
   if (pattern) params.append('pattern', pattern);
-  if (options.status) params.append('status', options.status);
-  if (options.port) params.append('port', options.port);
+  if (options.status) params.append('status', options.status as string);
+  if (options.port) params.append('port', options.port as string);
   if (options.expired) params.append('expired', 'true');
 
-  const url = `${PORT_DADDY_URL}/services${params.toString() ? '?' + params : ''}`;
-  const res = await pdFetch(url);
+  const url: string = `${PORT_DADDY_URL}/services${params.toString() ? '?' + params : ''}`;
+  const res: PdFetchResponse = await pdFetch(url);
   const data = await res.json();
 
   if (!res.ok) {
-    console.error(data.error || 'Failed to find services');
+    console.error((data.error as string) || 'Failed to find services');
     process.exit(1);
   }
 
@@ -731,10 +763,11 @@ async function handleFind(pattern, options) {
   // This keeps stdout clean for piping/scripting
   console.error('');
   console.error('ID'.padEnd(35) + 'PORT'.padEnd(8) + 'STATUS'.padEnd(12) + 'URL');
-  console.error('─'.repeat(75));
+  console.error('\u2500'.repeat(75));
 
-  for (const svc of data.services) {
-    const localUrl = svc.urls?.local || '-';
+  const services = data.services as Array<{ id: string; port: number; status: string; urls?: { local?: string } }>;
+  for (const svc of services) {
+    const localUrl: string = svc.urls?.local || '-';
     console.error(
       svc.id.padEnd(35) +
       String(svc.port).padEnd(8) +
@@ -747,29 +780,30 @@ async function handleFind(pattern, options) {
   console.log(`Total: ${data.count} service(s)`);
 }
 
-async function handleUrl(id, options) {
+async function handleUrl(id: string | undefined, options: CLIOptions): Promise<void> {
   if (!id) {
     console.error('Usage: port-daddy url <identity> [--env <environment>]');
     process.exit(1);
   }
 
-  const env = options.env || 'local';
-  const res = await pdFetch(`${PORT_DADDY_URL}/services/${encodeURIComponent(id)}`);
+  const env: string = (options.env as string) || 'local';
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/services/${encodeURIComponent(id)}`);
   const data = await res.json();
 
   if (!res.ok) {
-    console.error(data.error || 'Service not found');
+    console.error((data.error as string) || 'Service not found');
     process.exit(1);
   }
 
-  const url = data.service.urls?.[env];
+  const service = data.service as { urls?: Record<string, string> };
+  const url: string | undefined = service.urls?.[env];
   if (!url) {
     console.error(`No ${env} URL for ${id}`);
     process.exit(1);
   }
 
   if (options.open) {
-    const openCmd = process.platform === 'darwin' ? 'open' : 'xdg-open';
+    const openCmd: string = process.platform === 'darwin' ? 'open' : 'xdg-open';
     spawn(openCmd, [url], { stdio: 'ignore', detached: true }).unref();
     console.log(`Opening ${url}`);
   } else {
@@ -777,34 +811,35 @@ async function handleUrl(id, options) {
   }
 }
 
-async function handleEnv(id, options) {
+async function handleEnv(id: string | undefined, options: CLIOptions): Promise<void> {
   const params = new URLSearchParams();
   if (id) params.append('pattern', id);
 
-  const res = await pdFetch(`${PORT_DADDY_URL}/services?${params}`);
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/services?${params}`);
   const data = await res.json();
 
   if (!res.ok) {
-    console.error(data.error || 'Failed to get services');
+    console.error((data.error as string) || 'Failed to get services');
     process.exit(1);
   }
 
-  const lines = [];
-  for (const svc of data.services) {
-    const varName = svc.id.toUpperCase().replace(/[:.]/g, '_') + '_PORT';
+  const lines: string[] = [];
+  const services = data.services as Array<{ id: string; port: number; urls?: { local?: string } }>;
+  for (const svc of services) {
+    const varName: string = svc.id.toUpperCase().replace(/[:.]/g, '_') + '_PORT';
     lines.push(`${varName}=${svc.port}`);
 
-    const urlVarName = svc.id.toUpperCase().replace(/[:.]/g, '_') + '_URL';
+    const urlVarName: string = svc.id.toUpperCase().replace(/[:.]/g, '_') + '_URL';
     if (svc.urls?.local) {
       lines.push(`${urlVarName}=${svc.urls.local}`);
     }
   }
 
-  const output = lines.join('\n');
+  const output: string = lines.join('\n');
 
   if (options.file) {
     const fs = await import('node:fs/promises');
-    await fs.writeFile(options.file, output + '\n');
+    await fs.writeFile(options.file as string, output + '\n');
     console.log(`Wrote ${lines.length} variables to ${options.file}`);
   } else {
     console.log(output);
@@ -815,20 +850,20 @@ async function handleEnv(id, options) {
 // Agent Coordination
 // =============================================================================
 
-async function handlePub(channel, message, options) {
+async function handlePub(channel: string | undefined, message: string | undefined, options: CLIOptions): Promise<void> {
   if (!channel) {
     console.error('Usage: port-daddy pub <channel> <message>');
     process.exit(1);
   }
 
-  let payload;
+  let payload: unknown;
   try {
     payload = JSON.parse(message || '{}');
   } catch {
     payload = message || '';
   }
 
-  const res = await pdFetch(`${PORT_DADDY_URL}/msg/${encodeURIComponent(channel)}`, {
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/msg/${encodeURIComponent(channel)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ payload, sender: options.sender })
@@ -837,7 +872,7 @@ async function handlePub(channel, message, options) {
   const data = await res.json();
 
   if (!res.ok) {
-    console.error(data.error || 'Failed to publish');
+    console.error((data.error as string) || 'Failed to publish');
     process.exit(1);
   }
 
@@ -848,7 +883,7 @@ async function handlePub(channel, message, options) {
   }
 }
 
-async function handleSub(channel, options) {
+async function handleSub(channel: string | undefined, options: CLIOptions): Promise<void> {
   if (!channel) {
     console.error('Usage: port-daddy sub <channel>');
     process.exit(1);
@@ -857,33 +892,33 @@ async function handleSub(channel, options) {
   console.error(`Subscribing to ${channel}... (Ctrl+C to exit)`);
 
   // SSE requires raw streaming — can't use pdFetch which buffers the full response
-  const target = resolveTarget();
-  const path = `/msg/${encodeURIComponent(channel)}/subscribe`;
+  const target: ConnectionTarget = resolveTarget();
+  const path: string = `/msg/${encodeURIComponent(channel)}/subscribe`;
 
-  const reqOpts = {
+  const reqOpts: http.RequestOptions = {
     method: 'GET',
     path,
     headers: { 'Accept': 'text/event-stream' },
     ...(target.socketPath ? { socketPath: target.socketPath } : { host: target.host, port: target.port })
   };
 
-  const req = http.request(reqOpts, (res) => {
+  const req: ClientRequest = http.request(reqOpts, (res: IncomingMessage) => {
     if (res.statusCode !== 200) {
       console.error('Failed to subscribe');
       process.exit(1);
     }
 
     res.setEncoding('utf8');
-    res.on('data', (chunk) => {
-      const lines = chunk.split('\n');
+    res.on('data', (chunk: string) => {
+      const lines: string[] = chunk.split('\n');
       for (const line of lines) {
         if (line.startsWith('data: ')) {
-          const data = line.slice(6);
+          const data: string = line.slice(6);
           if (options.json) {
             console.log(data);
           } else {
             try {
-              const msg = JSON.parse(data);
+              const msg = JSON.parse(data) as { createdAt: number; payload: unknown };
               console.log(`[${new Date(msg.createdAt).toISOString()}] ${JSON.stringify(msg.payload)}`);
             } catch {
               console.log(data);
@@ -899,7 +934,7 @@ async function handleSub(channel, options) {
     });
   });
 
-  req.on('error', (err) => {
+  req.on('error', (err: Error) => {
     console.error(`Connection error: ${err.message}`);
     process.exit(1);
   });
@@ -907,43 +942,43 @@ async function handleSub(channel, options) {
   req.end();
 
   // Keep process alive until Ctrl+C
-  await new Promise(() => {});
+  await new Promise<void>(() => {});
 }
 
 // =============================================================================
 // Multi-Agent Coordination
 // =============================================================================
 
-async function handleWait(serviceIds, options) {
+async function handleWait(serviceIds: string[], options: CLIOptions): Promise<void> {
   if (!serviceIds || serviceIds.length === 0) {
     console.error('Usage: port-daddy wait <service> [service2] [...]');
     console.error('       port-daddy wait myapp:api myapp:frontend');
     process.exit(1);
   }
 
-  const timeout = options.timeout ? parseInt(options.timeout, 10) : 60000;
+  const timeout: number = options.timeout ? parseInt(options.timeout as string, 10) : 60000;
 
   console.error(`Waiting for ${serviceIds.length} service(s) to become healthy...`);
 
   if (serviceIds.length === 1) {
     // Single service wait
-    const url = `${PORT_DADDY_URL}/wait/${encodeURIComponent(serviceIds[0])}?timeout=${timeout}`;
-    const res = await pdFetch(url);
+    const url: string = `${PORT_DADDY_URL}/wait/${encodeURIComponent(serviceIds[0])}?timeout=${timeout}`;
+    const res: PdFetchResponse = await pdFetch(url);
     const data = await res.json();
 
     if (!res.ok) {
-      console.error(data.error || 'Wait failed');
+      console.error((data.error as string) || 'Wait failed');
       process.exit(1);
     }
 
     if (options.json) {
       console.log(JSON.stringify(data, null, 2));
     } else {
-      console.log(`✓ ${serviceIds[0]} is healthy (${data.latency}ms)`);
+      console.log(`\u2713 ${serviceIds[0]} is healthy (${data.latency}ms)`);
     }
   } else {
     // Multiple services wait
-    const res = await pdFetch(`${PORT_DADDY_URL}/wait`, {
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/wait`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ services: serviceIds, timeout })
@@ -952,15 +987,16 @@ async function handleWait(serviceIds, options) {
     const data = await res.json();
 
     if (!res.ok) {
-      console.error(data.error || 'Wait failed');
+      console.error((data.error as string) || 'Wait failed');
       process.exit(1);
     }
 
     if (options.json) {
       console.log(JSON.stringify(data, null, 2));
     } else {
-      for (const svc of data.services) {
-        const icon = svc.healthy ? '✓' : '✗';
+      const svcList = data.services as Array<{ serviceId: string; healthy: boolean; latency?: number; error?: string }>;
+      for (const svc of svcList) {
+        const icon: string = svc.healthy ? '\u2713' : '\u2717';
         console.log(`${icon} ${svc.serviceId} ${svc.healthy ? `(${svc.latency}ms)` : svc.error || 'unhealthy'}`);
       }
       console.log(`\nAll services healthy: ${data.allHealthy}`);
@@ -968,19 +1004,19 @@ async function handleWait(serviceIds, options) {
   }
 }
 
-async function handleLock(name, options) {
+async function handleLock(name: string | undefined, options: CLIOptions): Promise<void> {
   if (!name) {
     console.error('Usage: port-daddy lock <name> [--ttl <ms>] [--owner <id>]');
     console.error('       port-daddy lock db-migrations');
     process.exit(1);
   }
 
-  const body = {
+  const body: Record<string, unknown> = {
     owner: options.owner,
-    ttl: options.ttl ? parseInt(options.ttl, 10) : 300000
+    ttl: options.ttl ? parseInt(options.ttl as string, 10) : 300000
   };
 
-  const res = await pdFetch(`${PORT_DADDY_URL}/locks/${encodeURIComponent(name)}`, {
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/locks/${encodeURIComponent(name)}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -994,14 +1030,14 @@ async function handleLock(name, options) {
   if (!res.ok) {
     if (data.error === 'lock is held') {
       console.error(`Lock '${name}' is held by ${data.holder}`);
-      console.error(`  Held since: ${new Date(data.heldSince).toISOString()}`);
+      console.error(`  Held since: ${new Date(data.heldSince as number).toISOString()}`);
       if (data.expiresAt) {
-        const remaining = Math.max(0, data.expiresAt - Date.now());
+        const remaining: number = Math.max(0, (data.expiresAt as number) - Date.now());
         console.error(`  Expires in: ${Math.ceil(remaining / 1000)}s`);
       }
       process.exit(1);
     }
-    console.error(data.error || 'Failed to acquire lock');
+    console.error((data.error as string) || 'Failed to acquire lock');
     process.exit(1);
   }
 
@@ -1012,24 +1048,24 @@ async function handleLock(name, options) {
   } else {
     console.log(`Acquired lock: ${name}`);
     if (data.expiresAt) {
-      const ttlSeconds = Math.ceil((data.expiresAt - data.acquiredAt) / 1000);
+      const ttlSeconds: number = Math.ceil(((data.expiresAt as number) - (data.acquiredAt as number)) / 1000);
       console.log(`  TTL: ${ttlSeconds}s`);
     }
   }
 }
 
-async function handleUnlock(name, options) {
+async function handleUnlock(name: string | undefined, options: CLIOptions): Promise<void> {
   if (!name) {
     console.error('Usage: port-daddy unlock <name> [--force]');
     process.exit(1);
   }
 
-  const body = {
+  const body: Record<string, unknown> = {
     owner: options.owner,
     force: options.force === true
   };
 
-  const res = await pdFetch(`${PORT_DADDY_URL}/locks/${encodeURIComponent(name)}`, {
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/locks/${encodeURIComponent(name)}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -1038,7 +1074,7 @@ async function handleUnlock(name, options) {
   const data = await res.json();
 
   if (!res.ok) {
-    console.error(data.error || 'Failed to release lock');
+    console.error((data.error as string) || 'Failed to release lock');
     process.exit(1);
   }
 
@@ -1053,16 +1089,16 @@ async function handleUnlock(name, options) {
   }
 }
 
-async function handleLocks(options) {
+async function handleLocks(options: CLIOptions): Promise<void> {
   const params = new URLSearchParams();
-  if (options.owner) params.append('owner', options.owner);
+  if (options.owner) params.append('owner', options.owner as string);
 
-  const url = `${PORT_DADDY_URL}/locks${params.toString() ? '?' + params : ''}`;
-  const res = await pdFetch(url);
+  const url: string = `${PORT_DADDY_URL}/locks${params.toString() ? '?' + params : ''}`;
+  const res: PdFetchResponse = await pdFetch(url);
   const data = await res.json();
 
   if (!res.ok) {
-    console.error(data.error || 'Failed to list locks');
+    console.error((data.error as string) || 'Failed to list locks');
     process.exit(1);
   }
 
@@ -1078,10 +1114,11 @@ async function handleLocks(options) {
 
   console.log('');
   console.log('NAME'.padEnd(30) + 'OWNER'.padEnd(25) + 'EXPIRES');
-  console.log('─'.repeat(70));
+  console.log('\u2500'.repeat(70));
 
-  for (const lock of data.locks) {
-    const expires = lock.expiresAt
+  const locks = data.locks as Array<{ name: string; owner: string; expiresAt?: number }>;
+  for (const lock of locks) {
+    const expires: string = lock.expiresAt
       ? new Date(lock.expiresAt).toISOString().replace('T', ' ').slice(0, 19)
       : 'never';
     console.log(
@@ -1099,17 +1136,17 @@ async function handleLocks(options) {
 // Orchestration (up/down)
 // =============================================================================
 
-const UP_PID_FILE = join(
+const UP_PID_FILE: string = join(
   process.env.HOME || process.env.USERPROFILE || '/tmp',
   '.port-daddy-up.pid'
 );
 
-async function handleUp(positional, options) {
-  const dir = options.dir || process.cwd();
+async function handleUp(positional: string[], options: CLIOptions): Promise<void> {
+  const dir: string = (options.dir as string) || process.cwd();
 
   // Ensure daemon is running
   try {
-    const healthRes = await pdFetch(`${PORT_DADDY_URL}/health`);
+    const healthRes: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/health`);
     if (!healthRes.ok) throw new Error('unhealthy');
   } catch {
     console.error('Port Daddy daemon is not running.');
@@ -1118,37 +1155,37 @@ async function handleUp(positional, options) {
   }
 
   // 1. Load config (if exists)
-  let config = null;
+  let config: PortDaddyRcConfig | null = null;
   try {
     config = loadConfig(dir);
-  } catch (err) {
-    console.error(`Config error: ${err.message}`);
+  } catch (err: unknown) {
+    console.error(`Config error: ${(err as Error).message}`);
     process.exit(1);
   }
 
   // 2. Discover services
   const discovered = discoverServices(dir);
-  const mergedServices = mergeWithConfig(discovered.services, config);
+  const mergedServices = mergeWithConfig(discovered.services, config) as Record<string, DiscoveredService>;
 
   if (Object.keys(mergedServices).length === 0) {
     // Auto-scan: try deep scan before giving up
     console.error('  No config found. Scanning...');
     console.error('');
     try {
-      const scanRes = await pdFetch(`${PORT_DADDY_URL}/scan`, {
+      const scanRes: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dir, save: true, useBranch: options.branch === true })
       });
       const scanData = await scanRes.json();
 
-      if (scanRes.ok && scanData.serviceCount > 0) {
+      if (scanRes.ok && (scanData.serviceCount as number) > 0) {
         // Scan found services — reload config and continue
         console.error(`  Scan found ${scanData.serviceCount} service(s). Config saved.`);
         console.error('');
         config = loadConfig(dir);
         const rediscovered = discoverServices(dir);
-        Object.assign(mergedServices, mergeWithConfig(rediscovered.services, config));
+        Object.assign(mergedServices, mergeWithConfig(rediscovered.services, config) as Record<string, DiscoveredService>);
       }
     } catch {
       // Scan failed silently, fall through to error below
@@ -1167,19 +1204,19 @@ async function handleUp(positional, options) {
   }
 
   // 3. Suggest semantic identities
-  const useGitBranch = options.branch === true;
-  const nameOpts = useGitBranch ? { useGitBranch: true } : {};
+  const useGitBranch: boolean = options.branch === true;
+  const nameOpts: { useBranch?: boolean } = useGitBranch ? { useBranch: true } : {};
   const identitySuggestions = suggestNames(mergedServices, dir, nameOpts);
 
-  // Build identity map: service name → full semantic ID
+  // Build identity map: service name -> full semantic ID
   // Deduplicate: if two services get the same identity, append service name
-  const identities = {};
-  const seenIds = new Map(); // full id → service name
+  const identities: Record<string, string> = {};
+  const seenIds = new Map<string, string | null>(); // full id -> service name
   for (const [name, suggestion] of Object.entries(identitySuggestions)) {
-    let id = suggestion.full;
+    let id: string = suggestion.full;
     if (seenIds.has(id)) {
       // Conflict: rename the earlier one too (if not already renamed)
-      const prevName = seenIds.get(id);
+      const prevName: string | null | undefined = seenIds.get(id);
       if (prevName && identities[prevName] === id) {
         identities[prevName] = `${suggestion.project}:${prevName}:${suggestion.context}`;
       }
@@ -1193,9 +1230,9 @@ async function handleUp(positional, options) {
   }
 
   // 4. Normalize all service configs
-  const normalizedServices = {};
+  const normalizedServices: Record<string, ReturnType<typeof normalizeServiceConfig>> = {};
   for (const [name, svc] of Object.entries(mergedServices)) {
-    normalizedServices[name] = normalizeServiceConfig(name, svc);
+    normalizedServices[name] = normalizeServiceConfig(name, svc as unknown as Parameters<typeof normalizeServiceConfig>[1]);
   }
 
   // 5. Print preview
@@ -1203,20 +1240,22 @@ async function handleUp(positional, options) {
 
   console.log('');
   if (config) {
-    console.log(`  Config: ${config._path}`);
+    console.log(`  Config: ${(config as PortDaddyRcConfig & { _path?: string })._path}`);
   } else {
     console.log(`  Config: auto-detected (${discovered.type})`);
   }
   console.log(`  Detected ${serviceEntries.length} service(s):`);
   console.log('');
 
-  const maxNameLen = Math.max(...serviceEntries.map(([n]) => n.length));
+  const maxNameLen: number = Math.max(...serviceEntries.map(([n]) => n.length));
   for (const [name, svc] of serviceEntries) {
-    const padded = name.padEnd(maxNameLen);
-    const stackLabel = svc.stack?.name || (svc.remote ? 'remote' : 'local');
-    const identity = identities[name] || name;
-    const marker = svc.remote ? '  (remote)' : '';
-    console.log(`    ${padded}  ${stackLabel.padEnd(12)} → ${identity}${marker}`);
+    const padded: string = name.padEnd(maxNameLen);
+    const svcAny = svc as unknown as Record<string, unknown>;
+    const stackObj = svcAny.stack as { name?: string } | undefined;
+    const stackLabel: string = stackObj?.name || (svcAny.remote ? 'remote' : 'local');
+    const identity: string = identities[name] || name;
+    const marker: string = svcAny.remote ? '  (remote)' : '';
+    console.log(`    ${padded}  ${stackLabel.padEnd(12)} \u2192 ${identity}${marker}`);
   }
   console.log('');
 
@@ -1233,41 +1272,48 @@ async function handleUp(positional, options) {
     identities,
     config: {
       noHealth: options['no-health'] === true,
-      healthTimeout: options.timeout ? parseInt(options.timeout, 10) : 30000,
-      targetService: options.service || null
+      healthTimeout: options.timeout ? parseInt(options.timeout as string, 10) : 30000,
+      targetService: (options.service as string) || null
     }
   });
 
   // 8. Wire events
-  orchestrator.on('portsReady', ({ portMap }) => {
+  // The orchestrator extends EventEmitter; cast listeners to satisfy TS strict mode
+  orchestrator.on('portsReady', (data: unknown) => {
+    const { portMap } = data as { portMap: Record<string, number> };
     console.log('  Claiming ports...');
     for (const [name, port] of Object.entries(portMap)) {
-      console.log(`    ${name.padEnd(maxNameLen)}  → ${port}`);
+      console.log(`    ${name.padEnd(maxNameLen)}  \u2192 ${port}`);
     }
     console.log('');
   });
 
-  orchestrator.on('healthy', ({ name, port }) => {
-    console.log(`  ✓ ${name} healthy (port ${port})`);
+  orchestrator.on('healthy', (data: unknown) => {
+    const { name, port } = data as { name: string; port: number };
+    console.log(`  \u2713 ${name} healthy (port ${port})`);
   });
 
-  orchestrator.on('healthTimeout', ({ name, port }) => {
-    console.error(`  ⚠ ${name} did not become healthy (port ${port})`);
+  orchestrator.on('healthTimeout', (data: unknown) => {
+    const { name, port } = data as { name: string; port: number };
+    console.error(`  \u26a0 ${name} did not become healthy (port ${port})`);
   });
 
-  orchestrator.on('crash', ({ name }) => {
-    console.error(`  ✗ ${name} crashed during startup`);
+  orchestrator.on('crash', (data: unknown) => {
+    const { name } = data as { name: string };
+    console.error(`  \u2717 ${name} crashed during startup`);
   });
 
-  orchestrator.on('exit', ({ name, code, signal, early }) => {
+  orchestrator.on('exit', (data: unknown) => {
+    const { name, code, signal, early } = data as { name: string; code: number; signal: string; early: boolean };
     if (early) {
-      console.error(`  ✗ ${name} exited immediately (code ${code})`);
+      console.error(`  \u2717 ${name} exited immediately (code ${code})`);
     } else {
       console.error(`  ${name} exited (code ${code}, signal ${signal})`);
     }
   });
 
-  orchestrator.on('allStarted', ({ services }) => {
+  orchestrator.on('allStarted', (data: unknown) => {
+    const { services } = data as { services: string[] };
     console.log('');
     console.log(`  All ${services.length} service(s) running. Press Ctrl+C to stop.`);
     console.log(`  Dashboard: ${PORT_DADDY_URL}/`);
@@ -1280,13 +1326,14 @@ async function handleUp(positional, options) {
     removePidFile();
   });
 
-  orchestrator.on('error', ({ name, error }) => {
+  orchestrator.on('error', (data: unknown) => {
+    const { name, error } = data as { name: string; error: string };
     console.error(`  Error in ${name}: ${error}`);
   });
 
   // 9. Handle Ctrl+C
-  let shuttingDown = false;
-  const gracefulShutdown = async () => {
+  let shuttingDown: boolean = false;
+  const gracefulShutdown = async (): Promise<void> => {
     if (shuttingDown) {
       // Double Ctrl+C: force kill
       console.error('\n  Force killing...');
@@ -1305,22 +1352,22 @@ async function handleUp(positional, options) {
   writePidFile();
 
   // 11. Start
-  console.log(`  Starting in dependency order: ${order.join(' → ')}`);
+  console.log(`  Starting in dependency order: ${order.join(' \u2192 ')}`);
   console.log('');
 
   try {
     await orchestrator.start();
-  } catch (err) {
-    console.error(`  Failed to start: ${err.message}`);
+  } catch (err: unknown) {
+    console.error(`  Failed to start: ${(err as Error).message}`);
     removePidFile();
     process.exit(1);
   }
 
   // Keep alive
-  await new Promise(() => {});
+  await new Promise<void>(() => {});
 }
 
-async function handleDown(options) {
+async function handleDown(options: CLIOptions): Promise<void> {
   // Read PID file
   try {
     if (!existsSync(UP_PID_FILE)) {
@@ -1329,8 +1376,8 @@ async function handleDown(options) {
       process.exit(1);
     }
 
-    const pidStr = readFileSync(UP_PID_FILE, 'utf-8').trim();
-    const pid = parseInt(pidStr, 10);
+    const pidStr: string = readFileSync(UP_PID_FILE, 'utf-8').trim();
+    const pid: number = parseInt(pidStr, 10);
 
     if (isNaN(pid)) {
       console.error('Invalid PID file. Removing it.');
@@ -1351,20 +1398,21 @@ async function handleDown(options) {
     console.log(`Sending shutdown signal to port-daddy up (PID ${pid})...`);
     process.kill(pid, 'SIGTERM');
     console.log('Shutdown initiated.');
-  } catch (err) {
-    if (err.code !== undefined) throw err; // Re-throw non-handled errors
-    console.error(`Failed to stop: ${err.message}`);
+  } catch (err: unknown) {
+    const error = err as Error & { code?: number };
+    if (error.code !== undefined) throw err; // Re-throw non-handled errors
+    console.error(`Failed to stop: ${error.message}`);
     process.exit(1);
   }
 }
 
-function writePidFile() {
+function writePidFile(): void {
   try {
     fsWriteFileSync(UP_PID_FILE, String(process.pid));
   } catch { /* best effort */ }
 }
 
-function removePidFile() {
+function removePidFile(): void {
   try {
     if (existsSync(UP_PID_FILE)) unlinkSync(UP_PID_FILE);
   } catch { /* best effort */ }
@@ -1374,17 +1422,17 @@ function removePidFile() {
 // Project Setup
 // =============================================================================
 
-async function handleDetect(options) {
-  const res = await pdFetch(`${PORT_DADDY_URL}/detect`, {
+async function handleDetect(options: CLIOptions): Promise<void> {
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/detect`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ dir: options.dir || process.cwd() })
+    body: JSON.stringify({ dir: (options.dir as string) || process.cwd() })
   });
 
   const data = await res.json();
 
   if (!res.ok) {
-    console.error(data.error || 'Detection failed');
+    console.error((data.error as string) || 'Detection failed');
     process.exit(1);
   }
 
@@ -1393,33 +1441,35 @@ async function handleDetect(options) {
     return;
   }
 
-  if (data.stack) {
-    console.log(`Detected: ${data.stack.name}`);
-    console.log(`  Default port: ${data.stack.defaultPort}`);
-    console.log(`  Dev command: ${data.stack.devCmd}`);
-    console.log(`  Health path: ${data.stack.healthPath || '/'}`);
+  const stack = data.stack as { name: string; defaultPort: number; devCmd: string; healthPath?: string } | null;
+  if (stack) {
+    console.log(`Detected: ${stack.name}`);
+    console.log(`  Default port: ${stack.defaultPort}`);
+    console.log(`  Dev command: ${stack.devCmd}`);
+    console.log(`  Health path: ${stack.healthPath || '/'}`);
   } else {
     console.log('No framework detected');
   }
 
   console.log('');
   console.log('Suggested identity:');
-  console.log(`  ${data.suggestedIdentity.full}`);
+  const suggestedIdentity = data.suggestedIdentity as { full: string };
+  console.log(`  ${suggestedIdentity.full}`);
 }
 
-async function handleInit(options) {
-  const save = !options.dry;
+async function handleInit(options: CLIOptions): Promise<void> {
+  const save: boolean = !options.dry;
 
-  const res = await pdFetch(`${PORT_DADDY_URL}/init`, {
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/init`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ dir: options.dir || process.cwd(), save })
+    body: JSON.stringify({ dir: (options.dir as string) || process.cwd(), save })
   });
 
   const data = await res.json();
 
   if (!res.ok) {
-    console.error(data.error || 'Init failed');
+    console.error((data.error as string) || 'Init failed');
     process.exit(1);
   }
 
@@ -1444,12 +1494,12 @@ async function handleInit(options) {
 // Scan & Projects
 // =============================================================================
 
-async function handleScan(dir, options) {
-  const targetDir = dir || options.dir || process.cwd();
-  const dryRun = options['dry-run'] === true;
-  const useBranch = options.branch === true;
+async function handleScan(dir: string | undefined, options: CLIOptions): Promise<void> {
+  const targetDir: string = dir || (options.dir as string) || process.cwd();
+  const dryRun: boolean = options['dry-run'] === true;
+  const useBranch: boolean = options.branch === true;
 
-  const res = await pdFetch(`${PORT_DADDY_URL}/scan`, {
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/scan`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ dir: targetDir, save: !dryRun, dryRun, useBranch })
@@ -1458,7 +1508,7 @@ async function handleScan(dir, options) {
   const data = await res.json();
 
   if (!res.ok) {
-    console.error(data.error || 'Scan failed');
+    console.error((data.error as string) || 'Scan failed');
     if (data.details) console.error(`  ${data.details}`);
     process.exit(1);
   }
@@ -1479,7 +1529,7 @@ async function handleScan(dir, options) {
     console.log('  No services detected.');
     console.log('');
     if (data.guidance) {
-      for (const line of data.guidance) {
+      for (const line of data.guidance as string[]) {
         console.log(`  ${line}`);
       }
     }
@@ -1490,57 +1540,59 @@ async function handleScan(dir, options) {
   console.log(`  Services (${data.serviceCount}):`);
   console.log('');
 
-  const entries = Object.entries(data.services);
-  const maxName = Math.max(...entries.map(([n]) => n.length));
+  const svcMap = data.services as Record<string, { framework?: string; preferredPort?: number; dir?: string }>;
+  const entries = Object.entries(svcMap);
+  const maxName: number = Math.max(...entries.map(([n]) => n.length));
 
   for (const [name, svc] of entries) {
-    const padded = name.padEnd(maxName);
-    const framework = svc.framework || 'unknown';
-    const port = svc.preferredPort ? `:${svc.preferredPort}` : '';
-    const dir = svc.dir || '.';
-    console.log(`    ${padded}  ${framework.padEnd(20)} ${dir}${port}`);
+    const padded: string = name.padEnd(maxName);
+    const framework: string = svc.framework || 'unknown';
+    const port: string = svc.preferredPort ? `:${svc.preferredPort}` : '';
+    const svcDir: string = svc.dir || '.';
+    console.log(`    ${padded}  ${framework.padEnd(20)} ${svcDir}${port}`);
   }
   console.log('');
 
   // Config status
   if (dryRun) {
-    console.log('  Dry run — config not saved.');
+    console.log('  Dry run \u2014 config not saved.');
     console.log('  Run without --dry-run to save .portdaddyrc');
   } else if (data.saved) {
     console.log(`  Config saved: ${data.savedPath}`);
   }
 
-  if (data.existingConfig) {
-    console.log(`  Existing config: ${data.existingConfig.path} (${data.existingConfig.serviceCount} services)`);
+  const existingConfig = data.existingConfig as { path: string; serviceCount: number } | undefined;
+  if (existingConfig) {
+    console.log(`  Existing config: ${existingConfig.path} (${existingConfig.serviceCount} services)`);
   }
 
   // Guidance
   console.log('');
   if (data.guidance) {
-    for (const line of data.guidance) {
+    for (const line of data.guidance as string[]) {
       console.log(`  ${line}`);
     }
   }
   console.log('');
 }
 
-async function handleProjects(subcommand, args, options) {
+async function handleProjects(subcommand: string | undefined, args: string[], options: CLIOptions): Promise<void> {
   // Handle "projects rm <id>"
   if (subcommand === 'rm' || subcommand === 'remove' || subcommand === 'delete') {
-    const projectId = args[0];
+    const projectId: string | undefined = args[0];
     if (!projectId) {
       console.error('Usage: port-daddy projects rm <project-id>');
       process.exit(1);
     }
 
-    const res = await pdFetch(`${PORT_DADDY_URL}/projects/${encodeURIComponent(projectId)}`, {
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/projects/${encodeURIComponent(projectId)}`, {
       method: 'DELETE'
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      console.error(data.error || 'Failed to remove project');
+      console.error((data.error as string) || 'Failed to remove project');
       process.exit(1);
     }
 
@@ -1554,11 +1606,11 @@ async function handleProjects(subcommand, args, options) {
 
   // Handle "projects <id>" — get specific project
   if (subcommand && subcommand !== 'list') {
-    const res = await pdFetch(`${PORT_DADDY_URL}/projects/${encodeURIComponent(subcommand)}`);
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/projects/${encodeURIComponent(subcommand)}`);
     const data = await res.json();
 
     if (!res.ok) {
-      console.error(data.error || 'Project not found');
+      console.error((data.error as string) || 'Project not found');
       if (data.suggestion) console.error(`  ${data.suggestion}`);
       process.exit(1);
     }
@@ -1568,7 +1620,7 @@ async function handleProjects(subcommand, args, options) {
       return;
     }
 
-    const p = data.project;
+    const p = data.project as { id: string; root: string; type: string; lastScanned: number; services?: Record<string, { stack?: { name: string } }> };
     console.log('');
     console.log(`  Project: ${p.id}`);
     console.log(`  Root:    ${p.root}`);
@@ -1580,7 +1632,7 @@ async function handleProjects(subcommand, args, options) {
       const entries = Object.entries(p.services);
       console.log(`  Services (${entries.length}):`);
       for (const [name, svc] of entries) {
-        const framework = svc?.stack?.name || 'unknown';
+        const framework: string = svc?.stack?.name || 'unknown';
         console.log(`    ${name}  ${framework}`);
       }
     }
@@ -1589,11 +1641,11 @@ async function handleProjects(subcommand, args, options) {
   }
 
   // Default: list all projects
-  const res = await pdFetch(`${PORT_DADDY_URL}/projects`);
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/projects`);
   const data = await res.json();
 
   if (!res.ok) {
-    console.error(data.error || 'Failed to list projects');
+    console.error((data.error as string) || 'Failed to list projects');
     process.exit(1);
   }
 
@@ -1615,13 +1667,14 @@ async function handleProjects(subcommand, args, options) {
   console.log(`  Registered projects (${data.count}):`);
   console.log('');
 
-  const maxId = Math.max(...data.projects.map(p => p.id.length));
-  for (const p of data.projects) {
-    const padded = p.id.padEnd(maxId);
-    const type = p.type.padEnd(9);
-    const svcCount = `${p.serviceCount} svc`;
-    const scanned = p.lastScanned ? new Date(p.lastScanned).toLocaleDateString() : 'never';
-    const frameworks = p.frameworks?.length ? p.frameworks.join(', ') : '';
+  const projectsList = data.projects as Array<{ id: string; type: string; serviceCount: number; lastScanned?: number; frameworks?: string[] }>;
+  const maxId: number = Math.max(...projectsList.map((p) => p.id.length));
+  for (const p of projectsList) {
+    const padded: string = p.id.padEnd(maxId);
+    const type: string = p.type.padEnd(9);
+    const svcCount: string = `${p.serviceCount} svc`;
+    const scanned: string = p.lastScanned ? new Date(p.lastScanned).toLocaleDateString() : 'never';
+    const frameworks: string = p.frameworks?.length ? p.frameworks.join(', ') : '';
     console.log(`    ${padded}  ${type} ${svcCount.padEnd(6)}  scanned ${scanned}  ${frameworks}`);
   }
 
@@ -1632,7 +1685,7 @@ async function handleProjects(subcommand, args, options) {
 // Agent Registry
 // =============================================================================
 
-async function handleAgent(subcommand, args, options) {
+async function handleAgent(subcommand: string | undefined, args: string[], options: CLIOptions): Promise<void> {
   if (!subcommand || subcommand === 'help') {
     console.error('Usage: port-daddy agent <subcommand> [options]');
     console.error('');
@@ -1644,19 +1697,19 @@ async function handleAgent(subcommand, args, options) {
     process.exit(1);
   }
 
-  const agentId = options.agent || `cli-${process.pid}`;
+  const agentId: string = (options.agent as string) || `cli-${process.pid}`;
 
   switch (subcommand) {
     case 'register': {
-      const body = {
+      const body: Record<string, unknown> = {
         id: agentId,
         name: options.name,
         type: options.type || 'cli',
-        maxServices: options.maxServices ? parseInt(options.maxServices, 10) : undefined,
-        maxLocks: options.maxLocks ? parseInt(options.maxLocks, 10) : undefined
+        maxServices: options.maxServices ? parseInt(options.maxServices as string, 10) : undefined,
+        maxLocks: options.maxLocks ? parseInt(options.maxLocks as string, 10) : undefined
       };
 
-      const res = await pdFetch(`${PORT_DADDY_URL}/agents`, {
+      const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/agents`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1668,7 +1721,7 @@ async function handleAgent(subcommand, args, options) {
       const data = await res.json();
 
       if (!res.ok) {
-        console.error(data.error || 'Failed to register agent');
+        console.error((data.error as string) || 'Failed to register agent');
         process.exit(1);
       }
 
@@ -1681,7 +1734,7 @@ async function handleAgent(subcommand, args, options) {
     }
 
     case 'heartbeat': {
-      const res = await pdFetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(agentId)}/heartbeat`, {
+      const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(agentId)}/heartbeat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1692,7 +1745,7 @@ async function handleAgent(subcommand, args, options) {
       const data = await res.json();
 
       if (!res.ok) {
-        console.error(data.error || 'Failed to send heartbeat');
+        console.error((data.error as string) || 'Failed to send heartbeat');
         process.exit(1);
       }
 
@@ -1705,7 +1758,7 @@ async function handleAgent(subcommand, args, options) {
     }
 
     case 'unregister': {
-      const res = await pdFetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(agentId)}`, {
+      const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(agentId)}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -1713,7 +1766,7 @@ async function handleAgent(subcommand, args, options) {
       const data = await res.json();
 
       if (!res.ok) {
-        console.error(data.error || 'Failed to unregister agent');
+        console.error((data.error as string) || 'Failed to unregister agent');
         process.exit(1);
       }
 
@@ -1727,18 +1780,18 @@ async function handleAgent(subcommand, args, options) {
 
     default: {
       // Treat as agent ID lookup
-      const res = await pdFetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(subcommand)}`);
+      const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(subcommand)}`);
       const data = await res.json();
 
       if (!res.ok) {
-        console.error(data.error || 'Agent not found');
+        console.error((data.error as string) || 'Agent not found');
         process.exit(1);
       }
 
       if (options.json) {
         console.log(JSON.stringify(data, null, 2));
       } else {
-        const agent = data.agent;
+        const agent = data.agent as { id: string; name?: string; type: string; pid: number; isActive: boolean; lastHeartbeat: number; registeredAt: number; maxServices: number; maxLocks: number };
         console.log(`Agent: ${agent.id}`);
         console.log(`  Name: ${agent.name || '-'}`);
         console.log(`  Type: ${agent.type}`);
@@ -1752,16 +1805,16 @@ async function handleAgent(subcommand, args, options) {
   }
 }
 
-async function handleAgents(options) {
+async function handleAgents(options: CLIOptions): Promise<void> {
   const params = new URLSearchParams();
   if (options.active) params.append('active', 'true');
 
-  const url = `${PORT_DADDY_URL}/agents${params.toString() ? '?' + params : ''}`;
-  const res = await pdFetch(url);
+  const url: string = `${PORT_DADDY_URL}/agents${params.toString() ? '?' + params : ''}`;
+  const res: PdFetchResponse = await pdFetch(url);
   const data = await res.json();
 
   if (!res.ok) {
-    console.error(data.error || 'Failed to list agents');
+    console.error((data.error as string) || 'Failed to list agents');
     process.exit(1);
   }
 
@@ -1777,10 +1830,11 @@ async function handleAgents(options) {
 
   console.log('');
   console.log('ID'.padEnd(25) + 'TYPE'.padEnd(10) + 'PID'.padEnd(10) + 'ACTIVE'.padEnd(10) + 'LAST HEARTBEAT');
-  console.log('─'.repeat(75));
+  console.log('\u2500'.repeat(75));
 
-  for (const agent of data.agents) {
-    const lastHb = new Date(agent.lastHeartbeat).toISOString().replace('T', ' ').slice(0, 19);
+  const agents = data.agents as Array<{ id: string; type: string; pid: number; isActive: boolean; lastHeartbeat: number }>;
+  for (const agent of agents) {
+    const lastHb: string = new Date(agent.lastHeartbeat).toISOString().replace('T', ' ').slice(0, 19);
     console.log(
       agent.id.slice(0, 24).padEnd(25) +
       agent.type.padEnd(10) +
@@ -1798,16 +1852,16 @@ async function handleAgents(options) {
 // Activity Log
 // =============================================================================
 
-async function handleLog(subcommand, options) {
+async function handleLog(subcommand: string | undefined, options: CLIOptions): Promise<void> {
   if (subcommand === 'summary') {
     const params = new URLSearchParams();
-    if (options.since) params.append('since', options.since);
+    if (options.since) params.append('since', options.since as string);
 
-    const res = await pdFetch(`${PORT_DADDY_URL}/activity/summary${params.toString() ? '?' + params : ''}`);
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/activity/summary${params.toString() ? '?' + params : ''}`);
     const data = await res.json();
 
     if (!res.ok) {
-      console.error(data.error || 'Failed to get summary');
+      console.error((data.error as string) || 'Failed to get summary');
       process.exit(1);
     }
 
@@ -1818,27 +1872,28 @@ async function handleLog(subcommand, options) {
 
     console.log('');
     console.log('Activity Summary');
-    console.log('─'.repeat(40));
+    console.log('\u2500'.repeat(40));
 
-    for (const [type, count] of Object.entries(data.summary)) {
+    const summary = data.summary as Record<string, number>;
+    for (const [type, count] of Object.entries(summary)) {
       console.log(`  ${type.padEnd(25)} ${count}`);
     }
 
-    console.log('─'.repeat(40));
+    console.log('\u2500'.repeat(40));
     console.log(`  Total: ${data.total}`);
-    if (data.since > 0) {
-      console.log(`  Since: ${new Date(data.since).toISOString()}`);
+    if ((data.since as number) > 0) {
+      console.log(`  Since: ${new Date(data.since as number).toISOString()}`);
     }
     console.log('');
     return;
   }
 
   if (subcommand === 'stats') {
-    const res = await pdFetch(`${PORT_DADDY_URL}/activity/stats`);
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/activity/stats`);
     const data = await res.json();
 
     if (!res.ok) {
-      console.error(data.error || 'Failed to get stats');
+      console.error((data.error as string) || 'Failed to get stats');
       process.exit(1);
     }
 
@@ -1847,10 +1902,10 @@ async function handleLog(subcommand, options) {
       return;
     }
 
-    const stats = data.stats;
+    const stats = data.stats as { totalEntries: number; maxEntries: number; retentionMs: number; oldestEntry?: number; newestEntry?: number };
     console.log('');
     console.log('Activity Log Stats');
-    console.log('─'.repeat(40));
+    console.log('\u2500'.repeat(40));
     console.log(`  Total entries: ${stats.totalEntries}`);
     console.log(`  Max entries: ${stats.maxEntries}`);
     console.log(`  Retention: ${Math.floor(stats.retentionMs / 86400000)} days`);
@@ -1866,17 +1921,17 @@ async function handleLog(subcommand, options) {
 
   // Default: show recent activity
   const params = new URLSearchParams();
-  if (options.limit) params.append('limit', options.limit);
-  if (options.type) params.append('type', options.type);
-  if (options.agent) params.append('agent', options.agent);
-  if (options.target) params.append('target', options.target);
+  if (options.limit) params.append('limit', options.limit as string);
+  if (options.type) params.append('type', options.type as string);
+  if (options.agent) params.append('agent', options.agent as string);
+  if (options.target) params.append('target', options.target as string);
   if (subcommand && subcommand !== 'recent') params.append('type', subcommand);
 
-  const res = await pdFetch(`${PORT_DADDY_URL}/activity${params.toString() ? '?' + params : ''}`);
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/activity${params.toString() ? '?' + params : ''}`);
   const data = await res.json();
 
   if (!res.ok) {
-    console.error(data.error || 'Failed to get activity');
+    console.error((data.error as string) || 'Failed to get activity');
     process.exit(1);
   }
 
@@ -1892,10 +1947,11 @@ async function handleLog(subcommand, options) {
 
   console.log('');
   console.log('TIMESTAMP'.padEnd(22) + 'TYPE'.padEnd(20) + 'AGENT'.padEnd(18) + 'DETAILS');
-  console.log('─'.repeat(85));
+  console.log('\u2500'.repeat(85));
 
-  for (const entry of data.entries) {
-    const time = new Date(entry.timestamp).toISOString().replace('T', ' ').slice(0, 19);
+  const entries = data.entries as Array<{ timestamp: number; type: string; agentId?: string; details?: string }>;
+  for (const entry of entries) {
+    const time: string = new Date(entry.timestamp).toISOString().replace('T', ' ').slice(0, 19);
     console.log(
       time.padEnd(22) +
       entry.type.slice(0, 19).padEnd(20) +
@@ -1912,15 +1968,15 @@ async function handleLog(subcommand, options) {
 // Daemon Management
 // =============================================================================
 
-async function handleDaemon(action) {
-  const installScript = join(__dirname, '..', 'install-daemon.js');
-  const serverScript = join(__dirname, '..', 'server.js');
+async function handleDaemon(action: string): Promise<void> {
+  const installScript: string = join(__dirname, '..', 'install-daemon.js');
+  const serverScript: string = join(__dirname, '..', 'server.js');
 
   switch (action) {
     case 'start': {
       // Check if already running
       try {
-        const res = await pdFetch(`${PORT_DADDY_URL}/health`);
+        const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/health`);
         if (res.ok) {
           console.log('Port Daddy is already running');
           return;
@@ -1928,7 +1984,7 @@ async function handleDaemon(action) {
       } catch {}
 
       console.log('Starting Port Daddy daemon...');
-      const child = spawn('node', [serverScript], {
+      const child: ChildProcess = spawn('node', [serverScript], {
         stdio: 'ignore',
         detached: true
       });
@@ -1936,9 +1992,9 @@ async function handleDaemon(action) {
 
       // Wait for it to be ready
       for (let i = 0; i < 30; i++) {
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise<void>(r => setTimeout(r, 100));
         try {
-          const res = await pdFetch(`${PORT_DADDY_URL}/health`);
+          const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/health`);
           if (res.ok) {
             console.log('Port Daddy daemon started');
             return;
@@ -1952,9 +2008,9 @@ async function handleDaemon(action) {
 
     case 'stop': {
       try {
-        const res = await pdFetch(`${PORT_DADDY_URL}/health`);
+        const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/health`);
         const data = await res.json();
-        process.kill(data.pid, 'SIGTERM');
+        process.kill(data.pid as number, 'SIGTERM');
         console.log('Port Daddy daemon stopped');
       } catch {
         console.log('Port Daddy is not running');
@@ -1964,34 +2020,34 @@ async function handleDaemon(action) {
 
     case 'restart': {
       await handleDaemon('stop');
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise<void>(r => setTimeout(r, 1000));
       await handleDaemon('start');
       break;
     }
 
     case 'install': {
-      const result = spawnSync('node', [installScript, 'install'], { stdio: 'inherit' });
-      process.exit(result.status);
+      const result: SpawnSyncReturns<Buffer> = spawnSync('node', [installScript, 'install'], { stdio: 'inherit' });
+      process.exit(result.status ?? 1);
       break;
     }
 
     case 'uninstall': {
-      const result = spawnSync('node', [installScript, 'uninstall'], { stdio: 'inherit' });
-      process.exit(result.status);
+      const result: SpawnSyncReturns<Buffer> = spawnSync('node', [installScript, 'uninstall'], { stdio: 'inherit' });
+      process.exit(result.status ?? 1);
       break;
     }
   }
 }
 
-async function handleStatus() {
+async function handleStatus(): Promise<void> {
   try {
-    const res = await pdFetch(`${PORT_DADDY_URL}/health`);
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/health`);
     const data = await res.json();
 
     console.log(`Port Daddy is running`);
     console.log(`  Version: ${data.version}`);
     console.log(`  PID: ${data.pid}`);
-    console.log(`  Uptime: ${Math.floor(data.uptime_seconds / 60)}m ${data.uptime_seconds % 60}s`);
+    console.log(`  Uptime: ${Math.floor((data.uptime_seconds as number) / 60)}m ${(data.uptime_seconds as number) % 60}s`);
     console.log(`  Active ports: ${data.active_ports}`);
   } catch {
     console.log('Port Daddy is not running');
@@ -2001,26 +2057,34 @@ async function handleStatus() {
   }
 }
 
-async function handleVersion() {
+async function handleVersion(): Promise<void> {
   try {
-    const res = await pdFetch(`${PORT_DADDY_URL}/version`);
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/version`);
     const data = await res.json();
     console.log(`Port Daddy ${data.version}`);
     console.log(`Code hash: ${data.codeHash}`);
     console.log(`Server PID: ${data.pid}`);
-    console.log(`Uptime: ${Math.floor(data.uptime / 60)}m`);
+    console.log(`Uptime: ${Math.floor((data.uptime as number) / 60)}m`);
   } catch {
     console.log('Port Daddy v2.0.0 (server not running)');
   }
 }
 
-async function handleDoctor() {
-  const results = [];
-  let passed = 0;
-  let total = 0;
-  let hasCriticalFailure = false;
+async function handleDoctor(): Promise<void> {
+  interface CheckResult {
+    ok: boolean;
+    name: string;
+    detail: string;
+    hint?: string;
+    critical?: boolean;
+  }
 
-  function check(name, ok, detail, hint) {
+  const results: CheckResult[] = [];
+  let passed: number = 0;
+  let total: number = 0;
+  let hasCriticalFailure: boolean = false;
+
+  function check(name: string, ok: boolean, detail: string, hint?: string): void {
     total++;
     if (ok) {
       passed++;
@@ -2030,7 +2094,7 @@ async function handleDoctor() {
     }
   }
 
-  function criticalFail(name, detail, hint) {
+  function criticalFail(name: string, detail: string, hint: string): void {
     total++;
     hasCriticalFailure = true;
     results.push({ ok: false, name, detail, hint, critical: true });
@@ -2040,29 +2104,29 @@ async function handleDoctor() {
   // 1. Node.js version
   // -------------------------------------------------------------------------
   try {
-    const nodeVersion = process.version;
-    const major = parseInt(nodeVersion.slice(1).split('.')[0], 10);
+    const nodeVersion: string = process.version;
+    const major: number = parseInt(nodeVersion.slice(1).split('.')[0], 10);
     if (major >= 18) {
       check('Node.js version', true, `${nodeVersion} (>= 18 required)`);
     } else {
       criticalFail('Node.js version', `${nodeVersion} (>= 18 required)`, 'Upgrade Node.js to version 18 or later');
     }
-  } catch (err) {
-    criticalFail('Node.js version', `Error: ${err.message}`, 'Ensure Node.js is installed');
+  } catch (err: unknown) {
+    criticalFail('Node.js version', `Error: ${(err as Error).message}`, 'Ensure Node.js is installed');
   }
 
   // -------------------------------------------------------------------------
   // 2. Dependencies installed
   // -------------------------------------------------------------------------
   try {
-    const nodeModulesPath = join(__dirname, '..', 'node_modules');
-    const pkgPath = join(__dirname, '..', 'package.json');
-    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-    const deps = Object.keys(pkg.dependencies || {});
-    const missing = [];
+    const nodeModulesPath: string = join(__dirname, '..', 'node_modules');
+    const pkgPath: string = join(__dirname, '..', 'package.json');
+    const pkg: { dependencies?: Record<string, string> } = JSON.parse(readFileSync(pkgPath, 'utf8'));
+    const deps: string[] = Object.keys(pkg.dependencies || {});
+    const missing: string[] = [];
 
     for (const dep of deps) {
-      const depPath = join(nodeModulesPath, dep);
+      const depPath: string = join(nodeModulesPath, dep);
       if (!existsSync(depPath)) {
         missing.push(dep);
       }
@@ -2073,15 +2137,15 @@ async function handleDoctor() {
     } else {
       criticalFail('Dependencies', `Missing: ${missing.join(', ')}`, 'Run: npm install');
     }
-  } catch (err) {
-    criticalFail('Dependencies', `Error: ${err.message}`, 'Run: npm install');
+  } catch (err: unknown) {
+    criticalFail('Dependencies', `Error: ${(err as Error).message}`, 'Run: npm install');
   }
 
   // -------------------------------------------------------------------------
   // 3. Database exists and is writable
   // -------------------------------------------------------------------------
   try {
-    const dbPath = join(__dirname, '..', 'port-registry.db');
+    const dbPath: string = join(__dirname, '..', 'port-registry.db');
     if (existsSync(dbPath)) {
       // Check if writable by trying to open for writing
       const { accessSync, constants } = await import('node:fs');
@@ -2095,18 +2159,18 @@ async function handleDoctor() {
       // Database not existing is fine if daemon hasn't started yet
       check('Database', true, 'port-registry.db will be created on first start');
     }
-  } catch (err) {
-    check('Database', false, `Error: ${err.message}`, 'Check port-registry.db permissions');
+  } catch (err: unknown) {
+    check('Database', false, `Error: ${(err as Error).message}`, 'Check port-registry.db permissions');
   }
 
   // -------------------------------------------------------------------------
   // 4. Network: Can we reach localhost:9876
   // -------------------------------------------------------------------------
-  let daemonData = null;
-  let daemonRunning = false;
+  let daemonData: Record<string, unknown> | null = null;
+  let daemonRunning: boolean = false;
 
   try {
-    const res = await pdFetch(`${PORT_DADDY_URL}/health`);
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/health`);
     if (res.ok) {
       daemonData = await res.json();
       daemonRunning = true;
@@ -2132,10 +2196,10 @@ async function handleDoctor() {
   // -------------------------------------------------------------------------
   try {
     if (daemonRunning) {
-      const versionRes = await pdFetch(`${PORT_DADDY_URL}/version`);
+      const versionRes: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/version`);
       if (versionRes.ok) {
         const versionData = await versionRes.json();
-        const localHash = getLocalCodeHash();
+        const localHash: string = getLocalCodeHash();
 
         if (versionData.codeHash === localHash) {
           check('Code hash', true, `Matches (${localHash})`);
@@ -2150,8 +2214,8 @@ async function handleDoctor() {
     } else {
       check('Code hash', false, 'Daemon not running, cannot verify', 'Run: port-daddy start');
     }
-  } catch (err) {
-    check('Code hash', false, `Error: ${err.message}`, 'Run: port-daddy restart');
+  } catch (err: unknown) {
+    check('Code hash', false, `Error: ${(err as Error).message}`, 'Run: port-daddy restart');
   }
 
   // -------------------------------------------------------------------------
@@ -2163,7 +2227,7 @@ async function handleDoctor() {
     } else {
       // Check if something else is using 9876
       const net = await import('node:net');
-      const portInUse = await new Promise((resolve) => {
+      const portInUse: boolean = await new Promise((resolve) => {
         const server = net.createServer();
         server.once('error', () => resolve(true));
         server.once('listening', () => {
@@ -2179,8 +2243,8 @@ async function handleDoctor() {
         check('Port 9876', true, 'Available (daemon not running)');
       }
     }
-  } catch (err) {
-    check('Port 9876', false, `Error: ${err.message}`, 'Run: lsof -i :9876 to investigate');
+  } catch (err: unknown) {
+    check('Port 9876', false, `Error: ${(err as Error).message}`, 'Run: lsof -i :9876 to investigate');
   }
 
   // -------------------------------------------------------------------------
@@ -2189,10 +2253,10 @@ async function handleDoctor() {
   try {
     if (process.platform === 'darwin') {
       const homedir = (await import('node:os')).homedir();
-      const plistPath = join(homedir, 'Library', 'LaunchAgents', 'com.portdaddy.daemon.plist');
+      const plistPath: string = join(homedir, 'Library', 'LaunchAgents', 'com.portdaddy.daemon.plist');
 
       if (existsSync(plistPath)) {
-        const result = spawnSync('launchctl', ['list', 'com.portdaddy.daemon'], {
+        const result: SpawnSyncReturns<Buffer> = spawnSync('launchctl', ['list', 'com.portdaddy.daemon'], {
           stdio: ['pipe', 'pipe', 'pipe']
         });
 
@@ -2205,7 +2269,7 @@ async function handleDoctor() {
         }
       } else {
         // Check for legacy plist
-        const legacyPath = join(homedir, 'Library', 'LaunchAgents', 'com.erichowens.port-daddy.plist');
+        const legacyPath: string = join(homedir, 'Library', 'LaunchAgents', 'com.erichowens.port-daddy.plist');
         if (existsSync(legacyPath)) {
           check('System service', false,
             'Legacy LaunchAgent found (com.erichowens.port-daddy)',
@@ -2218,13 +2282,13 @@ async function handleDoctor() {
       }
     } else if (process.platform === 'linux') {
       const homedir = (await import('node:os')).homedir();
-      const unitPath = join(homedir, '.config', 'systemd', 'user', 'port-daddy.service');
+      const unitPath: string = join(homedir, '.config', 'systemd', 'user', 'port-daddy.service');
 
       if (existsSync(unitPath)) {
-        const result = spawnSync('systemctl', ['--user', 'is-active', 'port-daddy.service'], {
+        const result: SpawnSyncReturns<string> = spawnSync('systemctl', ['--user', 'is-active', 'port-daddy.service'], {
           encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe']
         });
-        const state = (result.stdout || '').trim();
+        const state: string = (result.stdout || '').trim();
 
         if (state === 'active') {
           check('System service', true, 'systemd user service active');
@@ -2243,10 +2307,10 @@ async function handleDoctor() {
           'Run: port-daddy install');
       }
     } else {
-      check('System service', true, `N/A (${process.platform} — use: port-daddy start)`);
+      check('System service', true, `N/A (${process.platform} \u2014 use: port-daddy start)`);
     }
-  } catch (err) {
-    check('System service', false, `Error: ${err.message}`, 'Run: port-daddy install');
+  } catch (err: unknown) {
+    check('System service', false, `Error: ${(err as Error).message}`, 'Run: port-daddy install');
   }
 
   // -------------------------------------------------------------------------
@@ -2254,12 +2318,13 @@ async function handleDoctor() {
   // -------------------------------------------------------------------------
   try {
     if (daemonRunning) {
-      const servicesRes = await pdFetch(`${PORT_DADDY_URL}/services`);
+      const servicesRes: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/services`);
       if (servicesRes.ok) {
         const servicesData = await servicesRes.json();
-        let staleCount = 0;
+        let staleCount: number = 0;
 
-        for (const svc of servicesData.services || []) {
+        const svcList = (servicesData.services || []) as Array<{ pid?: number }>;
+        for (const svc of svcList) {
           if (svc.pid) {
             try {
               process.kill(svc.pid, 0);
@@ -2282,8 +2347,8 @@ async function handleDoctor() {
     } else {
       check('Stale services', true, 'Daemon not running (no services to check)');
     }
-  } catch (err) {
-    check('Stale services', false, `Error: ${err.message}`, null);
+  } catch (err: unknown) {
+    check('Stale services', false, `Error: ${(err as Error).message}`);
   }
 
   // -------------------------------------------------------------------------
@@ -2316,9 +2381,9 @@ async function handleDoctor() {
   }
 }
 
-async function handleDev() {
-  const libDir = join(__dirname, '..');
-  const filesToWatch = [
+async function handleDev(): Promise<void> {
+  const libDir: string = join(__dirname, '..');
+  const filesToWatch: string[] = [
     'server.js',
     'lib/services.js',
     'lib/messaging.js',
@@ -2334,7 +2399,7 @@ async function handleDev() {
 
   console.log('');
   console.log('Port Daddy Dev Mode');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501');
   console.log('Watching source files for changes...');
   console.log('Press Ctrl+C to exit');
   console.log('');
@@ -2342,14 +2407,14 @@ async function handleDev() {
   // Start daemon first
   await handleDaemon('start');
 
-  let restartTimeout = null;
-  let lastHash = getLocalCodeHash();
+  let restartTimeout: ReturnType<typeof setTimeout> | null = null;
+  let lastHash: string = getLocalCodeHash();
 
   // Debounced restart
-  const scheduleRestart = () => {
+  const scheduleRestart = (): void => {
     if (restartTimeout) clearTimeout(restartTimeout);
     restartTimeout = setTimeout(async () => {
-      const newHash = getLocalCodeHash();
+      const newHash: string = getLocalCodeHash();
       if (newHash !== lastHash) {
         lastHash = newHash;
         console.log('');
@@ -2357,16 +2422,16 @@ async function handleDev() {
 
         // Kill current daemon
         try {
-          const res = await pdFetch(`${PORT_DADDY_URL}/health`);
+          const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/health`);
           const data = await res.json();
-          process.kill(data.pid, 'SIGTERM');
+          process.kill(data.pid as number, 'SIGTERM');
         } catch {}
 
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise<void>(r => setTimeout(r, 500));
 
         // Start new daemon
-        const serverScript = join(__dirname, '..', 'server.js');
-        const child = spawn('node', [serverScript], {
+        const serverScript: string = join(__dirname, '..', 'server.js');
+        const child: ChildProcess = spawn('node', [serverScript], {
           stdio: 'ignore',
           detached: true
         });
@@ -2374,44 +2439,44 @@ async function handleDev() {
 
         // Wait for ready
         for (let i = 0; i < 30; i++) {
-          await new Promise(r => setTimeout(r, 100));
+          await new Promise<void>(r => setTimeout(r, 100));
           try {
-            const healthRes = await pdFetch(`${PORT_DADDY_URL}/health`);
+            const healthRes: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/health`);
             if (healthRes.ok) {
-              console.log(`[${new Date().toLocaleTimeString()}] ✓ Daemon restarted (hash: ${newHash})`);
+              console.log(`[${new Date().toLocaleTimeString()}] \u2713 Daemon restarted (hash: ${newHash})`);
               return;
             }
           } catch {}
         }
-        console.log(`[${new Date().toLocaleTimeString()}] ✗ Failed to restart daemon`);
+        console.log(`[${new Date().toLocaleTimeString()}] \u2717 Failed to restart daemon`);
       }
     }, 300); // 300ms debounce
   };
 
   // Watch each file
-  const watchers = [];
+  const watchers: FSWatcher[] = [];
   for (const file of filesToWatch) {
-    const filePath = join(libDir, file);
+    const filePath: string = join(libDir, file);
     if (existsSync(filePath)) {
       try {
-        const watcher = watch(filePath, (eventType) => {
+        const watcher: FSWatcher = watch(filePath, (eventType: string) => {
           if (eventType === 'change') {
             scheduleRestart();
           }
         });
         watchers.push(watcher);
         console.log(`  Watching: ${file}`);
-      } catch (err) {
-        console.error(`  Failed to watch ${file}: ${err.message}`);
+      } catch (err: unknown) {
+        console.error(`  Failed to watch ${file}: ${(err as Error).message}`);
       }
     }
   }
 
   // Also watch the lib directory for new files
-  const libPath = join(libDir, 'lib');
+  const libPath: string = join(libDir, 'lib');
   if (existsSync(libPath)) {
     try {
-      const libWatcher = watch(libPath, (eventType, filename) => {
+      const libWatcher: FSWatcher = watch(libPath, (eventType: string, filename: string | null) => {
         if (filename && filename.endsWith('.js')) {
           scheduleRestart();
         }
@@ -2428,12 +2493,12 @@ async function handleDev() {
   // Keep process alive
   process.on('SIGINT', () => {
     console.log('\nStopping dev mode...');
-    watchers.forEach(w => w.close());
+    watchers.forEach((w: FSWatcher) => w.close());
     process.exit(0);
   });
 
   // Keep alive
-  await new Promise(() => {});
+  await new Promise<void>(() => {});
 }
 
 main();

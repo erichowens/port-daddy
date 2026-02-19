@@ -7,6 +7,7 @@
 
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
+import type { StackSignature, DetectedStack, SuggestedIdentity } from '../shared/types.js';
 
 /**
  * Known stack signatures
@@ -14,7 +15,7 @@ import { join } from 'path';
  *
  * stackType values: 'frontend', 'api', 'ssg', 'mobile', 'desktop', 'worker', 'container', 'static', 'bundler'
  */
-const STACK_SIGNATURES = [
+const STACK_SIGNATURES: readonly StackSignature[] = [
   // ========================================================================
   // Node.js Meta-frameworks (check first - they're more specific)
   // ========================================================================
@@ -748,15 +749,23 @@ const STACK_SIGNATURES = [
   }
 ];
 
+interface PackageJson {
+  name?: string;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  workspaces?: string[] | { packages?: string[] };
+  scripts?: Record<string, string>;
+}
+
 /**
  * Read and parse package.json from a directory
  */
-function readPackageJson(dir) {
+function readPackageJson(dir: string): PackageJson | null {
   const pkgPath = join(dir, 'package.json');
   if (!existsSync(pkgPath)) return null;
 
   try {
-    return JSON.parse(readFileSync(pkgPath, 'utf-8'));
+    return JSON.parse(readFileSync(pkgPath, 'utf-8')) as PackageJson;
   } catch {
     return null;
   }
@@ -765,7 +774,7 @@ function readPackageJson(dir) {
 /**
  * Read Python requirements
  */
-function readPythonRequirements(dir) {
+function readPythonRequirements(dir: string): string[] {
   const reqPath = join(dir, 'requirements.txt');
   if (!existsSync(reqPath)) return [];
 
@@ -783,7 +792,7 @@ function readPythonRequirements(dir) {
 /**
  * Read Ruby dependencies from Gemfile
  */
-function readRubyDeps(dir) {
+function readRubyDeps(dir: string): string[] {
   const gemfilePath = join(dir, 'Gemfile');
   if (!existsSync(gemfilePath)) return [];
 
@@ -804,13 +813,16 @@ function readRubyDeps(dir) {
 /**
  * Read PHP dependencies from composer.json
  */
-function readPhpDeps(dir) {
+function readPhpDeps(dir: string): string[] {
   const composerPath = join(dir, 'composer.json');
   if (!existsSync(composerPath)) return [];
 
   try {
-    const content = JSON.parse(readFileSync(composerPath, 'utf-8'));
-    const deps = [];
+    const content = JSON.parse(readFileSync(composerPath, 'utf-8')) as {
+      require?: Record<string, string>;
+      'require-dev'?: Record<string, string>;
+    };
+    const deps: string[] = [];
     if (content.require) deps.push(...Object.keys(content.require));
     if (content['require-dev']) deps.push(...Object.keys(content['require-dev']));
     return deps.map(d => d.toLowerCase());
@@ -822,7 +834,7 @@ function readPhpDeps(dir) {
 /**
  * Read Java/JVM dependencies from pom.xml or build.gradle
  */
-function readJavaDeps(dir) {
+function readJavaDeps(dir: string): string[] {
   // Try pom.xml first
   const pomPath = join(dir, 'pom.xml');
   if (existsSync(pomPath)) {
@@ -864,7 +876,7 @@ function readJavaDeps(dir) {
 /**
  * Read Elixir dependencies from mix.exs
  */
-function readElixirDeps(dir) {
+function readElixirDeps(dir: string): string[] {
   const mixPath = join(dir, 'mix.exs');
   if (!existsSync(mixPath)) return [];
 
@@ -885,7 +897,7 @@ function readElixirDeps(dir) {
 /**
  * Read .NET dependencies from *.csproj files
  */
-function readDotnetDeps(dir) {
+function readDotnetDeps(dir: string): string[] {
   try {
     const files = readdirSync(dir);
     const csprojFile = files.find(f => f.endsWith('.csproj'));
@@ -907,14 +919,14 @@ function readDotnetDeps(dir) {
 /**
  * Check if any of the signature files exist
  */
-function hasFiles(dir, files) {
+function hasFiles(dir: string, files: string[]): boolean {
   return files.some(f => existsSync(join(dir, f)));
 }
 
 /**
  * Check if package.json has any of the dependencies
  */
-function hasDependencies(pkg, deps) {
+function hasDependencies(pkg: PackageJson | null, deps: string[]): boolean {
   if (!pkg || !deps.length) return false;
 
   const allDeps = {
@@ -928,7 +940,7 @@ function hasDependencies(pkg, deps) {
 /**
  * Detect the stack for a directory
  */
-export function detectStack(dir = process.cwd()) {
+export function detectStack(dir: string = process.cwd()): DetectedStack | null {
   const pkg = readPackageJson(dir);
   const pythonDeps = readPythonRequirements(dir);
   const rubyDeps = readRubyDeps(dir);
@@ -940,42 +952,42 @@ export function detectStack(dir = process.cwd()) {
   for (const sig of STACK_SIGNATURES) {
     // Check file signatures
     if (sig.files.length && hasFiles(dir, sig.files)) {
-      return { ...sig, detected: 'file' };
+      return { ...sig, detected: 'file' as const };
     }
 
     // Check npm dependencies
     if (sig.dependencies.length && hasDependencies(pkg, sig.dependencies)) {
-      return { ...sig, detected: 'dependency' };
+      return { ...sig, detected: 'dependency' as const };
     }
 
     // Check Python dependencies
     if (sig.pythonDeps && sig.pythonDeps.some(d => pythonDeps.includes(d))) {
-      return { ...sig, detected: 'python' };
+      return { ...sig, detected: 'python' as const };
     }
 
     // Check Ruby dependencies
     if (sig.rubyDeps && sig.rubyDeps.some(d => rubyDeps.includes(d))) {
-      return { ...sig, detected: 'ruby' };
+      return { ...sig, detected: 'ruby' as const };
     }
 
     // Check PHP dependencies
     if (sig.phpDeps && sig.phpDeps.length && sig.phpDeps.some(d => phpDeps.includes(d))) {
-      return { ...sig, detected: 'php' };
+      return { ...sig, detected: 'php' as const };
     }
 
     // Check Java/JVM dependencies
     if (sig.javaDeps && sig.javaDeps.some(d => javaDeps.some(jd => jd.startsWith(d)))) {
-      return { ...sig, detected: 'java' };
+      return { ...sig, detected: 'java' as const };
     }
 
     // Check Elixir dependencies
     if (sig.elixirDeps && sig.elixirDeps.some(d => elixirDeps.includes(d))) {
-      return { ...sig, detected: 'elixir' };
+      return { ...sig, detected: 'elixir' as const };
     }
 
     // Check .NET dependencies
     if (sig.dotnetDeps && sig.dotnetDeps.some(d => dotnetDeps.some(nd => nd.startsWith(d)))) {
-      return { ...sig, detected: 'dotnet' };
+      return { ...sig, detected: 'dotnet' as const };
     }
   }
 
@@ -985,7 +997,7 @@ export function detectStack(dir = process.cwd()) {
 /**
  * Get the dev command for a stack, with port injection
  */
-export function getDevCommand(stack, port) {
+export function getDevCommand(stack: StackSignature | null, port: number | string): string | null {
   if (!stack) return null;
 
   let cmd = stack.devCmd;
@@ -1004,7 +1016,7 @@ export function getDevCommand(stack, port) {
 /**
  * Get recommended port range for a stack
  */
-export function getPortRange(stack) {
+export function getPortRange(stack: StackSignature | null): [number, number] {
   if (!stack) return [3100, 3199];
 
   const base = stack.defaultPort;
@@ -1015,8 +1027,20 @@ export function getPortRange(stack) {
 /**
  * Detect multiple services in a monorepo
  */
-export function detectServices(dir = process.cwd()) {
-  const services = [];
+interface DetectServicesMonorepoResult {
+  type: 'monorepo';
+  workspaces: string[];
+}
+
+interface DetectServicesSingleResult {
+  type: 'single';
+  services: Array<{ name: string; stack: DetectedStack; dir: string }>;
+}
+
+type DetectServicesResult = DetectServicesMonorepoResult | DetectServicesSingleResult;
+
+export function detectServices(dir: string = process.cwd()): DetectServicesResult {
+  const services: Array<{ name: string; stack: DetectedStack; dir: string }> = [];
   const pkg = readPackageJson(dir);
 
   // Check for workspaces (npm/yarn/pnpm)
@@ -1046,7 +1070,7 @@ export function detectServices(dir = process.cwd()) {
 /**
  * Suggest a service identity based on detection
  */
-export function suggestIdentity(dir = process.cwd()) {
+export function suggestIdentity(dir: string = process.cwd()): SuggestedIdentity {
   const pkg = readPackageJson(dir);
   const stack = detectStack(dir);
 

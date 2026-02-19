@@ -4,16 +4,72 @@
  * Handles: claim, release, find operations with semantic identities
  */
 
-import { parseIdentity, patternToSql, matchesPattern } from './identity.js';
+import type Database from 'better-sqlite3';
+import { parseIdentity, patternToSql } from './identity.js';
 import { parseExpires } from './utils.js';
 
-const DEFAULT_RANGE = [3100, 9999];
+const DEFAULT_RANGE: [number, number] = [3100, 9999];
 const RESERVED_PORTS = new Set([8080, 8000, 9876]);
+
+interface ServiceRow {
+  id: string;
+  port: number;
+  pid: number | null;
+  cmd: string | null;
+  cwd: string | null;
+  status: string;
+  created_at: number;
+  last_seen: number;
+  expires_at: number | null;
+  restart_policy: string | null;
+  health_url: string | null;
+  tunnel_provider: string | null;
+  tunnel_url: string | null;
+  paired_with: string | null;
+  metadata: string | null;
+}
+
+interface EndpointRow {
+  service_id: string;
+  env: string;
+  url: string;
+  created_at: number;
+  updated_at: number;
+}
+
+interface PortRow {
+  port: number;
+}
+
+interface ClaimOptions {
+  port?: number;
+  range?: [number, number];
+  pid?: number | null;
+  cmd?: string | null;
+  cwd?: string | null;
+  expires?: string | number | null;
+  restart?: string;
+  health?: string | null;
+  pair?: string | null;
+  metadata?: Record<string, unknown> | null;
+  systemPorts?: Set<number>;
+}
+
+interface ReleaseOptions {
+  expired?: boolean;
+}
+
+interface FindOptions {
+  status?: string;
+  port?: number;
+  expired?: boolean;
+  limit?: number;
+}
 
 /**
  * Initialize the services module with a database connection
  */
-export function createServices(db) {
+export function createServices(db: Database.Database) {
   // Prepared statements
   const stmts = {
     getById: db.prepare('SELECT * FROM services WHERE id = ?'),
@@ -60,9 +116,9 @@ export function createServices(db) {
   /**
    * Find an available port in the given range
    */
-  function findAvailablePort(range = DEFAULT_RANGE, systemPorts = new Set()) {
+  function findAvailablePort(range: [number, number] = DEFAULT_RANGE, systemPorts: Set<number> = new Set()): number {
     const [min, max] = range;
-    const usedPorts = new Set(stmts.getAllPorts.all().map(r => r.port));
+    const usedPorts = new Set((stmts.getAllPorts.all() as PortRow[]).map(r => r.port));
 
     for (let port = min; port <= max; port++) {
       if (!usedPorts.has(port) && !RESERVED_PORTS.has(port) && !systemPorts.has(port)) {
@@ -76,7 +132,7 @@ export function createServices(db) {
   /**
    * Claim a port for a service
    */
-  function claim(id, options = {}) {
+  function claim(id: string, options: ClaimOptions = {}) {
     const parsed = parseIdentity(id);
     if (!parsed.valid) {
       return { success: false, error: parsed.error };
@@ -98,11 +154,11 @@ export function createServices(db) {
       health = null,
       pair = null,
       metadata = null,
-      systemPorts = new Set()
+      systemPorts = new Set<number>()
     } = options;
 
     // Check for existing service
-    const existing = stmts.getById.get(parsed.normalized);
+    const existing = stmts.getById.get(parsed.normalized) as ServiceRow | undefined;
 
     if (existing) {
       // Update last_seen and return existing port
@@ -127,9 +183,9 @@ export function createServices(db) {
     }
 
     // Find a port
-    let port;
+    let port: number | undefined;
     if (preferredPort && !RESERVED_PORTS.has(preferredPort) && !systemPorts.has(preferredPort)) {
-      const conflict = stmts.getByPort.get(preferredPort);
+      const conflict = stmts.getByPort.get(preferredPort) as ServiceRow | undefined;
       if (!conflict) {
         port = preferredPort;
       }
@@ -139,14 +195,15 @@ export function createServices(db) {
       try {
         port = findAvailablePort(range, systemPorts);
       } catch (err) {
-        return { success: false, error: err.message };
+        return { success: false, error: (err as Error).message };
       }
     }
 
     // Calculate expiration
-    let expiresAt = null;
+    let expiresAt: number | null = null;
     if (expires) {
-      expiresAt = now + parseExpires(expires);
+      const parsed2 = parseExpires(expires);
+      expiresAt = parsed2 !== null ? now + parsed2 : null;
     }
 
     // Insert new service
@@ -185,7 +242,7 @@ export function createServices(db) {
         message: preferredPort === port ? 'assigned preferred port' : 'assigned new port'
       };
     } catch (err) {
-      if (err.code === 'SQLITE_CONSTRAINT') {
+      if ((err as NodeJS.ErrnoException).code === 'SQLITE_CONSTRAINT') {
         return { success: false, error: 'port already in use' };
       }
       throw err;
@@ -195,7 +252,7 @@ export function createServices(db) {
   /**
    * Release service(s) by ID or pattern
    */
-  function release(idOrPattern, options = {}) {
+  function release(idOrPattern: string, options: ReleaseOptions = {}) {
     const parsed = parseIdentity(idOrPattern);
     if (!parsed.valid) {
       return { success: false, error: parsed.error };
@@ -216,7 +273,7 @@ export function createServices(db) {
     if (parsed.hasWildcard) {
       // Pattern-based release
       const sqlPattern = patternToSql(idOrPattern);
-      const services = stmts.getByPattern.all(sqlPattern);
+      const services = stmts.getByPattern.all(sqlPattern) as ServiceRow[];
 
       for (const svc of services) {
         stmts.deleteAllEndpoints.run(svc.id);
@@ -231,7 +288,7 @@ export function createServices(db) {
     }
 
     // Single service release
-    const existing = stmts.getById.get(parsed.normalized);
+    const existing = stmts.getById.get(parsed.normalized) as ServiceRow | undefined;
     if (!existing) {
       return { success: true, released: 0, message: 'service not found' };
     }
@@ -250,13 +307,13 @@ export function createServices(db) {
   /**
    * Find services matching criteria
    */
-  function find(idOrPattern = '*', options = {}) {
+  function find(idOrPattern: string = '*', options: FindOptions = {}) {
     const { status, port, expired, limit = 100 } = options;
 
-    let services;
+    let services: ServiceRow[];
 
     if (idOrPattern === '*' || idOrPattern === '*:*:*') {
-      services = stmts.getAllActive.all();
+      services = stmts.getAllActive.all() as ServiceRow[];
     } else {
       const parsed = parseIdentity(idOrPattern);
       if (!parsed.valid) {
@@ -264,7 +321,7 @@ export function createServices(db) {
       }
 
       const sqlPattern = patternToSql(idOrPattern);
-      services = stmts.getByPattern.all(sqlPattern);
+      services = stmts.getByPattern.all(sqlPattern) as ServiceRow[];
     }
 
     // Apply filters
@@ -285,8 +342,8 @@ export function createServices(db) {
 
     // Enrich with endpoints
     const enriched = services.map(svc => {
-      const endpoints = stmts.getEndpoints.all(svc.id);
-      const urls = {};
+      const endpoints = stmts.getEndpoints.all(svc.id) as EndpointRow[];
+      const urls: Record<string, string> = {};
       for (const ep of endpoints) {
         urls[ep.env] = ep.url;
       }
@@ -317,19 +374,19 @@ export function createServices(db) {
   /**
    * Get a single service by ID
    */
-  function get(id) {
+  function get(id: string) {
     const parsed = parseIdentity(id);
     if (!parsed.valid) {
       return { success: false, error: parsed.error };
     }
 
-    const svc = stmts.getById.get(parsed.normalized);
+    const svc = stmts.getById.get(parsed.normalized) as ServiceRow | undefined;
     if (!svc) {
       return { success: false, error: 'service not found' };
     }
 
-    const endpoints = stmts.getEndpoints.all(svc.id);
-    const urls = {};
+    const endpoints = stmts.getEndpoints.all(svc.id) as EndpointRow[];
+    const urls: Record<string, string> = {};
     for (const ep of endpoints) {
       urls[ep.env] = ep.url;
     }
@@ -360,13 +417,13 @@ export function createServices(db) {
   /**
    * Set an endpoint URL for a service
    */
-  function setEndpoint(id, env, url) {
+  function setEndpoint(id: string, env: string, url: string) {
     const parsed = parseIdentity(id);
     if (!parsed.valid) {
       return { success: false, error: parsed.error };
     }
 
-    const svc = stmts.getById.get(parsed.normalized);
+    const svc = stmts.getById.get(parsed.normalized) as ServiceRow | undefined;
     if (!svc) {
       return { success: false, error: 'service not found' };
     }
@@ -380,7 +437,7 @@ export function createServices(db) {
   /**
    * Update service status
    */
-  function setStatus(id, status) {
+  function setStatus(id: string, status: string) {
     const parsed = parseIdentity(id);
     if (!parsed.valid) {
       return { success: false, error: parsed.error };
