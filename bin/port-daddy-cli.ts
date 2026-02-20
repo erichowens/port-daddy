@@ -2185,6 +2185,7 @@ async function handleStatus(): Promise<void> {
     console.log('Port Daddy is not running');
     console.log('  Start with: port-daddy start');
     console.log('  Or install: port-daddy install');
+    console.log('  Diagnose:   port-daddy doctor');
     process.exit(1);
   }
 }

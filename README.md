@@ -102,7 +102,13 @@ npm install -g port-daddy
 port-daddy start
 ```
 
-That's it. Now claim ports:
+That's it. Verify your environment:
+
+```bash
+port-daddy doctor              # Checks daemon, ports, Node.js, config
+```
+
+Now claim ports:
 
 ```bash
 port-daddy claim myapp:frontend
@@ -119,6 +125,16 @@ eval $(port-daddy c myproject --export) && npm run dev -- --port $PORT
 ```
 
 Ports persist — `myapp:frontend` always gets port 3100 on this machine, even across restarts.
+
+### Try it in 60 seconds
+
+```bash
+npm install -g port-daddy && port-daddy start
+port-daddy scan                              # Auto-detect your project
+port-daddy up                                # Start everything
+# Open http://localhost:9876 for the dashboard
+port-daddy down                              # Stop everything
+```
 
 ### Auto-start on login (optional)
 
@@ -589,7 +605,7 @@ When an AI agent has the Port Daddy skill installed, it knows how to:
 
 - **Claim ports** using semantic identities instead of hardcoded numbers
 - **Coordinate with other agents** via pub/sub and distributed locks
-- **Generate `.portdaddyrc`** configs with `port-daddy init`
+- **Generate `.portdaddyrc`** configs with `port-daddy scan`
 - **Use the SDK** instead of raw HTTP calls
 - **Avoid common mistakes** like manual port numbers, flat service names, and polling
 
