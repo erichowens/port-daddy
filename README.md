@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/port-daddy.svg)](https://npmjs.com/package/port-daddy)
 [![license](https://img.shields.io/npm/l/port-daddy.svg)](LICENSE)
 [![CI](https://github.com/curiositech/port-daddy/actions/workflows/ci.yml/badge.svg)](https://github.com/curiositech/port-daddy/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-1042%20unit%20%2B%20integration-brightgreen)](https://github.com/curiositech/port-daddy)
+[![tests](https://img.shields.io/badge/tests-1255%20unit%20%2B%20integration-brightgreen)](https://github.com/curiositech/port-daddy)
 [![node](https://img.shields.io/node/v/port-daddy.svg)](package.json)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-plugin-blueviolet)](https://github.com/curiositech/port-daddy/tree/main/skills/port-daddy-cli)
 [![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)](package.json)
@@ -85,7 +85,7 @@ Existing tools solve fragments of the problem. Port Daddy solves the whole thing
 | Agent lifecycle tracking | — | — | — | — | ✅ |
 | Webhooks | — | — | — | — | ✅ |
 | Service orchestration (`up`/`down`) | — | — | — | — | ✅ |
-| Framework auto-detection (22 frameworks) | — | — | — | — | ✅ |
+| Framework auto-detection (60+ frameworks) | — | — | — | — | ✅ |
 | Activity audit log | — | — | — | — | ✅ |
 | Dashboard UI | — | — | — | ✅ | ✅ |
 | AI agent plugin | — | — | — | — | ✅ |
@@ -113,6 +113,9 @@ port-daddy claim myapp:api
 
 # Use it with any dev server
 PORT=$(port-daddy claim myproject -q) npm run dev -- --port $PORT
+
+# Or use the shorthand alias with --export
+eval $(port-daddy c myproject --export) && npm run dev -- --port $PORT
 ```
 
 Ports persist — `myapp:frontend` always gets port 3100 on this machine, even across restarts.
@@ -137,7 +140,7 @@ port-daddy scan
 # → Next: port-daddy up
 ```
 
-Port Daddy deep-scans your project recursively, detecting 22 frameworks (Next.js, Vite, Express, FastAPI, Django, Go, Rust, Cloudflare Workers, Docker, and more). It handles monorepos, npm workspaces, and nested services automatically. See [Auto-Detection](#auto-detection-port-daddy-scan) for the full list.
+Port Daddy deep-scans your project recursively, detecting 60+ frameworks (Next.js, Vite, Express, FastAPI, Django, Go, Rust, Cloudflare Workers, Docker, and more). It handles monorepos, npm workspaces, and nested services automatically. See [Auto-Detection](#auto-detection-port-daddy-scan) for the full list.
 
 ### Install from source
 
@@ -604,12 +607,12 @@ Claude Code, Cursor, Windsurf, Cline, Aider, Continue, Codex CLI, and [many more
 
 | Command | Description |
 |---------|-------------|
-| `port-daddy claim <id>` | Claim a port for a service |
-| `port-daddy release <id>` | Release port(s) by identity or pattern |
-| `port-daddy find [pattern]` | List services (default: all) |
+| `port-daddy claim <id>` (alias: `c`) | Claim a port for a service |
+| `port-daddy release <id>` (alias: `r`) | Release port(s) by identity or pattern |
+| `port-daddy find [pattern]` (alias: `f`) | List services (default: all) |
 | `port-daddy url <id>` | Get the URL for a service |
 | `port-daddy env [pattern]` | Export as environment variables |
-| `port-daddy ps` | Alias for `find` |
+| `port-daddy ps` (alias: `l`) | Alias for `find` |
 
 ### Orchestration
 
@@ -647,9 +650,9 @@ Claude Code, Cursor, Windsurf, Cline, Aider, Continue, Codex CLI, and [many more
 
 | Command | Description |
 |---------|-------------|
-| `port-daddy scan` | Deep-scan project, generate `.portdaddyrc`, register with daemon |
+| `port-daddy scan` (alias: `s`) | Deep-scan project, generate `.portdaddyrc`, register with daemon |
 | `port-daddy scan --dry-run` | Preview scan results without saving |
-| `port-daddy projects` | List all registered projects |
+| `port-daddy projects` (alias: `p`) | List all registered projects |
 | `port-daddy projects rm <name>` | Remove a registered project |
 | `port-daddy doctor` | Run environment diagnostics |
 | `port-daddy detect` | *(deprecated)* Show detected framework — use `scan` |
@@ -681,6 +684,7 @@ Claude Code, Cursor, Windsurf, Cline, Aider, Continue, Codex CLI, and [many more
 | `--owner <id>` | Lock owner identifier |
 | `--agent <id>` | Agent ID for registration/heartbeat |
 | `--type <type>` | Agent type (cli, sdk, mcp) |
+| `--export` | Print `export PORT=N` for shell eval (claim only) |
 
 ### Shell Completions
 
@@ -701,6 +705,13 @@ mkdir -p ~/.zsh/completions
 cp /path/to/port-daddy/completions/port-daddy.zsh ~/.zsh/completions/_port-daddy
 fpath=(~/.zsh/completions $fpath)
 autoload -Uz compinit && compinit
+```
+
+**Fish:**
+
+```bash
+# Copy to fish completions
+cp /path/to/port-daddy/completions/port-daddy.fish ~/.config/fish/completions/
 ```
 
 ---
@@ -896,7 +907,7 @@ port-daddy scan
 
 `scan` walks your directory tree recursively (max depth 5), detects services at every level, handles monorepos and npm workspaces, and registers the project with the daemon for dashboard visibility.
 
-**Supported frameworks (22):**
+**Supported frameworks (60+):**
 
 | Framework | Default Port | Detection |
 |-----------|-------------|-----------|

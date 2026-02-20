@@ -13,38 +13,39 @@ Port Daddy is the authoritative port manager for multi-agent development. It's a
 ## Architecture
 
 ```
-server.js           # Express daemon (main entry point)
+server.ts           # Express daemon (main entry point)
 lib/
-  services.js       # Port assignment module
-  locks.js          # Distributed locks
-  messaging.js      # Pub/sub messaging
-  agents.js         # Agent registry
-  activity.js       # Activity logging
-  webhooks.js       # Webhook subscriptions
-  identity.js       # Semantic ID parsing
-  detect.js         # Framework detection (22 frameworks)
-  scan.js           # Deep recursive project scanner
-  projects.js       # Project registry (CRUD against SQLite)
-  discover.js       # Monorepo/workspace discovery
-  orchestrator.js   # Service orchestration (up/down)
-  config.js         # Configuration loading
-  health.js         # Health check utilities
-  client.js         # JavaScript SDK (PortDaddy class)
-  log-prefix.js     # Color-coded log prefixes for orchestrator
-  utils.js          # Common utilities
+  services.ts       # Port assignment module
+  locks.ts          # Distributed locks
+  messaging.ts      # Pub/sub messaging
+  agents.ts         # Agent registry
+  activity.ts       # Activity logging
+  webhooks.ts       # Webhook subscriptions
+  identity.ts       # Semantic ID parsing
+  detect.ts         # Framework detection (60+ frameworks)
+  scan.ts           # Deep recursive project scanner
+  projects.ts       # Project registry (CRUD against SQLite)
+  discover.ts       # Monorepo/workspace discovery
+  orchestrator.ts   # Service orchestration (up/down)
+  config.ts         # Configuration loading
+  health.ts         # Health check utilities
+  client.ts         # JavaScript SDK (PortDaddy class)
+  log-prefix.ts     # Color-coded log prefixes for orchestrator
+  utils.ts          # Common utilities
 routes/
-  index.js          # Route registration
-  projects.js       # /scan, /projects endpoints
+  index.ts          # Route registration
+  projects.ts       # /scan, /projects endpoints
 bin/
-  port-daddy-cli.js # CLI entry point
+  port-daddy-cli.ts # CLI entry point
 public/
   index.html        # Dashboard UI
 completions/
   port-daddy.bash   # Bash tab completion
   port-daddy.zsh    # Zsh tab completion
+  port-daddy.fish   # Fish tab completion
 tests/
   setup-unit.js     # In-memory SQLite factory for unit tests
-  unit/             # Unit tests (17 suites, 1042 tests)
+  unit/             # Unit tests (17 suites, 1042+ tests)
   integration/      # Integration tests (require live daemon)
 examples/
   agent-coordination.js  # Multi-agent example
@@ -61,6 +62,12 @@ npm test
 
 # Check test coverage
 npm test -- --coverage
+
+# Type-check without building
+npm run typecheck
+
+# Build TypeScript to dist/
+npm run build
 ```
 
 ## Key Patterns
@@ -102,9 +109,9 @@ NODE_OPTIONS="--experimental-vm-modules" npx jest tests/unit/ --no-coverage
 NODE_OPTIONS="--experimental-vm-modules" npx jest tests/unit/scan.test.js
 ```
 
-**Integration tests** (require a running daemon):
+\*\*Integration tests\*\* (ephemeral daemon auto-started by Jest):
 ```bash
-# Restarts daemon, verifies code hash, then runs
+# Ephemeral daemon started automatically
 npm test
 
 # Specific file
@@ -116,7 +123,7 @@ npm test -- tests/integration/cli.test.js
 1. Add module to `lib/`
 2. Export from module and import in `server.js`
 3. Add routes in `routes/` and register in `routes/index.js`
-4. Add to code hash list in `server.js` and `cli.test.js`
+4. Code hash is automatic — `server.ts` uses dynamic `readdirSync` to hash all source files
 5. Update dashboard in `public/index.html`
 6. Write unit tests in `tests/unit/` and integration tests in `tests/integration/`
 7. Update completions in `completions/`

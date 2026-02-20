@@ -1,11 +1,12 @@
 # Contributing to Port Daddy
 
-Thank you for your interest in contributing to Port Daddy! This guide covers the v2 architecture, development workflow, and conventions you need to know.
+Thank you for your interest in contributing to Port Daddy! This guide covers the v3 architecture, development workflow, and conventions you need to know.
 
 ## Prerequisites
 
 - Node.js 18+
 - npm 9+
+- TypeScript 5.x (included in devDependencies)
 - macOS or Linux (Windows support via WSL)
 
 ## Getting Started
@@ -21,47 +22,47 @@ npm install
 # Start the daemon in development mode
 npm run dev
 
-# Run the full test suite (1078 tests across 19 suites)
+# Run the full test suite (1255 tests across 21 suites)
 npm test
 ```
 
-## Project Structure (v2)
+## Project Structure (v3)
 
 ```
 port-daddy/
-├── server.js              # Express daemon (main entry)
+├── server.ts              # Express daemon (main entry)
 ├── config.json            # Daemon configuration
 ├── package.json           # ESM project, "type": "module"
 ├── bin/
-│   └── port-daddy-cli.js  # Unified CLI (subcommands, no separate scripts)
+│   └── port-daddy-cli.ts  # Unified CLI (subcommands, no separate scripts)
 ├── lib/
-│   ├── services.js        # Port assignment module
-│   ├── locks.js           # Distributed locks
-│   ├── messaging.js       # Pub/sub messaging
-│   ├── agents.js          # Agent registry
-│   ├── activity.js        # Activity logging
-│   ├── webhooks.js        # Webhook subscriptions
-│   ├── identity.js        # Semantic ID parsing (project:stack:context)
-│   ├── detect.js          # Framework detection (17 frameworks)
-│   ├── config.js          # .portdaddyrc handling
-│   ├── health.js          # Health check utilities
-│   ├── utils.js           # Common utilities
-│   ├── client.js          # JavaScript SDK (PortDaddy class)
-│   ├── orchestrator.js    # Service orchestrator (topological sort, spawn, health)
-│   ├── discover.js        # Monorepo/workspace service discovery
-│   └── log-prefix.js      # Colored multiplexed log output
+│   ├── services.ts        # Port assignment module
+│   ├── locks.ts           # Distributed locks
+│   ├── messaging.ts       # Pub/sub messaging
+│   ├── agents.ts          # Agent registry
+│   ├── activity.ts        # Activity logging
+│   ├── webhooks.ts        # Webhook subscriptions
+│   ├── identity.ts        # Semantic ID parsing (project:stack:context)
+│   ├── detect.ts          # Framework detection (60+ frameworks)
+│   ├── config.ts          # .portdaddyrc handling
+│   ├── health.ts          # Health check utilities
+│   ├── utils.ts           # Common utilities
+│   ├── client.ts          # JavaScript SDK (PortDaddy class)
+│   ├── orchestrator.ts    # Service orchestrator (topological sort, spawn, health)
+│   ├── discover.ts        # Monorepo/workspace service discovery
+│   └── log-prefix.ts      # Colored multiplexed log output
 ├── routes/
-│   ├── index.js           # Route aggregator
-│   ├── services.js        # /claim, /release, /services
-│   ├── messaging.js       # /msg, /subscribe, /channels
-│   ├── locks.js           # /locks
-│   ├── agents.js          # /agents
-│   ├── info.js            # /health, /version, /metrics
-│   ├── webhooks.js        # /webhooks
-│   ├── activity.js        # /activity
-│   └── detect-config.js   # /detect, /init, /config
+│   ├── index.ts           # Route aggregator
+│   ├── services.ts        # /claim, /release, /services
+│   ├── messaging.ts       # /msg, /subscribe, /channels
+│   ├── locks.ts           # /locks
+│   ├── agents.ts          # /agents
+│   ├── info.ts            # /health, /version, /metrics
+│   ├── webhooks.ts        # /webhooks
+│   ├── activity.ts        # /activity
+│   └── detect-config.ts   # /detect, /init, /config
 ├── shared/
-│   └── validation.js      # Input validation
+│   └── types.ts            # Input validation
 ├── public/
 │   └── index.html         # Dashboard UI
 ├── tests/
@@ -70,19 +71,20 @@ port-daddy/
 │   │   ├── cli.test.js
 │   │   ├── security.test.js
 │   │   └── up-down.test.js
-│   ├── unit/              # Unit test files (mocked, no daemon)
+│   ├── unit/              # Unit tests (17 suites, 1042+ tests)
 │   └── setup-unit.js      # Unit test setup
 ├── completions/
 │   ├── port-daddy.bash    # Bash completions
-│   └── port-daddy.zsh     # Zsh completions
-└── install-daemon.js      # Daemon installer/manager
+│   ├── port-daddy.zsh     # Zsh completions
+│   └── port-daddy.fish    # Fish completions
+└── install-daemon.ts      # Daemon installer/manager
 ```
 
 ## Architecture
 
-### What Changed from v1 to v2
+### What Changed from v1 to v3
 
-| Area | v1 | v2 |
+| Area | v1 | v3 |
 |------|----|----|
 | CLI | Separate shell scripts (`get-port`, `release-port`, `list-ports`) | Unified `port-daddy` command with subcommands |
 | Naming | Flat project names | Semantic identities: `project:stack:context` |
@@ -91,19 +93,21 @@ port-daddy/
 | SDK | None | `lib/client.js` (PortDaddy class) |
 | Config | Just `config.json` | Per-project `.portdaddyrc` with auto-detection |
 | Coordination | Port assignment only | Pub/sub, distributed locks, agent registry, webhooks |
-| Tests | Integration only | Unit + integration (1078 tests, 19 suites) |
-| Completions | Bash only | Bash and zsh |
+| Tests | Integration only | Unit + integration (1255 tests, 21 suites) |
+| Completions | Bash only | Bash, zsh, and fish |
 | Module system | CommonJS | ESM throughout (`import`/`export`) |
+| Language | JavaScript | TypeScript (strict mode) |
+| Frameworks | 17 detected | 60+ detected |
 
 ### Core Components
 
-**1. Express Daemon** (`server.js`)
+**1. Express Daemon** (`server.ts`)
 - HTTP API for all port and coordination services
 - SQLite database (WAL mode for concurrency)
 - Process tracking for automatic cleanup
 - Rate limiting (100 req/min per IP, 10 concurrent SSE connections)
 
-**2. Unified CLI** (`bin/port-daddy-cli.js`)
+**2. Unified CLI** (`bin/port-daddy-cli.ts`)
 - Single entry point: `port-daddy <subcommand>`
 - Subcommands: `claim`, `release`, `list`, `dev`, `start`, `restart`, `status`, etc.
 - Shell completions for bash and zsh
@@ -118,12 +122,12 @@ port-daddy/
 - All state backed by SQLite with parameterized queries
 - Modules: services, locks, messaging, agents, activity, webhooks, identity, detect, config, health, utils, client
 
-**5. JavaScript SDK** (`lib/client.js`)
+**5. JavaScript SDK** (`lib/client.ts`)
 - `PortDaddy` class for programmatic usage
 - Wraps HTTP API with a clean interface
 - Importable: `import { PortDaddy } from 'port-daddy/client'`
 
-**6. Shared Validation** (`shared/validation.js`)
+**6. Shared Validation** (`shared/types.ts`)
 - Input validation rules used across routes
 - Semantic identity format validation
 - Port range and parameter validation
@@ -156,7 +160,7 @@ port-daddy/
 1. Create a feature branch from `main`
 2. Make your changes (follow the code style below)
 3. Write tests -- both unit and integration
-4. Run `npm test` and confirm all 1078+ tests pass
+4. Run `npm test` and confirm all 1255+ tests pass
 5. Commit with clear, descriptive messages
 6. Push and open a pull request against `main`
 
@@ -177,7 +181,7 @@ When adding a new capability to Port Daddy, follow this sequence:
 
 ## Testing
 
-Port Daddy has 1078 tests across 19 suites, split into two projects configured in `jest.config.js`.
+Port Daddy has 1255 tests across 21 suites, split into two projects configured in `jest.config.js`.
 
 ### Running Tests
 
@@ -210,7 +214,7 @@ npm test -- --selectProjects unit
 ### Integration Tests (`tests/integration/`)
 
 - 4 test files: `api.test.js`, `cli.test.js`, `security.test.js`, `up-down.test.js`
-- Run against a live daemon (the `pretest` script auto-starts it)
+- Run against an ephemeral daemon (auto-started by Jest globalSetup/globalTeardown)
 - Verify real HTTP contracts, CLI behavior, and security controls
 - The test harness restarts the daemon with fresh code and verifies the code hash
 
@@ -248,10 +252,21 @@ export function createExample({ db, logger }) {
 }
 ```
 
+### TypeScript
+
+The entire codebase is TypeScript with strict mode enabled. Key conventions:
+
+- All source files use `.ts` extension
+- Imports use `.js` extension (NodeNext module resolution)
+- Core types are defined in `shared/types.ts`
+- Run `npm run typecheck` to verify types without building
+- Run `npm run build` to compile to `dist/`
+- Development uses `tsx` for direct TypeScript execution (no build step needed)
+
 ## Security Guidelines
 
 - **SSRF Protection**: Webhook URLs are validated against private IP ranges
-- **Input Validation**: All user input validated through `shared/validation.js`
+- **Input Validation**: All user input validated through `shared/types.ts`
 - **SQL Injection Prevention**: Parameterized queries throughout -- never interpolate user input into SQL
 - **Localhost Binding**: Daemon only listens on `127.0.0.1`
 - **Rate Limiting**: 100 requests/min per IP, 10 concurrent SSE connections per IP
@@ -264,7 +279,7 @@ Port Daddy is published as an npm package. To cut a release:
 
 1. **Update the version** in `package.json` following [semver](https://semver.org/)
 2. **Update CHANGELOG.md** with a summary of changes
-3. **Run the full test suite**: `npm test` -- all 1078+ tests must pass
+3. **Run the full test suite**: `npm test` -- all 1255+ tests must pass
 4. **Commit the version bump**: `git commit -am "Bump to vX.Y.Z"`
 5. **Tag the release**: `git tag vX.Y.Z`
 6. **Push**: `git push origin main --tags`
