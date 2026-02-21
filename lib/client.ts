@@ -697,10 +697,45 @@ class PortDaddy {
   }
 
   /**
+   * Get a single webhook by ID.
+   */
+  async getWebhook(id: string): Promise<Record<string, unknown>> {
+    return this._request('GET', `/webhooks/${encodeURIComponent(id)}`) as Promise<Record<string, unknown>>;
+  }
+
+  /**
+   * Update a webhook.
+   */
+  async updateWebhook(id: string, options: Partial<AddWebhookOptions> & { url?: string; active?: boolean }): Promise<Record<string, unknown>> {
+    return this._request('PUT', `/webhooks/${encodeURIComponent(id)}`, options as Record<string, unknown>) as Promise<Record<string, unknown>>;
+  }
+
+  /**
    * Delete a webhook.
    */
   async removeWebhook(id: string): Promise<Record<string, unknown>> {
     return this._request('DELETE', `/webhooks/${encodeURIComponent(id)}`) as Promise<Record<string, unknown>>;
+  }
+
+  /**
+   * Send a test event to a webhook.
+   */
+  async testWebhook(id: string): Promise<Record<string, unknown>> {
+    return this._request('POST', `/webhooks/${encodeURIComponent(id)}/test`) as Promise<Record<string, unknown>>;
+  }
+
+  /**
+   * Get delivery history for a webhook.
+   */
+  async getWebhookDeliveries(id: string): Promise<Record<string, unknown>> {
+    return this._request('GET', `/webhooks/${encodeURIComponent(id)}/deliveries`) as Promise<Record<string, unknown>>;
+  }
+
+  /**
+   * Get available webhook event types.
+   */
+  async getWebhookEvents(): Promise<{ events: string[] }> {
+    return this._request('GET', '/webhooks/events') as Promise<{ events: string[] }>;
   }
 
   // ===========================================================================
@@ -722,6 +757,23 @@ class PortDaddy {
   }
 
   /**
+   * Get daemon metrics.
+   */
+  async metrics(): Promise<Record<string, unknown>> {
+    return this._request('GET', '/metrics') as Promise<Record<string, unknown>>;
+  }
+
+  /**
+   * Get config for a directory.
+   */
+  async getConfig(dir?: string): Promise<Record<string, unknown>> {
+    const params = new URLSearchParams();
+    if (dir) params.set('dir', dir);
+    const qs = params.toString();
+    return this._request('GET', `/config${qs ? '?' + qs : ''}`) as Promise<Record<string, unknown>>;
+  }
+
+  /**
    * Get recent activity log entries.
    */
   async getActivity(options: ActivityOptions = {}): Promise<ActivityResponse> {
@@ -734,10 +786,103 @@ class PortDaddy {
   }
 
   /**
+   * Get activity entries within a time range.
+   */
+  async getActivityRange(from: string, to: string): Promise<ActivityResponse> {
+    const params = new URLSearchParams({ from, to });
+    return this._request('GET', `/activity/range?${params}`) as Promise<ActivityResponse>;
+  }
+
+  /**
+   * Get activity summary grouped by type.
+   */
+  async getActivitySummary(since?: string): Promise<Record<string, unknown>> {
+    const params = new URLSearchParams();
+    if (since) params.set('since', since);
+    const qs = params.toString();
+    return this._request('GET', `/activity/summary${qs ? '?' + qs : ''}`) as Promise<Record<string, unknown>>;
+  }
+
+  /**
+   * Get activity statistics.
+   */
+  async getActivityStats(): Promise<Record<string, unknown>> {
+    return this._request('GET', '/activity/stats') as Promise<Record<string, unknown>>;
+  }
+
+  // ===========================================================================
+  // Health -- Service health checks
+  // ===========================================================================
+
+  /**
+   * Check health of a specific service.
+   */
+  async checkServiceHealth(id: string): Promise<Record<string, unknown>> {
+    return this._request('GET', `/services/health/${encodeURIComponent(id)}`) as Promise<Record<string, unknown>>;
+  }
+
+  /**
+   * List health status for all services.
+   */
+  async listServiceHealth(): Promise<Record<string, unknown>> {
+    return this._request('GET', '/services/health') as Promise<Record<string, unknown>>;
+  }
+
+  // ===========================================================================
+  // Ports -- Active port management
+  // ===========================================================================
+
+  /**
+   * List all active port assignments.
+   */
+  async listActivePorts(): Promise<Record<string, unknown>> {
+    return this._request('GET', '/ports/active') as Promise<Record<string, unknown>>;
+  }
+
+  /**
+   * Get system port usage (ports in use by OS processes).
+   */
+  async getSystemPorts(): Promise<Record<string, unknown>> {
+    return this._request('GET', '/ports/system') as Promise<Record<string, unknown>>;
+  }
+
+  /**
    * Trigger cleanup of stale services.
    */
   async cleanup(): Promise<CleanupResponse> {
     return this._request('POST', '/ports/cleanup') as Promise<CleanupResponse>;
+  }
+
+  // ===========================================================================
+  // Projects -- Scanning and registry
+  // ===========================================================================
+
+  /**
+   * Deep scan a directory for services.
+   */
+  async scan(dir: string, options: { save?: boolean; useBranch?: boolean; dryRun?: boolean } = {}): Promise<Record<string, unknown>> {
+    return this._request('POST', '/scan', { dir, ...options }) as Promise<Record<string, unknown>>;
+  }
+
+  /**
+   * List all registered projects.
+   */
+  async listProjects(): Promise<Record<string, unknown>> {
+    return this._request('GET', '/projects') as Promise<Record<string, unknown>>;
+  }
+
+  /**
+   * Get a project by ID.
+   */
+  async getProject(id: string): Promise<Record<string, unknown>> {
+    return this._request('GET', `/projects/${encodeURIComponent(id)}`) as Promise<Record<string, unknown>>;
+  }
+
+  /**
+   * Delete a project.
+   */
+  async deleteProject(id: string): Promise<Record<string, unknown>> {
+    return this._request('DELETE', `/projects/${encodeURIComponent(id)}`) as Promise<Record<string, unknown>>;
   }
 
   /**
