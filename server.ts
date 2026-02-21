@@ -71,12 +71,12 @@ const VERSION: string = pkg.version;
 // =============================================================================
 
 function calculateCodeHash(): string {
-  // Dynamically discover all .js files in lib/ — no more parallel lists to maintain
+  // Dynamically discover all .ts files in lib/ — no more parallel lists to maintain
   const libDir: string = join(__dirname, 'lib');
   const libFiles: string[] = existsSync(libDir)
-    ? readdirSync(libDir).filter((f: string) => f.endsWith('.js')).sort().map((f: string) => `lib/${f}`)
+    ? readdirSync(libDir).filter((f: string) => f.endsWith('.ts')).sort().map((f: string) => `lib/${f}`)
     : [];
-  const filesToHash: string[] = ['server.js', ...libFiles];
+  const filesToHash: string[] = ['server.ts', ...libFiles];
 
   const hash = createHash('sha256');
   for (const file of filesToHash) {

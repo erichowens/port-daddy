@@ -21,7 +21,8 @@ import { homedir, platform } from 'os';
 const __dirname: string = dirname(fileURLToPath(import.meta.url));
 const PLATFORM: string = platform();
 const NODE_PATH: string = process.execPath;
-const SERVER_PATH: string = join(__dirname, 'server.js');
+const TSX_PATH: string = join(__dirname, 'node_modules', '.bin', 'tsx');
+const SERVER_PATH: string = join(__dirname, 'server.ts');
 const LOG_PATH: string = join(__dirname, 'port-daddy.log');
 const ERROR_LOG_PATH: string = join(__dirname, 'port-daddy-error.log');
 
@@ -63,7 +64,7 @@ function generatePlist(): string {
 
     <key>ProgramArguments</key>
     <array>
-        <string>${NODE_PATH}</string>
+        <string>${TSX_PATH}</string>
         <string>${SERVER_PATH}</string>
     </array>
 
@@ -88,7 +89,7 @@ function generatePlist(): string {
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>${dirname(NODE_PATH)}:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <string>${dirname(TSX_PATH)}:${dirname(NODE_PATH)}:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
 </dict>
 </plist>`;
@@ -173,13 +174,13 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=${NODE_PATH} ${SERVER_PATH}
+ExecStart=${TSX_PATH} ${SERVER_PATH}
 WorkingDirectory=${__dirname}
 Restart=on-failure
 RestartSec=5
 StandardOutput=append:${LOG_PATH}
 StandardError=append:${ERROR_LOG_PATH}
-Environment=PATH=${dirname(NODE_PATH)}:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=${dirname(TSX_PATH)}:${dirname(NODE_PATH)}:/usr/local/bin:/usr/bin:/bin
 
 [Install]
 WantedBy=default.target

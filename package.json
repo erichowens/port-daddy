@@ -52,8 +52,8 @@
     "claude"
   ],
   "files": [
-    "server.js",
-    "install-daemon.js",
+    "server.ts",
+    "install-daemon.ts",
     "bin/",
     "lib/",
     "routes/",
@@ -64,13 +64,15 @@
     "skills/",
     ".claude-plugin/",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "tsconfig.json"
   ],
   "dependencies": {
     "better-sqlite3": "^9.2.2",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "express-rate-limit": "^8.2.1",
+    "tsx": "^4.21.0",
     "winston": "^3.19.0"
   },
   "engines": {
@@ -86,7 +88,6 @@
     "@types/node": "^25.3.0",
     "jest": "^30.2.0",
     "supertest": "^7.2.2",
-    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
 }

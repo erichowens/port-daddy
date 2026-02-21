@@ -153,12 +153,12 @@ function pdFetch(urlOrPath: string, options: { method?: string; headers?: Record
 // Calculate local code hash to compare with daemon
 function getLocalCodeHash(): string {
   const libDir: string = join(__dirname, '..');
-  // Dynamically discover all .js files in lib/ — must match server.js logic exactly
+  // Dynamically discover all .ts files in lib/ — must match server.ts logic exactly
   const libDirPath: string = join(libDir, 'lib');
   const libFiles: string[] = existsSync(libDirPath)
-    ? readdirSync(libDirPath).filter((f: string) => f.endsWith('.js')).sort().map((f: string) => `lib/${f}`)
+    ? readdirSync(libDirPath).filter((f: string) => f.endsWith('.ts')).sort().map((f: string) => `lib/${f}`)
     : [];
-  const filesToHash: string[] = ['server.js', ...libFiles];
+  const filesToHash: string[] = ['server.ts', ...libFiles];
 
   const hash = createHash('sha256');
   for (const file of filesToHash) {
@@ -198,8 +198,9 @@ async function checkDaemonFreshness(autoRestart: boolean = true): Promise<boolea
         await new Promise<void>(r => setTimeout(r, 500));
 
         // Start fresh daemon
-        const serverScript: string = join(__dirname, '..', 'server.js');
-        const child: ChildProcess = spawn('node', [serverScript], {
+        const serverScript: string = join(__dirname, '..', 'server.ts');
+        const tsxBinPath: string = join(__dirname, '..', 'node_modules', '.bin', 'tsx');
+        const child: ChildProcess = spawn(tsxBinPath, [serverScript], {
           stdio: 'ignore',
           detached: true
         });
@@ -2101,8 +2102,9 @@ async function handleLog(subcommand: string | undefined, options: CLIOptions): P
 // =============================================================================
 
 async function handleDaemon(action: string): Promise<void> {
-  const installScript: string = join(__dirname, '..', 'install-daemon.js');
-  const serverScript: string = join(__dirname, '..', 'server.js');
+  const tsxBin: string = join(__dirname, '..', 'node_modules', '.bin', 'tsx');
+  const installScript: string = join(__dirname, '..', 'install-daemon.ts');
+  const serverScript: string = join(__dirname, '..', 'server.ts');
 
   switch (action) {
     case 'start': {
@@ -2116,7 +2118,7 @@ async function handleDaemon(action: string): Promise<void> {
       } catch {}
 
       console.log('Starting Port Daddy daemon...');
-      const child: ChildProcess = spawn('node', [serverScript], {
+      const child: ChildProcess = spawn(tsxBin, [serverScript], {
         stdio: 'ignore',
         detached: true
       });
@@ -2158,13 +2160,13 @@ async function handleDaemon(action: string): Promise<void> {
     }
 
     case 'install': {
-      const result: SpawnSyncReturns<Buffer> = spawnSync('node', [installScript, 'install'], { stdio: 'inherit' });
+      const result: SpawnSyncReturns<Buffer> = spawnSync(tsxBin, [installScript, 'install'], { stdio: 'inherit' });
       process.exit(result.status ?? 1);
       break;
     }
 
     case 'uninstall': {
-      const result: SpawnSyncReturns<Buffer> = spawnSync('node', [installScript, 'uninstall'], { stdio: 'inherit' });
+      const result: SpawnSyncReturns<Buffer> = spawnSync(tsxBin, [installScript, 'uninstall'], { stdio: 'inherit' });
       process.exit(result.status ?? 1);
       break;
     }
@@ -2546,12 +2548,12 @@ async function handleDev(): Promise<void> {
   const libDir: string = join(__dirname, '..');
 
   // Dynamically discover files to watch — matches server.ts calculateCodeHash() approach
-  const filesToWatch: string[] = ['server.js'];
+  const filesToWatch: string[] = ['server.ts'];
   for (const dir of ['lib', 'routes', 'shared']) {
     const dirPath: string = join(libDir, dir);
     if (existsSync(dirPath)) {
       for (const f of readdirSync(dirPath)) {
-        if (f.endsWith('.js')) filesToWatch.push(`${dir}/${f}`);
+        if (f.endsWith('.ts')) filesToWatch.push(`${dir}/${f}`);
       }
     }
   }
@@ -2589,8 +2591,9 @@ async function handleDev(): Promise<void> {
         await new Promise<void>(r => setTimeout(r, 500));
 
         // Start new daemon
-        const serverScript: string = join(__dirname, '..', 'server.js');
-        const child: ChildProcess = spawn('node', [serverScript], {
+        const devServerScript: string = join(__dirname, '..', 'server.ts');
+        const devTsxBin: string = join(__dirname, '..', 'node_modules', '.bin', 'tsx');
+        const child: ChildProcess = spawn(devTsxBin, [devServerScript], {
           stdio: 'ignore',
           detached: true
         });
@@ -2637,7 +2640,7 @@ async function handleDev(): Promise<void> {
     if (existsSync(dirPath)) {
       try {
         const dirWatcher: FSWatcher = watch(dirPath, (eventType: string, filename: string | null) => {
-          if (filename && filename.endsWith('.js')) {
+          if (filename && filename.endsWith('.ts')) {
             scheduleRestart();
           }
         });
