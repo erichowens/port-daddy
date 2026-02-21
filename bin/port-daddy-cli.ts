@@ -304,8 +304,6 @@ Project Setup:
   scan [dir]        Deep scan project, detect all services (alias: s)
   projects          List all registered projects (alias: p)
   projects rm <id>  Remove a registered project
-  detect            (deprecated — use scan)
-  init              (deprecated — use scan)
 
 Daemon Management:
   start             Start the Port Daddy daemon
@@ -343,7 +341,7 @@ Options:
   --no-health         Skip health checks (up)
   --branch            Use git branch as context in identity (up/scan)
   --dry-run           Preview scan results without saving config (scan)
-  --dir <path>        Target directory (scan, detect, init)
+  --dir <path>        Target directory (scan)
 
 Note: Quote wildcards to prevent shell expansion:
   port-daddy find 'myapp:*'      # Correct
@@ -396,7 +394,7 @@ Examples:
 const ALL_COMMANDS: string[] = [
   'claim', 'c', 'release', 'r', 'find', 'f', 'list', 'l', 'ps', 'url', 'env',
   'pub', 'publish', 'sub', 'subscribe', 'wait', 'lock', 'unlock', 'locks',
-  'up', 'down', 'scan', 's', 'projects', 'p', 'detect', 'init',
+  'up', 'down', 'scan', 's', 'projects', 'p',
   'agent', 'agents', 'log', 'activity',
   'start', 'stop', 'restart', 'status', 'install', 'uninstall', 'dev', 'ci-gate',
   'doctor', 'diagnose', 'version', 'help'
@@ -600,16 +598,6 @@ async function main(): Promise<void> {
       case 'p':
       case 'projects':
         await handleProjects(positional[0], positional.slice(1), options);
-        break;
-
-      case 'detect':
-        console.error('Note: "detect" is deprecated. Use "port-daddy scan" instead.\n');
-        await handleDetect(options);
-        break;
-
-      case 'init':
-        console.error('Note: "init" is deprecated. Use "port-daddy scan" instead.\n');
-        await handleInit(options);
         break;
 
       // Agent registry
@@ -1554,74 +1542,6 @@ function removePidFile(): void {
 // =============================================================================
 // Project Setup
 // =============================================================================
-
-async function handleDetect(options: CLIOptions): Promise<void> {
-  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/detect`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ dir: (options.dir as string) || process.cwd() })
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    console.error((data.error as string) || 'Detection failed');
-    process.exit(1);
-  }
-
-  if (options.json) {
-    console.log(JSON.stringify(data, null, 2));
-    return;
-  }
-
-  const stack = data.stack as { name: string; defaultPort: number; devCmd: string; healthPath?: string } | null;
-  if (stack) {
-    console.log(`Detected: ${stack.name}`);
-    console.log(`  Default port: ${stack.defaultPort}`);
-    console.log(`  Dev command: ${stack.devCmd}`);
-    console.log(`  Health path: ${stack.healthPath || '/'}`);
-  } else {
-    console.log('No framework detected');
-  }
-
-  console.log('');
-  console.log('Suggested identity:');
-  const suggestedIdentity = data.suggestedIdentity as { full: string };
-  console.log(`  ${suggestedIdentity.full}`);
-}
-
-async function handleInit(options: CLIOptions): Promise<void> {
-  const save: boolean = !options.dry;
-
-  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/init`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ dir: (options.dir as string) || process.cwd(), save })
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    console.error((data.error as string) || 'Init failed');
-    process.exit(1);
-  }
-
-  if (options.json) {
-    console.log(JSON.stringify(data, null, 2));
-    return;
-  }
-
-  if (data.saved) {
-    console.log(`Created: ${data.path}`);
-    console.log('');
-    console.log('Config:');
-    console.log(JSON.stringify(data.config, null, 2));
-  } else {
-    console.log('Generated config (use without --dry to save):');
-    console.log('');
-    console.log(JSON.stringify(data.config, null, 2));
-  }
-}
 
 // =============================================================================
 // Scan & Projects

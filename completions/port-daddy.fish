@@ -95,7 +95,7 @@ set -l __pd_commands \
     'claim' 'c' 'release' 'r' 'find' 'f' 'list' 'l' 'ps' 'url' 'env' \
     'pub' 'publish' 'sub' 'subscribe' 'wait' 'lock' 'unlock' 'locks' \
     'agent' 'agents' 'log' 'activity' \
-    'scan' 's' 'projects' 'p' 'detect' 'init' 'doctor' \
+    'scan' 's' 'projects' 'p' 'doctor' \
     'start' 'stop' 'restart' 'status' 'install' 'uninstall' 'dev' 'ci-gate' \
     'version' 'help'
 
@@ -137,8 +137,6 @@ for prog in port-daddy pd
     complete -c $prog -n __pd_needs_command -a s -d 'Scan project (alias)'
     complete -c $prog -n __pd_needs_command -a projects -d 'List or manage registered projects'
     complete -c $prog -n __pd_needs_command -a p -d 'List projects (alias)'
-    complete -c $prog -n __pd_needs_command -a detect -d 'Detect framework (deprecated)'
-    complete -c $prog -n __pd_needs_command -a init -d 'Init project config (deprecated)'
     complete -c $prog -n __pd_needs_command -a doctor -d 'Run environment diagnostics'
 
     # Daemon lifecycle

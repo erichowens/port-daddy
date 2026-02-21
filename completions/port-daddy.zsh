@@ -347,21 +347,6 @@ _pd_cmd_projects() {
   esac
 }
 
-_pd_cmd_detect() {
-  _arguments \
-    '(-j --json)'{-j,--json}'[JSON output]' \
-    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
-    '(-h --help)'{-h,--help}'[show help]'
-}
-
-_pd_cmd_init() {
-  _arguments \
-    '--dry-run[preview config without saving]' \
-    '(-j --json)'{-j,--json}'[JSON output]' \
-    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
-    '(-h --help)'{-h,--help}'[show help]'
-}
-
 _pd_cmd_doctor() {
   _arguments \
     '(-j --json)'{-j,--json}'[JSON output]' \
@@ -417,8 +402,6 @@ _port_daddy() {
     's:deep-scan project (alias for scan)'
     'projects:list or manage registered projects'
     'p:list or manage projects (alias for projects)'
-    'detect:detect framework (deprecated, use scan)'
-    'init:initialise a project config (deprecated, use scan)'
     'doctor:run environment diagnostics'
     # Daemon lifecycle
     'start:start the Port Daddy daemon'
@@ -474,8 +457,6 @@ _port_daddy() {
         activity)           _pd_cmd_activity ;;
         s|scan)             _pd_cmd_scan ;;
         p|projects)         _pd_cmd_projects ;;
-        detect)             _pd_cmd_detect ;;
-        init)               _pd_cmd_init ;;
         doctor)             _pd_cmd_doctor ;;
         start|stop|restart|status|install|uninstall|dev|ci-gate)
                             _pd_cmd_daemon ;;

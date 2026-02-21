@@ -18,7 +18,7 @@ import { createAgentsRoutes } from './agents.js';
 import { createHealthRoutes } from './health.js';
 import { createActivityRoutes } from './activity.js';
 import { createWebhooksRoutes } from './webhooks.js';
-import { createDetectConfigRoutes } from './detect-config.js';
+import { createConfigRoutes } from './config.js';
 import { createProjectsRoutes } from './projects.js';
 import { createInfoRoutes } from './info.js';
 
@@ -50,7 +50,7 @@ export function createRoutes(deps: AnyDeps): Router {
   router.use(createHealthRoutes(deps as unknown as Parameters<typeof createHealthRoutes>[0]));
   router.use(createActivityRoutes(deps as unknown as Parameters<typeof createActivityRoutes>[0]));
   router.use(createWebhooksRoutes(deps as unknown as Parameters<typeof createWebhooksRoutes>[0]));
-  router.use(createDetectConfigRoutes(deps as unknown as Parameters<typeof createDetectConfigRoutes>[0]));
+  router.use(createConfigRoutes(deps as unknown as Parameters<typeof createConfigRoutes>[0]));
   router.use(createProjectsRoutes(deps as unknown as Parameters<typeof createProjectsRoutes>[0]));
 
   return router;

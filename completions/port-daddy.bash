@@ -94,7 +94,7 @@ _port_daddy() {
     # Activity
     log activity
     # Project (+ alias)
-    scan s projects p detect init doctor
+    scan s projects p doctor
     # Daemon lifecycle
     start stop restart status install uninstall dev ci-gate
     # Info
@@ -526,20 +526,6 @@ _port_daddy() {
     # -----------------------------------------------------------------------
     doctor)
       _pd_opts ''
-      ;;
-
-    # -----------------------------------------------------------------------
-    # detect  (deprecated — use scan)
-    # -----------------------------------------------------------------------
-    detect)
-      _pd_opts ''
-      ;;
-
-    # -----------------------------------------------------------------------
-    # init  (deprecated — use scan)
-    # -----------------------------------------------------------------------
-    init)
-      _pd_opts '--dry-run'
       ;;
 
     # -----------------------------------------------------------------------
