@@ -95,6 +95,7 @@ set -l __pd_commands \
     'claim' 'c' 'release' 'r' 'find' 'f' 'list' 'l' 'ps' 'url' 'env' \
     'pub' 'publish' 'sub' 'subscribe' 'wait' 'lock' 'unlock' 'locks' \
     'agent' 'agents' 'log' 'activity' \
+    'dashboard' 'channels' 'webhook' 'webhooks' 'metrics' 'config' 'health' 'ports' \
     'scan' 's' 'projects' 'p' 'doctor' \
     'start' 'stop' 'restart' 'status' 'install' 'uninstall' 'dev' 'ci-gate' \
     'version' 'help'
@@ -131,6 +132,16 @@ for prog in port-daddy pd
     # Activity
     complete -c $prog -n __pd_needs_command -a log -d 'Tail the activity log'
     complete -c $prog -n __pd_needs_command -a activity -d 'Activity summary or stats'
+
+    # System & Monitoring
+    complete -c $prog -n __pd_needs_command -a dashboard -d 'Open web dashboard'
+    complete -c $prog -n __pd_needs_command -a channels -d 'List pub/sub channels'
+    complete -c $prog -n __pd_needs_command -a webhook -d 'Manage webhooks'
+    complete -c $prog -n __pd_needs_command -a webhooks -d 'Manage webhooks (alias)'
+    complete -c $prog -n __pd_needs_command -a metrics -d 'Show daemon metrics'
+    complete -c $prog -n __pd_needs_command -a config -d 'Show resolved configuration'
+    complete -c $prog -n __pd_needs_command -a health -d 'Check service health'
+    complete -c $prog -n __pd_needs_command -a ports -d 'List active port assignments'
 
     # Project
     complete -c $prog -n __pd_needs_command -a scan -d 'Deep-scan project for frameworks'
@@ -200,6 +211,7 @@ for prog in port-daddy pd
     complete -c $prog -n "__pd_using_command lock" -l ttl -d 'Lock TTL in seconds' -x
     complete -c $prog -n "__pd_using_command lock" -l owner -d 'Owner agent ID' -x -a '(__pd_agent_ids)'
     complete -c $prog -n "__pd_using_command lock" -x -a '(__pd_lock_names)'
+    complete -c $prog -n "__pd_using_command lock" -x -a 'extend'
 
     # unlock
     complete -c $prog -n "__pd_using_command unlock" -l force -d 'Force-release'
@@ -218,9 +230,28 @@ for prog in port-daddy pd
     complete -c $prog -n "__pd_using_command log" -l agent -d 'Filter by agent ID' -x -a '(__pd_agent_ids)'
     complete -c $prog -n "__pd_using_command log" -l target -d 'Filter by target' -x -a '(__pd_service_ids)'
     complete -c $prog -n "__pd_using_command log" -l since -d 'Entries after timestamp' -x
+    complete -c $prog -n "__pd_using_command log" -l from -d 'Start of time range' -x
+    complete -c $prog -n "__pd_using_command log" -l to -d 'End of time range' -x
 
     # activity
     complete -c $prog -n "__pd_using_command activity" -x -a 'summary stats'
+
+    # channels
+    complete -c $prog -n "__pd_using_command channels" -x -a 'clear'
+    complete -c $prog -n "__pd_using_command channels" -x -a '(__pd_channels)'
+
+    # webhook / webhooks
+    complete -c $prog -n "__pd_using_command webhook webhooks" -x -a 'list events test update rm deliveries'
+
+    # config
+    complete -c $prog -n "__pd_using_command config" -l dir -d 'Target directory' -r
+
+    # health
+    complete -c $prog -n "__pd_using_command health" -x -a '(__pd_service_ids)'
+
+    # ports
+    complete -c $prog -n "__pd_using_command ports" -x -a 'cleanup'
+    complete -c $prog -n "__pd_using_command ports" -l system -d 'Show system ports'
 
     # scan / s
     complete -c $prog -n "__pd_using_command scan s" -l dry-run -d 'Preview without saving'

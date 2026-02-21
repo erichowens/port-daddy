@@ -93,6 +93,8 @@ _port_daddy() {
     agent agents
     # Activity
     log activity
+    # System & Monitoring
+    dashboard channels webhook webhooks metrics config health ports
     # Project (+ alias)
     scan s projects p doctor
     # Daemon lifecycle
@@ -310,8 +312,13 @@ _port_daddy() {
           else
             local lnames; lnames="$(_pd_lock_names)"
             # shellcheck disable=SC2207
-            COMPREPLY=( $(compgen -W "$lnames" -- "$cur") )
+            COMPREPLY=( $(compgen -W "extend $lnames" -- "$cur") )
           fi
+          ;;
+        extend)
+          local lnames; lnames="$(_pd_lock_names)"
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -W "$lnames" -- "$cur") )
           ;;
         --owner)
           local aids; aids="$(_pd_agent_ids)"
@@ -461,7 +468,7 @@ _port_daddy() {
           COMPREPLY=()  # Free-form
           ;;
         *)
-          _pd_opts '--limit --type --agent --target --since'
+          _pd_opts '--limit --type --agent --target --since --from --to'
           ;;
       esac
       ;;
@@ -533,6 +540,104 @@ _port_daddy() {
     # -----------------------------------------------------------------------
     start|stop|restart|status|install|uninstall|dev|ci-gate)
       _pd_opts ''
+      ;;
+
+    # -----------------------------------------------------------------------
+    # dashboard (no arguments)
+    # -----------------------------------------------------------------------
+    dashboard)
+      _pd_opts ''
+      ;;
+
+    # -----------------------------------------------------------------------
+    # channels [clear <channel>]
+    # -----------------------------------------------------------------------
+    channels)
+      case "$prev" in
+        channels)
+          if [[ "$cur" == -* ]]; then
+            _pd_opts ''
+          else
+            # shellcheck disable=SC2207
+            COMPREPLY=( $(compgen -W "clear" -- "$cur") )
+          fi
+          ;;
+        clear)
+          local channels; channels="$(_pd_channels)"
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -W "$channels" -- "$cur") )
+          ;;
+        *) _pd_opts '' ;;
+      esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # webhook <subcommand> [id]
+    # -----------------------------------------------------------------------
+    webhook|webhooks)
+      case "$prev" in
+        webhook|webhooks)
+          if [[ "$cur" == -* ]]; then
+            _pd_opts ''
+          else
+            # shellcheck disable=SC2207
+            COMPREPLY=( $(compgen -W "list events test update rm deliveries" -- "$cur") )
+          fi
+          ;;
+        test|update|rm|delete|deliveries)
+          COMPREPLY=()  # webhook IDs — no live lookup
+          ;;
+        --url|--events)
+          COMPREPLY=()  # free-form
+          ;;
+        *) _pd_opts '--url --events --active' ;;
+      esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # metrics (no arguments)
+    # -----------------------------------------------------------------------
+    metrics)
+      _pd_opts ''
+      ;;
+
+    # -----------------------------------------------------------------------
+    # config [--dir path]
+    # -----------------------------------------------------------------------
+    config)
+      case "$prev" in
+        --dir)
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -d -- "$cur") )
+          ;;
+        *)
+          _pd_opts '--dir'
+          ;;
+      esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # health [id]
+    # -----------------------------------------------------------------------
+    health)
+      _pd_complete_service ''
+      ;;
+
+    # -----------------------------------------------------------------------
+    # ports [cleanup] [--system]
+    # -----------------------------------------------------------------------
+    ports)
+      case "$prev" in
+        ports)
+          if [[ "$cur" == -* ]]; then
+            _pd_opts '--system'
+          else
+            # shellcheck disable=SC2207
+            COMPREPLY=( $(compgen -W "cleanup" -- "$cur") )
+          fi
+          ;;
+        *) _pd_opts '--system' ;;
+      esac
       ;;
 
     # -----------------------------------------------------------------------

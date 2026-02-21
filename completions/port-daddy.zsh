@@ -201,13 +201,28 @@ _pd_cmd_wait() {
 }
 
 _pd_cmd_lock() {
-  _arguments \
+  local -a lock_subcmds
+  lock_subcmds=(
+    'extend:extend a lock TTL'
+  )
+
+  local state
+  _arguments -C \
     '--ttl[lock TTL in seconds]:seconds:' \
     '--owner[owner agent ID]:agent ID:_pd_complete_agents' \
     '(-j --json)'{-j,--json}'[JSON output]' \
     '(-q --quiet)'{-q,--quiet}'[suppress output]' \
     '(-h --help)'{-h,--help}'[show help]' \
-    '1:lock name:_pd_complete_locks'
+    '1:lock name or subcommand:->first_arg' \
+    && return
+
+  case "$state" in
+    first_arg)
+      _alternative \
+        'subcommands:subcommand:_describe "lock subcommand" lock_subcmds' \
+        'locks:lock name:_pd_complete_locks'
+      ;;
+  esac
 }
 
 _pd_cmd_unlock() {
@@ -288,6 +303,8 @@ _pd_cmd_log() {
     '--agent[filter by agent ID]:agent ID:_pd_complete_agents' \
     '--target[filter by target service ID]:service ID:_pd_complete_services' \
     '--since[only entries after timestamp]:ISO timestamp:' \
+    '--from[start of time range]:ISO timestamp or epoch:' \
+    '--to[end of time range]:ISO timestamp or epoch:' \
     '(-j --json)'{-j,--json}'[JSON output]' \
     '(-q --quiet)'{-q,--quiet}'[suppress output]' \
     '(-h --help)'{-h,--help}'[show help]'
@@ -347,6 +364,104 @@ _pd_cmd_projects() {
   esac
 }
 
+_pd_cmd_dashboard() {
+  _arguments \
+    '(-h --help)'{-h,--help}'[show help]'
+}
+
+_pd_cmd_channels() {
+  local -a channels_subcmds
+  channels_subcmds=(
+    'clear:clear messages from a channel'
+  )
+
+  local state
+  _arguments -C \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '1:subcommand:->subcommand' \
+    && return
+
+  case "$state" in
+    subcommand)
+      _alternative \
+        'subcommands:subcommand:_describe "channels subcommand" channels_subcmds'
+      ;;
+  esac
+}
+
+_pd_cmd_webhook() {
+  local -a webhook_subcmds
+  webhook_subcmds=(
+    'list:list all webhooks'
+    'events:list available webhook events'
+    'test:send test delivery to a webhook'
+    'update:update a webhook'
+    'rm:delete a webhook'
+    'deliveries:list webhook deliveries'
+  )
+
+  local state
+  _arguments -C \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '1:subcommand:->subcommand' \
+    && return
+
+  case "$state" in
+    subcommand)
+      _describe 'webhook subcommand' webhook_subcmds
+      ;;
+  esac
+}
+
+_pd_cmd_metrics() {
+  _arguments \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]'
+}
+
+_pd_cmd_config() {
+  _arguments \
+    '--dir[target directory]:directory:_directories' \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]'
+}
+
+_pd_cmd_health() {
+  _arguments \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '1:service ID:_pd_complete_services'
+}
+
+_pd_cmd_ports() {
+  local -a ports_subcmds
+  ports_subcmds=(
+    'cleanup:release stale port assignments'
+  )
+
+  local state
+  _arguments -C \
+    '--system[show system/well-known ports]' \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '1:subcommand:->subcommand' \
+    && return
+
+  case "$state" in
+    subcommand)
+      _describe 'ports subcommand' ports_subcmds
+      ;;
+  esac
+}
+
 _pd_cmd_doctor() {
   _arguments \
     '(-j --json)'{-j,--json}'[JSON output]' \
@@ -397,6 +512,15 @@ _port_daddy() {
     # Activity
     'log:tail the activity log'
     'activity:show activity summary or stats'
+    # System & Monitoring
+    'dashboard:open web dashboard in browser'
+    'channels:list pub/sub channels'
+    'webhook:manage webhooks'
+    'webhooks:manage webhooks (alias for webhook)'
+    'metrics:show daemon metrics'
+    'config:show resolved configuration'
+    'health:check service health'
+    'ports:list active port assignments'
     # Project (+ aliases)
     'scan:deep-scan project for frameworks and register with daemon'
     's:deep-scan project (alias for scan)'
@@ -460,6 +584,13 @@ _port_daddy() {
         doctor)             _pd_cmd_doctor ;;
         start|stop|restart|status|install|uninstall|dev|ci-gate)
                             _pd_cmd_daemon ;;
+        dashboard)              _pd_cmd_dashboard ;;
+        channels)               _pd_cmd_channels ;;
+        webhook|webhooks)       _pd_cmd_webhook ;;
+        metrics)                _pd_cmd_metrics ;;
+        config)                 _pd_cmd_config ;;
+        health)                 _pd_cmd_health ;;
+        ports)                  _pd_cmd_ports ;;
         version|help)       ;;
         *)                  ;;
       esac
