@@ -286,8 +286,11 @@ Agent Coordination:
   sub <channel>     Subscribe to a channel (real-time stream)
   wait <id> [ids]   Wait for service(s) to become healthy
   lock <name>       Acquire a distributed lock
+  lock extend <n>   Extend a lock's TTL
   unlock <name>     Release a distributed lock
   locks             List all active locks
+  channels          List pub/sub channels
+  channels clear    Clear messages from a channel
 
 Agent Registry:
   agent register    Register as an agent (enables heartbeat)
@@ -299,11 +302,21 @@ Agent Registry:
 Activity Log:
   log [options]     View recent activity (audit trail)
   log summary       View activity summary by type
+  log stats         View activity log statistics
 
 Project Setup:
   scan [dir]        Deep scan project, detect all services (alias: s)
   projects          List all registered projects (alias: p)
   projects rm <id>  Remove a registered project
+
+System & Monitoring:
+  dashboard         Open the web dashboard in your browser
+  webhook <sub>     Manage webhooks (events, test, update, rm, deliveries)
+  metrics           Show daemon metrics
+  config            Show resolved configuration
+  health [id]       Check service health (all or by ID)
+  ports             List active port assignments
+  ports cleanup     Release stale port assignments
 
 Daemon Management:
   start             Start the Port Daddy daemon
@@ -337,6 +350,9 @@ Options:
   --type <type>       Agent type (cli, sdk, mcp)
   --limit <n>         Limit results (log command)
   --active            Show only active agents
+  --from <ts>         Start of time range (log, ISO or epoch)
+  --to <ts>           End of time range (log, ISO or epoch)
+  --system            Show system/well-known ports (ports command)
   --service <name>    Start only this service + its dependencies (up)
   --no-health         Skip health checks (up)
   --branch            Use git branch as context in identity (up/scan)
@@ -396,6 +412,7 @@ const ALL_COMMANDS: string[] = [
   'pub', 'publish', 'sub', 'subscribe', 'wait', 'lock', 'unlock', 'locks',
   'up', 'down', 'scan', 's', 'projects', 'p',
   'agent', 'agents', 'log', 'activity',
+  'dashboard', 'channels', 'webhook', 'webhooks', 'metrics', 'config', 'health', 'ports',
   'start', 'stop', 'restart', 'status', 'install', 'uninstall', 'dev', 'ci-gate',
   'doctor', 'diagnose', 'version', 'help'
 ];
@@ -451,7 +468,7 @@ async function main(): Promise<void> {
   }
 
   // Check for stale daemon before running commands (skip for daemon management)
-  const skipFreshnessCheck: boolean = ['start', 'stop', 'restart', 'install', 'uninstall', 'status', 'version', 'dev', 'ci-gate', 'doctor', 'diagnose', 'up', 'down'].includes(command as string);
+  const skipFreshnessCheck: boolean = ['start', 'stop', 'restart', 'install', 'uninstall', 'status', 'version', 'dev', 'ci-gate', 'doctor', 'diagnose', 'up', 'down', 'dashboard'].includes(command as string);
   if (!skipFreshnessCheck) {
     await checkDaemonFreshness();
   }
@@ -655,6 +672,36 @@ async function main(): Promise<void> {
 
       case 'version':
         await handleVersion();
+        break;
+
+      // New API-parity commands
+      case 'dashboard':
+        await handleDashboard();
+        break;
+
+      case 'channels':
+        await handleChannels(positional[0], positional.slice(1), options);
+        break;
+
+      case 'webhook':
+      case 'webhooks':
+        await handleWebhook(positional[0], positional.slice(1), options);
+        break;
+
+      case 'metrics':
+        await handleMetrics(options);
+        break;
+
+      case 'config':
+        await handleConfigCmd(options);
+        break;
+
+      case 'health':
+        await handleHealth(positional[0], options);
+        break;
+
+      case 'ports':
+        await handlePorts(positional[0], options);
         break;
 
       default: {
@@ -1126,8 +1173,54 @@ async function handleWait(serviceIds: string[], options: CLIOptions): Promise<vo
 }
 
 async function handleLock(name: string | undefined, options: CLIOptions): Promise<void> {
+  // Subcommand: lock extend <name> [--ttl <ms>]
+  if (name === 'extend') {
+    const lockName: string | undefined = options.name as string | undefined ?? (process.argv.find((_a, i, arr) => arr[i - 1] === 'extend' && i > 2) || undefined);
+    // Actually the positional after 'extend' comes as the second positional
+    // Re-parse: port-daddy lock extend <name> --ttl 60000
+    const extArgs = process.argv.slice(process.argv.indexOf('extend') + 1);
+    let extName: string | undefined;
+    let extTtl: string | undefined;
+    for (let i = 0; i < extArgs.length; i++) {
+      if (extArgs[i] === '--ttl' && extArgs[i + 1]) {
+        extTtl = extArgs[++i];
+      } else if (!extArgs[i].startsWith('-') && !extName) {
+        extName = extArgs[i];
+      }
+    }
+    if (!extName) {
+      console.error('Usage: port-daddy lock extend <name> [--ttl <ms>]');
+      process.exit(1);
+    }
+    const body: Record<string, unknown> = {
+      ttl: extTtl ? parseInt(extTtl, 10) : 300000
+    };
+    if (options.owner) body.owner = options.owner;
+
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/locks/${encodeURIComponent(extName)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error((data.error as string) || 'Failed to extend lock');
+      process.exit(1);
+    }
+    if (options.json) {
+      console.log(JSON.stringify(data, null, 2));
+    } else if (!options.quiet) {
+      console.log(`Extended lock: ${extName}`);
+      if (data.expiresAt) {
+        console.log(`  New expiry: ${new Date(data.expiresAt as number).toISOString()}`);
+      }
+    }
+    return;
+  }
+
   if (!name) {
     console.error('Usage: port-daddy lock <name> [--ttl <ms>] [--owner <id>]');
+    console.error('       port-daddy lock extend <name> [--ttl <ms>]');
     console.error('       port-daddy lock db-migrations');
     process.exit(1);
   }
@@ -1972,6 +2065,52 @@ async function handleLog(subcommand: string | undefined, options: CLIOptions): P
     return;
   }
 
+  // Time-range query via --from / --to
+  if (options.from || options.to) {
+    const rangeParams = new URLSearchParams();
+    if (options.from) rangeParams.append('from', options.from as string);
+    if (options.to) rangeParams.append('to', options.to as string);
+    if (options.limit) rangeParams.append('limit', options.limit as string);
+    if (options.type) rangeParams.append('type', options.type as string);
+
+    const rangeRes: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/activity/range?${rangeParams}`);
+    const rangeData = await rangeRes.json();
+
+    if (!rangeRes.ok) {
+      console.error((rangeData.error as string) || 'Failed to get activity range');
+      process.exit(1);
+    }
+
+    if (options.json) {
+      console.log(JSON.stringify(rangeData, null, 2));
+      return;
+    }
+
+    const entries = rangeData.entries as Array<{ timestamp: number; type: string; agentId?: string; details?: string }>;
+    if (!entries || entries.length === 0) {
+      console.log('No activity in specified range');
+      return;
+    }
+
+    console.log('');
+    console.log('TIMESTAMP'.padEnd(22) + 'TYPE'.padEnd(20) + 'AGENT'.padEnd(18) + 'DETAILS');
+    console.log('\u2500'.repeat(85));
+
+    for (const entry of entries) {
+      const time: string = new Date(entry.timestamp).toISOString().replace('T', ' ').slice(0, 19);
+      console.log(
+        time.padEnd(22) +
+        entry.type.slice(0, 19).padEnd(20) +
+        (entry.agentId || '-').slice(0, 17).padEnd(18) +
+        (entry.details || '-')
+      );
+    }
+
+    console.log('');
+    console.log(`Showing ${entries.length} entries`);
+    return;
+  }
+
   // Default: show recent activity
   const params = new URLSearchParams();
   if (options.limit) params.append('limit', options.limit as string);
@@ -2015,6 +2154,457 @@ async function handleLog(subcommand: string | undefined, options: CLIOptions): P
 
   console.log('');
   console.log(`Showing ${data.count} entries`);
+}
+
+// =============================================================================
+// New API-Parity Commands
+// =============================================================================
+
+async function handleDashboard(): Promise<void> {
+  const url = PORT_DADDY_URL.replace('http://', '').replace('https://', '');
+  const dashUrl = `http://${url.includes(':') ? url : url + ':9876'}`;
+  console.log(`Opening dashboard: ${dashUrl}`);
+  const openCmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
+  spawn(openCmd, [dashUrl], { detached: true, stdio: 'ignore' }).unref();
+}
+
+async function handleChannels(subcommand: string | undefined, args: string[], options: CLIOptions): Promise<void> {
+  if (subcommand === 'clear') {
+    const channel = args[0];
+    if (!channel) {
+      console.error('Usage: port-daddy channels clear <channel>');
+      process.exit(1);
+    }
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/msg/${encodeURIComponent(channel)}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error((data.error as string) || 'Failed to clear channel');
+      process.exit(1);
+    }
+    if (options.json) {
+      console.log(JSON.stringify(data, null, 2));
+    } else if (!options.quiet) {
+      console.log(`Cleared channel: ${channel}`);
+    }
+    return;
+  }
+
+  // Default: list channels
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/channels`);
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error((data.error as string) || 'Failed to list channels');
+    process.exit(1);
+  }
+
+  if (options.json) {
+    console.log(JSON.stringify(data, null, 2));
+    return;
+  }
+
+  const channels = data.channels as Array<{ name: string; messageCount: number; subscriberCount: number }>;
+  if (!channels || channels.length === 0) {
+    console.log('No active channels');
+    return;
+  }
+
+  console.log('');
+  console.log(tableHeader(['CHANNEL', 30], ['MESSAGES', 12], ['SUBSCRIBERS', 12]));
+  separator(54);
+
+  for (const ch of channels) {
+    console.log(
+      (ch.name || '-').padEnd(30) +
+      String(ch.messageCount ?? 0).padEnd(12) +
+      String(ch.subscriberCount ?? 0).padEnd(12)
+    );
+  }
+  console.log('');
+}
+
+async function handleWebhook(subcommand: string | undefined, args: string[], options: CLIOptions): Promise<void> {
+  if (!subcommand || subcommand === 'list') {
+    // List all webhooks
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/webhooks`);
+    const data = await res.json();
+    if (!res.ok) {
+      console.error((data.error as string) || 'Failed to list webhooks');
+      process.exit(1);
+    }
+    if (options.json) {
+      console.log(JSON.stringify(data, null, 2));
+      return;
+    }
+    const hooks = data.webhooks as Array<{ id: string; url: string; events: string[]; active: boolean }>;
+    if (!hooks || hooks.length === 0) {
+      console.log('No webhooks registered');
+      return;
+    }
+    console.log('');
+    console.log(tableHeader(['ID', 20], ['URL', 40], ['EVENTS', 20], ['ACTIVE', 8]));
+    separator(88);
+    for (const h of hooks) {
+      console.log(
+        (h.id || '-').slice(0, 19).padEnd(20) +
+        (h.url || '-').slice(0, 39).padEnd(40) +
+        (h.events?.join(',') || '*').slice(0, 19).padEnd(20) +
+        (h.active ? 'yes' : 'no').padEnd(8)
+      );
+    }
+    console.log('');
+    return;
+  }
+
+  if (subcommand === 'events') {
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/webhooks/events`);
+    const data = await res.json();
+    if (!res.ok) {
+      console.error((data.error as string) || 'Failed to list webhook events');
+      process.exit(1);
+    }
+    if (options.json) {
+      console.log(JSON.stringify(data, null, 2));
+    } else {
+      const events = data.events as string[];
+      console.log('Available webhook events:');
+      for (const e of events) {
+        console.log(`  ${e}`);
+      }
+    }
+    return;
+  }
+
+  if (subcommand === 'test') {
+    const id = args[0];
+    if (!id) {
+      console.error('Usage: port-daddy webhook test <id>');
+      process.exit(1);
+    }
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/webhooks/${encodeURIComponent(id)}/test`, {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error((data.error as string) || 'Failed to test webhook');
+      process.exit(1);
+    }
+    if (options.json) {
+      console.log(JSON.stringify(data, null, 2));
+    } else {
+      console.log(`Test delivery sent to webhook ${id}`);
+      if (data.delivery) {
+        const d = data.delivery as { status: number; success: boolean };
+        console.log(`  Status: ${d.status} (${d.success ? 'success' : 'failed'})`);
+      }
+    }
+    return;
+  }
+
+  if (subcommand === 'update') {
+    const id = args[0];
+    if (!id) {
+      console.error('Usage: port-daddy webhook update <id> [--url <url>] [--events <e1,e2>] [--active]');
+      process.exit(1);
+    }
+    const body: Record<string, unknown> = {};
+    if (options.url) body.url = options.url;
+    if (options.events) body.events = (options.events as string).split(',');
+    if (options.active !== undefined) body.active = options.active === true || options.active === 'true';
+
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/webhooks/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error((data.error as string) || 'Failed to update webhook');
+      process.exit(1);
+    }
+    if (options.json) {
+      console.log(JSON.stringify(data, null, 2));
+    } else if (!options.quiet) {
+      console.log(`Updated webhook: ${id}`);
+    }
+    return;
+  }
+
+  if (subcommand === 'rm' || subcommand === 'remove' || subcommand === 'delete') {
+    const id = args[0];
+    if (!id) {
+      console.error('Usage: port-daddy webhook rm <id>');
+      process.exit(1);
+    }
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/webhooks/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error((data.error as string) || 'Failed to delete webhook');
+      process.exit(1);
+    }
+    if (options.json) {
+      console.log(JSON.stringify(data, null, 2));
+    } else if (!options.quiet) {
+      console.log(`Deleted webhook: ${id}`);
+    }
+    return;
+  }
+
+  if (subcommand === 'deliveries') {
+    const id = args[0];
+    if (!id) {
+      console.error('Usage: port-daddy webhook deliveries <id>');
+      process.exit(1);
+    }
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/webhooks/${encodeURIComponent(id)}/deliveries`);
+    const data = await res.json();
+    if (!res.ok) {
+      console.error((data.error as string) || 'Failed to get deliveries');
+      process.exit(1);
+    }
+    if (options.json) {
+      console.log(JSON.stringify(data, null, 2));
+      return;
+    }
+    const deliveries = data.deliveries as Array<{ id: string; timestamp: number; status: number; success: boolean; event: string }>;
+    if (!deliveries || deliveries.length === 0) {
+      console.log('No deliveries found');
+      return;
+    }
+    console.log('');
+    console.log(tableHeader(['TIME', 22], ['EVENT', 20], ['STATUS', 10], ['OK', 6]));
+    separator(58);
+    for (const d of deliveries) {
+      const time = new Date(d.timestamp).toISOString().replace('T', ' ').slice(0, 19);
+      console.log(
+        time.padEnd(22) +
+        (d.event || '-').slice(0, 19).padEnd(20) +
+        String(d.status).padEnd(10) +
+        (d.success ? 'yes' : 'no').padEnd(6)
+      );
+    }
+    console.log('');
+    return;
+  }
+
+  // If subcommand looks like an ID, show that webhook
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/webhooks/${encodeURIComponent(subcommand)}`);
+  const data = await res.json();
+  if (!res.ok) {
+    console.error((data.error as string) || `Webhook '${subcommand}' not found`);
+    console.error('Subcommands: list, events, test <id>, update <id>, rm <id>, deliveries <id>');
+    process.exit(1);
+  }
+  console.log(JSON.stringify(data, null, 2));
+}
+
+async function handleMetrics(options: CLIOptions): Promise<void> {
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/metrics`);
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error((data.error as string) || 'Failed to get metrics');
+    process.exit(1);
+  }
+
+  if (options.json) {
+    console.log(JSON.stringify(data, null, 2));
+    return;
+  }
+
+  console.log('');
+  console.log('Port Daddy Metrics');
+  separator(50);
+
+  for (const [key, value] of Object.entries(data)) {
+    if (typeof value === 'object' && value !== null) {
+      console.log(`  ${key}:`);
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        console.log(`    ${k}: ${v}`);
+      }
+    } else {
+      console.log(`  ${key}: ${value}`);
+    }
+  }
+  console.log('');
+}
+
+async function handleConfigCmd(options: CLIOptions): Promise<void> {
+  const params = new URLSearchParams();
+  if (options.dir) params.append('dir', options.dir as string);
+
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/config${params.toString() ? '?' + params : ''}`);
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error((data.error as string) || 'Failed to get config');
+    process.exit(1);
+  }
+
+  if (options.json) {
+    console.log(JSON.stringify(data, null, 2));
+    return;
+  }
+
+  console.log('');
+  console.log('Port Daddy Configuration');
+  separator(50);
+
+  for (const [key, value] of Object.entries(data)) {
+    if (typeof value === 'object' && value !== null) {
+      console.log(`  ${key}: ${JSON.stringify(value)}`);
+    } else {
+      console.log(`  ${key}: ${value}`);
+    }
+  }
+  console.log('');
+}
+
+async function handleHealth(id: string | undefined, options: CLIOptions): Promise<void> {
+  if (id) {
+    // Single service health
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/services/health/${encodeURIComponent(id)}`);
+    const data = await res.json();
+    if (!res.ok) {
+      console.error((data.error as string) || `Health check failed for '${id}'`);
+      process.exit(1);
+    }
+    if (options.json) {
+      console.log(JSON.stringify(data, null, 2));
+    } else {
+      const h = data as { id?: string; healthy?: boolean; port?: number; latencyMs?: number; error?: string };
+      const status = h.healthy ? 'healthy' : 'unhealthy';
+      console.log(`${h.id || id}: ${status}`);
+      if (h.port) console.log(`  Port: ${h.port}`);
+      if (h.latencyMs !== undefined) console.log(`  Latency: ${h.latencyMs}ms`);
+      if (h.error) console.log(`  Error: ${h.error}`);
+    }
+    return;
+  }
+
+  // All services health
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/services/health`);
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error((data.error as string) || 'Failed to get health');
+    process.exit(1);
+  }
+
+  if (options.json) {
+    console.log(JSON.stringify(data, null, 2));
+    return;
+  }
+
+  const services = data.services as Array<{ id: string; healthy: boolean; port: number; latencyMs?: number }>;
+  if (!services || services.length === 0) {
+    console.log('No services to check');
+    return;
+  }
+
+  console.log('');
+  console.log(tableHeader(['SERVICE', 35], ['PORT', 8], ['STATUS', 12], ['LATENCY', 10]));
+  separator(65);
+
+  for (const svc of services) {
+    console.log(
+      (svc.id || '-').slice(0, 34).padEnd(35) +
+      String(svc.port).padEnd(8) +
+      (svc.healthy ? 'healthy' : 'unhealthy').padEnd(12) +
+      (svc.latencyMs !== undefined ? `${svc.latencyMs}ms` : '-').padEnd(10)
+    );
+  }
+  console.log('');
+}
+
+async function handlePorts(subcommand: string | undefined, options: CLIOptions): Promise<void> {
+  if (subcommand === 'cleanup') {
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/ports/cleanup`, {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error((data.error as string) || 'Cleanup failed');
+      process.exit(1);
+    }
+    if (options.json) {
+      console.log(JSON.stringify(data, null, 2));
+    } else if (!options.quiet) {
+      console.log(`Cleanup complete: ${data.released ?? 0} stale ports released`);
+    }
+    return;
+  }
+
+  if (options.system) {
+    // System/well-known ports
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/ports/system`);
+    const data = await res.json();
+    if (!res.ok) {
+      console.error((data.error as string) || 'Failed to get system ports');
+      process.exit(1);
+    }
+    if (options.json) {
+      console.log(JSON.stringify(data, null, 2));
+      return;
+    }
+    const ports = data.ports as Array<{ port: number; process?: string; pid?: number }>;
+    if (!ports || ports.length === 0) {
+      console.log('No system ports in use');
+      return;
+    }
+    console.log('');
+    console.log(tableHeader(['PORT', 10], ['PROCESS', 30], ['PID', 10]));
+    separator(50);
+    for (const p of ports) {
+      console.log(
+        String(p.port).padEnd(10) +
+        (p.process || '-').slice(0, 29).padEnd(30) +
+        String(p.pid || '-').padEnd(10)
+      );
+    }
+    console.log('');
+    return;
+  }
+
+  // Default: list active ports
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/ports/active`);
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error((data.error as string) || 'Failed to list ports');
+    process.exit(1);
+  }
+
+  if (options.json) {
+    console.log(JSON.stringify(data, null, 2));
+    return;
+  }
+
+  const ports = data.ports as Array<{ port: number; identity: string; claimedAt?: number; expiresAt?: number }>;
+  if (!ports || ports.length === 0) {
+    console.log('No active port assignments');
+    return;
+  }
+
+  console.log('');
+  console.log(tableHeader(['PORT', 10], ['IDENTITY', 35], ['CLAIMED', 22], ['EXPIRES', 22]));
+  separator(89);
+
+  for (const p of ports) {
+    const claimed = p.claimedAt ? new Date(p.claimedAt).toISOString().replace('T', ' ').slice(0, 19) : '-';
+    const expires = p.expiresAt ? new Date(p.expiresAt).toISOString().replace('T', ' ').slice(0, 19) : 'never';
+    console.log(
+      String(p.port).padEnd(10) +
+      (p.identity || '-').slice(0, 34).padEnd(35) +
+      claimed.padEnd(22) +
+      expires.padEnd(22)
+    );
+  }
+  console.log('');
 }
 
 // =============================================================================
