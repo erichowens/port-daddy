@@ -8,6 +8,12 @@
 
 import type Database from 'better-sqlite3';
 import { randomBytes } from 'crypto';
+import { ActivityType } from './activity.js';
+
+// Optional activity logger interface — injected after creation via setActivityLog()
+interface ActivityLogger {
+  log(type: string, opts: { details: string; metadata: Record<string, unknown> }): void;
+}
 
 // =============================================================================
 // Types
@@ -283,6 +289,16 @@ export function createSessions(db: Database.Database) {
   }
 
   // ---------------------------------------------------------------------------
+  // Activity logging (optional — injected via setActivityLog)
+  // ---------------------------------------------------------------------------
+
+  let activityLog: ActivityLogger | null = null;
+
+  function setActivityLog(logger: ActivityLogger): void {
+    activityLog = logger;
+  }
+
+  // ---------------------------------------------------------------------------
   // Public API
   // ---------------------------------------------------------------------------
 
@@ -343,6 +359,13 @@ export function createSessions(db: Database.Database) {
       result.conflicts = conflicts;
     }
 
+    if (activityLog) {
+      activityLog.log(ActivityType.SESSION_START, {
+        details: `Session started: ${purpose}`,
+        metadata: { sessionId: id, purpose, agentId: agentId || undefined } as unknown as Record<string, unknown>,
+      });
+    }
+
     return result;
   }
 
@@ -374,6 +397,13 @@ export function createSessions(db: Database.Database) {
 
     // Update session status
     stmts.updateStatus.run(status, now, now, sessionId);
+
+    if (activityLog) {
+      activityLog.log(ActivityType.SESSION_END, {
+        details: `Session ended: ${sessionId} (${status})`,
+        metadata: { sessionId, status, releasedFiles: releasedFiles.length } as unknown as Record<string, unknown>,
+      });
+    }
 
     return {
       success: true,
@@ -428,10 +458,18 @@ export function createSessions(db: Database.Database) {
     const { type = 'note' } = options;
 
     const result = stmts.insertNote.run(sessionId, content, type, now);
+    const noteId = Number(result.lastInsertRowid);
+
+    if (activityLog) {
+      activityLog.log(ActivityType.SESSION_NOTE, {
+        details: `Note added to session ${sessionId}`,
+        metadata: { sessionId, noteId, type } as unknown as Record<string, unknown>,
+      });
+    }
 
     return {
       success: true,
-      noteId: Number(result.lastInsertRowid),
+      noteId,
       sessionId,
     };
   }
@@ -568,6 +606,13 @@ export function createSessions(db: Database.Database) {
       claimed.push(filePath);
     }
 
+    if (activityLog && claimed.length > 0) {
+      activityLog.log(ActivityType.FILE_CLAIM, {
+        details: `Claimed ${claimed.length} file(s) for session ${sessionId}`,
+        metadata: { sessionId, files: claimed, conflicts: conflicts.length } as unknown as Record<string, unknown>,
+      });
+    }
+
     return {
       success: true,
       claimed,
@@ -594,6 +639,13 @@ export function createSessions(db: Database.Database) {
       if (result.changes > 0) {
         released.push(filePath);
       }
+    }
+
+    if (activityLog && released.length > 0) {
+      activityLog.log(ActivityType.FILE_RELEASE, {
+        details: `Released ${released.length} file(s) from session ${sessionId}`,
+        metadata: { sessionId, files: released } as unknown as Record<string, unknown>,
+      });
     }
 
     return {
@@ -718,5 +770,6 @@ export function createSessions(db: Database.Database) {
     list,
     get,
     cleanup,
+    setActivityLog,
   };
 }

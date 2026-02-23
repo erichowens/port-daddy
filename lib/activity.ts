@@ -33,6 +33,13 @@ export const ActivityType = {
   // Messaging
   MESSAGE_PUBLISH: 'message.publish',
 
+  // Session operations
+  SESSION_START: 'session.start',
+  SESSION_END: 'session.end',
+  SESSION_NOTE: 'session.note',
+  FILE_CLAIM: 'file.claim',
+  FILE_RELEASE: 'file.release',
+
   // System
   DAEMON_START: 'daemon.start',
   DAEMON_STOP: 'daemon.stop',

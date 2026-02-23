@@ -93,6 +93,8 @@ _port_daddy() {
     agent agents
     # Activity
     log activity
+    # Sessions & Notes
+    session sessions note notes
     # System & Monitoring
     dashboard channels webhook webhooks metrics config health ports
     # Orchestration
@@ -500,6 +502,117 @@ _port_daddy() {
       else
         _pd_opts ''
       fi
+      ;;
+
+    # -----------------------------------------------------------------------
+    # session  <subcommand> [args]
+    # -----------------------------------------------------------------------
+    session)
+      local session_subcommands='start end done abandon rm files'
+      # Find which subcommand (if any) has been typed after "session".
+      local subcmd=""
+      for (( i = 1; i < cword; i++ )); do
+        local w="${words[$i]}"
+        if [[ "$w" == "session" ]]; then
+          # The token after "session" is the subcommand.
+          if (( i + 1 < cword )); then
+            subcmd="${words[$((i+1))]}"
+          fi
+          break
+        fi
+      done
+
+      if [[ -z "$subcmd" ]]; then
+        # Complete the subcommand name.
+        if [[ "$cur" == -* ]]; then
+          _pd_opts ''
+        else
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -W "$session_subcommands" -- "$cur") )
+        fi
+        return 0
+      fi
+
+      case "$subcmd" in
+        start)
+          _pd_opts '--agent'
+          ;;
+        end|done)
+          _pd_opts '--note'
+          ;;
+        abandon|rm)
+          _pd_opts ''
+          ;;
+        files)
+          # files has sub-subcommands: add, rm
+          local files_subcmd=""
+          for (( i = 1; i < cword; i++ )); do
+            if [[ "${words[$i]}" == "files" ]]; then
+              if (( i + 1 < cword )); then
+                files_subcmd="${words[$((i+1))]}"
+              fi
+              break
+            fi
+          done
+          if [[ -z "$files_subcmd" ]]; then
+            # shellcheck disable=SC2207
+            COMPREPLY=( $(compgen -W "add rm" -- "$cur") )
+          else
+            _pd_opts ''
+          fi
+          ;;
+        *)
+          _pd_opts ''
+          ;;
+      esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # sessions  [--all] [--status STATUS] [--files] [--json] [--quiet]
+    # -----------------------------------------------------------------------
+    sessions)
+      case "$prev" in
+        --status)
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -W "active completed abandoned" -- "$cur") )
+          ;;
+        *)
+          _pd_opts '--all --status --files'
+          ;;
+      esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # note  <content> [--type TYPE]
+    # -----------------------------------------------------------------------
+    note)
+      case "$prev" in
+        --type)
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -W "note handoff commit warning" -- "$cur") )
+          ;;
+        *)
+          _pd_opts '--type'
+          ;;
+      esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # notes  [--limit N] [--type TYPE] [--json] [--quiet]
+    # -----------------------------------------------------------------------
+    notes)
+      case "$prev" in
+        --type)
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -W "note handoff commit warning" -- "$cur") )
+          ;;
+        --limit)
+          COMPREPLY=()  # Numeric
+          ;;
+        *)
+          _pd_opts '--limit --type'
+          ;;
+      esac
       ;;
 
     # -----------------------------------------------------------------------

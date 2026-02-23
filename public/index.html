@@ -617,6 +617,7 @@
     <symbol id="icon-code" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></symbol>
     <symbol id="icon-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
     <symbol id="icon-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></symbol>
+    <symbol id="icon-clipboard" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></symbol>
   </svg>
 
   <div class="container">
@@ -673,6 +674,7 @@
           <button class="tab" data-tab="channels"><svg class="icon"><use href="#icon-message"/></svg>Channels<span class="tab-badge" id="badge-channels">0</span></button>
           <button class="tab" data-tab="webhooks"><svg class="icon"><use href="#icon-webhook"/></svg>Webhooks<span class="tab-badge" id="badge-webhooks">0</span></button>
           <button class="tab" data-tab="projects"><svg class="icon"><use href="#icon-folder"/></svg>Projects<span class="tab-badge" id="badge-projects">0</span></button>
+          <button class="tab" data-tab="sessions"><svg class="icon"><use href="#icon-clipboard"/></svg>Sessions<span class="tab-badge" id="badge-sessions">0</span></button>
           <button class="tab" data-tab="activity"><svg class="icon"><use href="#icon-activity"/></svg>Activity</button>
           <button class="tab" data-tab="config"><svg class="icon"><use href="#icon-settings"/></svg>Config</button>
         </div>
@@ -743,6 +745,24 @@
           <thead><tr><th>Project</th><th>Type</th><th>Services</th><th>Last Scanned</th><th>Frameworks</th><th></th></tr></thead>
           <tbody id="projects-body"><tr><td colspan="6" class="empty-state"><svg class="empty-state-icon"><use href="#icon-folder"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
         </table>
+      </div>
+
+      <div class="tab-content" id="tab-sessions">
+        <div class="tab-toolbar">
+          <button class="refresh-btn" onclick="refreshSessions()" id="refresh-sessions"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
+          <select class="filter-select" id="sessions-filter" onchange="refreshSessions()">
+            <option value="">Active Sessions</option>
+            <option value="all">All Sessions</option>
+            <option value="completed">Completed</option>
+            <option value="abandoned">Abandoned</option>
+          </select>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>Purpose</th><th>Status</th><th>Agent</th><th>Files</th><th>Age</th><th></th></tr></thead>
+          <tbody id="sessions-body"><tr><td colspan="7" class="empty-state"><svg class="empty-state-icon"><use href="#icon-clipboard"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
+        </table>
+        <h3 style="color:var(--accent);margin:24px 0 12px;font-size:1.05em">Recent Notes</h3>
+        <div class="activity-feed" id="notes-feed"><div class="empty-state"><svg class="empty-state-icon"><use href="#icon-message"/></svg><div class="empty-state-text">No notes yet</div></div></div>
       </div>
 
       <div class="tab-content" id="tab-activity">
@@ -1815,8 +1835,92 @@
     });
 
     /* ── Init ── */
+    async function refreshSessions() {
+      spinRefreshBtn('refresh-sessions');
+      try {
+        var filterVal = document.getElementById('sessions-filter').value;
+        var url = API + '/sessions?limit=50';
+        if (filterVal && filterVal !== 'all') { url += '&status=' + filterVal; }
+        else if (filterVal === 'all') { url += '&status='; }
+        var data = await (await fetch(url)).json();
+        var ct = data.count || 0;
+        document.getElementById('badge-sessions').textContent = ct;
+        var tbody = document.getElementById('sessions-body');
+        tbody.textContent = '';
+        if (ct === 0) {
+          renderEmptyTd(tbody, '#icon-clipboard', 'No sessions', 'Start a session with "port-daddy session start"', 7);
+        } else {
+          data.sessions.forEach(function(s) {
+            var tr = document.createElement('tr');
+            var td1 = document.createElement('td'); var c = document.createElement('code'); c.textContent = s.id; td1.appendChild(c);
+            var td2 = document.createElement('td'); td2.textContent = s.purpose;
+            var td3 = document.createElement('td'); var badge = document.createElement('span');
+            badge.className = 'badge badge-' + (s.status === 'active' ? 'success' : s.status === 'abandoned' ? 'danger' : 'muted');
+            badge.textContent = s.status; td3.appendChild(badge);
+            var td4 = document.createElement('td'); td4.textContent = s.agentId || '-';
+            var td5 = document.createElement('td'); td5.textContent = s.filesCount !== undefined ? s.filesCount : '-';
+            var td6 = document.createElement('td'); td6.textContent = formatTime(s.createdAt);
+            var td7 = document.createElement('td');
+            if (s.status === 'active') {
+              var btnEnd = document.createElement('button'); btnEnd.className = 'action-btn'; btnEnd.textContent = 'End';
+              btnEnd.onclick = function() { endSession(s.id); }; td7.appendChild(btnEnd);
+              var btnAb = document.createElement('button'); btnAb.className = 'action-btn danger'; btnAb.textContent = 'Abandon';
+              btnAb.style.marginLeft = '4px'; btnAb.onclick = function() { abandonSession(s.id); }; td7.appendChild(btnAb);
+            }
+            tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7);
+            tbody.appendChild(tr);
+          });
+        }
+        // Refresh notes feed
+        var notesData = await (await fetch(API + '/notes?limit=10')).json();
+        var notesFeed = document.getElementById('notes-feed');
+        notesFeed.textContent = '';
+        if (!notesData.notes || notesData.notes.length === 0) {
+          var empty = document.createElement('div'); empty.className = 'empty-state';
+          var svgNs = 'http://www.w3.org/2000/svg';
+          var svg = document.createElementNS(svgNs, 'svg'); svg.setAttribute('class', 'empty-state-icon');
+          var use = document.createElementNS(svgNs, 'use'); use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#icon-message');
+          svg.appendChild(use); empty.appendChild(svg);
+          var t = document.createElement('div'); t.className = 'empty-state-text'; t.textContent = 'No notes yet'; empty.appendChild(t);
+          notesFeed.appendChild(empty);
+        } else {
+          var noteIcons = { 'note': '#icon-message', 'handoff': '#icon-send', 'warning': '#icon-zap', 'commit': '#icon-check' };
+          notesData.notes.forEach(function(n) {
+            var item = document.createElement('div'); item.className = 'activity-item';
+            var iconDiv = document.createElement('div'); iconDiv.className = 'activity-icon';
+            var svgNs2 = 'http://www.w3.org/2000/svg';
+            var svg2 = document.createElementNS(svgNs2, 'svg'); svg2.setAttribute('class', 'icon');
+            var use2 = document.createElementNS(svgNs2, 'use');
+            use2.setAttributeNS('http://www.w3.org/1999/xlink', 'href', noteIcons[n.type] || '#icon-message');
+            svg2.appendChild(use2); iconDiv.appendChild(svg2);
+            var content = document.createElement('div'); content.className = 'activity-content';
+            var typeDiv = document.createElement('div'); typeDiv.className = 'type'; typeDiv.textContent = n.type + (n.sessionPurpose ? ' - ' + n.sessionPurpose : '');
+            var detailsDiv = document.createElement('div'); detailsDiv.className = 'details'; detailsDiv.textContent = n.content;
+            var timeDiv = document.createElement('div'); timeDiv.className = 'time'; timeDiv.textContent = formatTime(n.createdAt);
+            content.appendChild(typeDiv); content.appendChild(detailsDiv); content.appendChild(timeDiv);
+            item.appendChild(iconDiv); item.appendChild(content);
+            notesFeed.appendChild(item);
+          });
+        }
+      } catch (e) { console.error(e); }
+    }
+    async function endSession(id) {
+      try {
+        await fetch(API + '/sessions/' + encodeURIComponent(id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'completed' }) });
+        refreshSessions();
+        showToast('Session ended', 'success');
+      } catch (e) { showToast('Failed to end session', 'error'); }
+    }
+    async function abandonSession(id) {
+      if (!confirm('Abandon session "' + id + '"? This will release all file claims.')) return;
+      try {
+        await fetch(API + '/sessions/' + encodeURIComponent(id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'abandoned' }) });
+        refreshSessions();
+        showToast('Session abandoned', 'success');
+      } catch (e) { showToast('Failed to abandon session', 'error'); }
+    }
     async function refreshAll() {
-      await Promise.all([refreshHealth(), refreshVersion(), refreshServices(), refreshAgents(), refreshLocks(), refreshChannels(), refreshWebhooks(), refreshActivity(), refreshProjects(), refreshConfig()]);
+      await Promise.all([refreshHealth(), refreshVersion(), refreshServices(), refreshAgents(), refreshLocks(), refreshChannels(), refreshWebhooks(), refreshActivity(), refreshProjects(), refreshSessions(), refreshConfig()]);
     }
     refreshAll();
     setInterval(refreshAll, 5000);

@@ -236,6 +236,7 @@ const activityLog = createActivityLog(db);
 const webhooks = createWebhooks(db);
 const projects = createProjects(db);
 const sessions = createSessions(db);
+sessions.setActivityLog(activityLog);
 
 interface DaemonMetrics {
   total_assignments: number;

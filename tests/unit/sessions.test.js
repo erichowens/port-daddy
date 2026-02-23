@@ -6,9 +6,10 @@
  * Each test runs with a fresh in-memory database to ensure isolation.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { createTestDb } from '../setup-unit.js';
 import { createSessions } from '../../lib/sessions.js';
+import { ActivityType } from '../../lib/activity.js';
 
 describe('Sessions Module', () => {
   let db;
@@ -1283,6 +1284,158 @@ describe('Sessions Module', () => {
 
       const got = sessions.get(started.id);
       expect(got.session.updatedAt).toBeGreaterThanOrEqual(beforeEnd);
+    });
+  });
+
+  // ===========================================================================
+  // Activity Logging Integration
+  // ===========================================================================
+
+  describe('Activity Logging', () => {
+    let mockLog;
+    let sessionsWithLog;
+
+    beforeEach(() => {
+      mockLog = { log: jest.fn() };
+      sessionsWithLog = createSessions(db);
+      sessionsWithLog.setActivityLog(mockLog);
+    });
+
+    it('should log SESSION_START on session start', () => {
+      const result = sessionsWithLog.start('Build feature Y');
+
+      expect(result.success).toBe(true);
+      expect(mockLog.log).toHaveBeenCalledWith(
+        ActivityType.SESSION_START,
+        expect.objectContaining({
+          details: expect.stringContaining('Build feature Y'),
+          metadata: expect.objectContaining({ sessionId: result.id, purpose: 'Build feature Y' }),
+        })
+      );
+    });
+
+    it('should log SESSION_END on session end', () => {
+      const started = sessionsWithLog.start('Work item');
+      mockLog.log.mockClear();
+
+      sessionsWithLog.end(started.id);
+
+      expect(mockLog.log).toHaveBeenCalledWith(
+        ActivityType.SESSION_END,
+        expect.objectContaining({
+          details: expect.stringContaining(started.id),
+          metadata: expect.objectContaining({ sessionId: started.id, status: 'completed' }),
+        })
+      );
+    });
+
+    it('should log SESSION_END with abandoned status on abandon', () => {
+      const started = sessionsWithLog.start('Risky experiment');
+      mockLog.log.mockClear();
+
+      sessionsWithLog.abandon(started.id);
+
+      expect(mockLog.log).toHaveBeenCalledWith(
+        ActivityType.SESSION_END,
+        expect.objectContaining({
+          details: expect.stringContaining('abandoned'),
+          metadata: expect.objectContaining({ sessionId: started.id, status: 'abandoned' }),
+        })
+      );
+    });
+
+    it('should log SESSION_NOTE on note creation', () => {
+      const started = sessionsWithLog.start('Work item');
+      mockLog.log.mockClear();
+
+      const noteResult = sessionsWithLog.addNote(started.id, 'Progress update');
+
+      expect(noteResult.success).toBe(true);
+      expect(mockLog.log).toHaveBeenCalledWith(
+        ActivityType.SESSION_NOTE,
+        expect.objectContaining({
+          details: expect.stringContaining(started.id),
+          metadata: expect.objectContaining({ sessionId: started.id, noteId: noteResult.noteId, type: 'note' }),
+        })
+      );
+    });
+
+    it('should log FILE_CLAIM on file claim', () => {
+      const started = sessionsWithLog.start('Work item');
+      mockLog.log.mockClear();
+
+      sessionsWithLog.claimFiles(started.id, ['src/a.ts', 'src/b.ts']);
+
+      expect(mockLog.log).toHaveBeenCalledWith(
+        ActivityType.FILE_CLAIM,
+        expect.objectContaining({
+          details: expect.stringContaining('2 file(s)'),
+          metadata: expect.objectContaining({ sessionId: started.id, files: ['src/a.ts', 'src/b.ts'] }),
+        })
+      );
+    });
+
+    it('should log FILE_RELEASE on file release', () => {
+      const started = sessionsWithLog.start('Work item');
+      sessionsWithLog.claimFiles(started.id, ['src/a.ts', 'src/b.ts']);
+      mockLog.log.mockClear();
+
+      sessionsWithLog.releaseFiles(started.id, ['src/a.ts']);
+
+      expect(mockLog.log).toHaveBeenCalledWith(
+        ActivityType.FILE_RELEASE,
+        expect.objectContaining({
+          details: expect.stringContaining('1 file(s)'),
+          metadata: expect.objectContaining({ sessionId: started.id, files: ['src/a.ts'] }),
+        })
+      );
+    });
+
+    it('should not log FILE_CLAIM when no files are claimed', () => {
+      const started = sessionsWithLog.start('Work item');
+      mockLog.log.mockClear();
+
+      // Empty claim returns error, no log
+      sessionsWithLog.claimFiles(started.id, []);
+
+      // Only the start log should have been called, nothing after the clear
+      expect(mockLog.log).not.toHaveBeenCalledWith(
+        ActivityType.FILE_CLAIM,
+        expect.anything()
+      );
+    });
+
+    it('should not log FILE_RELEASE when no files are released', () => {
+      const started = sessionsWithLog.start('Work item');
+      sessionsWithLog.claimFiles(started.id, ['src/a.ts']);
+      sessionsWithLog.releaseFiles(started.id, ['src/a.ts']);
+      mockLog.log.mockClear();
+
+      // Release again - nothing happens
+      sessionsWithLog.releaseFiles(started.id, ['src/a.ts']);
+
+      expect(mockLog.log).not.toHaveBeenCalledWith(
+        ActivityType.FILE_RELEASE,
+        expect.anything()
+      );
+    });
+
+    it('should not log anything when no activity logger is set', () => {
+      // Use the default sessions without activity log
+      const result = sessions.start('No logging');
+      sessions.addNote(result.id, 'Silent note');
+      sessions.end(result.id);
+
+      // If we got here without errors, the module works fine without a logger
+      expect(result.success).toBe(true);
+    });
+
+    it('should have correct activity types as strings', () => {
+      expect(ActivityType.SESSION_START).toBe('session.start');
+      expect(ActivityType.SESSION_END).toBe('session.end');
+      expect(ActivityType.SESSION_NOTE).toBe('session.note');
+      expect(ActivityType.FILE_CLAIM).toBe('file.claim');
+      expect(ActivityType.FILE_RELEASE).toBe('file.release');
     });
   });
 });

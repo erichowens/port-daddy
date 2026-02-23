@@ -134,6 +134,12 @@ for prog in port-daddy pd
     complete -c $prog -n __pd_needs_command -a log -d 'Tail the activity log'
     complete -c $prog -n __pd_needs_command -a activity -d 'Activity summary or stats'
 
+    # Sessions & Notes
+    complete -c $prog -n __pd_needs_command -a session -d 'Manage a session'
+    complete -c $prog -n __pd_needs_command -a sessions -d 'List sessions'
+    complete -c $prog -n __pd_needs_command -a note -d 'Add a quick note'
+    complete -c $prog -n __pd_needs_command -a notes -d 'List recent notes'
+
     # System & Monitoring
     complete -c $prog -n __pd_needs_command -a dashboard -d 'Open web dashboard'
     complete -c $prog -n __pd_needs_command -a channels -d 'List pub/sub channels'
@@ -271,4 +277,48 @@ for prog in port-daddy pd
 
     # projects / p
     complete -c $prog -n "__pd_using_command projects p" -x -a 'rm'
+
+    # session subcommands
+    complete -c $prog -n "__pd_using_command session" -x -a 'start' -d 'Start a new session'
+    complete -c $prog -n "__pd_using_command session" -x -a 'end' -d 'End a session (completed)'
+    complete -c $prog -n "__pd_using_command session" -x -a 'done' -d 'End a session (alias for end)'
+    complete -c $prog -n "__pd_using_command session" -x -a 'abandon' -d 'Abandon a session'
+    complete -c $prog -n "__pd_using_command session" -x -a 'rm' -d 'Delete a session and cascade notes/files'
+    complete -c $prog -n "__pd_using_command session" -x -a 'files' -d 'Manage file claims for a session'
+
+    # sessions
+    complete -c $prog -n "__pd_using_command sessions" -l all -d 'Show all sessions, not just active'
+    complete -c $prog -n "__pd_using_command sessions" -l status -d 'Filter by status' -x -a 'active completed abandoned'
+    complete -c $prog -n "__pd_using_command sessions" -l files -d 'Include file claims'
+
+    # note
+    complete -c $prog -n "__pd_using_command note" -l type -d 'Note type' -x -a 'note handoff commit warning'
+
+    # notes
+    complete -c $prog -n "__pd_using_command notes" -l limit -d 'Max entries' -x
+    complete -c $prog -n "__pd_using_command notes" -l type -d 'Filter by note type' -x -a 'note handoff commit warning'
+
+    # -----------------------------------------------------------------------
+    # Fill parity gaps for existing commands
+    # -----------------------------------------------------------------------
+
+    # agent subcommand options
+    complete -c $prog -n "__pd_using_command agent" -l agent -d 'Agent ID' -x -a '(__pd_agent_ids)'
+    complete -c $prog -n "__pd_using_command agent" -l type -d 'Agent type' -x -a 'worker orchestrator monitor generic'
+    complete -c $prog -n "__pd_using_command agent" -l name -d 'Human-readable name' -x
+    complete -c $prog -n "__pd_using_command agent" -l maxServices -d 'Max services' -x
+    complete -c $prog -n "__pd_using_command agent" -l maxLocks -d 'Max locks' -x
+
+    # log missing options (--from, --to already exist in zsh/bash)
+    complete -c $prog -n "__pd_using_command log" -l from -d 'Start of time range' -x
+    complete -c $prog -n "__pd_using_command log" -l to -d 'End of time range' -x
+
+    # webhook/webhooks options
+    complete -c $prog -n "__pd_using_command webhook webhooks" -l url -d 'Webhook URL' -x
+    complete -c $prog -n "__pd_using_command webhook webhooks" -l events -d 'Webhook events' -x
+    complete -c $prog -n "__pd_using_command webhook webhooks" -l active -d 'Filter active webhooks'
+
+    # down (no extra options but needs consistency)
+
+    # doctor / diagnose (already handled by command registration)
 end

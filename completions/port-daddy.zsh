@@ -488,6 +488,103 @@ _pd_cmd_doctor() {
     '(-h --help)'{-h,--help}'[show help]'
 }
 
+_pd_cmd_session() {
+  local -a session_subcmds
+  session_subcmds=(
+    'start:start a new session'
+    'end:end a session (completed)'
+    'done:end a session (alias for end)'
+    'abandon:abandon a session'
+    'rm:delete a session and cascade notes/files'
+    'files:manage file claims for a session'
+  )
+
+  local state subcmd
+  _arguments -C \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '1:subcommand:->subcommand' \
+    '*::subcommand args:->args' \
+    && return
+
+  case "$state" in
+    subcommand)
+      _describe 'session subcommand' session_subcmds
+      ;;
+    args)
+      subcmd="${words[1]}"
+      case "$subcmd" in
+        start)
+          _arguments \
+            '--agent[agent ID]:agent ID:_pd_complete_agents' \
+            '(-j --json)'{-j,--json}'[JSON output]' \
+            '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+            '1:purpose:'
+          ;;
+        end|done)
+          _arguments \
+            '--note[handoff note]:note:' \
+            '(-j --json)'{-j,--json}'[JSON output]' \
+            '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+            '1:session ID:'
+          ;;
+        abandon|rm)
+          _arguments \
+            '(-j --json)'{-j,--json}'[JSON output]' \
+            '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+            '1:session ID:'
+          ;;
+        files)
+          local -a files_subcmds
+          files_subcmds=(
+            'add:claim files for a session'
+            'rm:release files from a session'
+          )
+          _arguments -C \
+            '(-j --json)'{-j,--json}'[JSON output]' \
+            '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+            '1:subcommand:->files_sub' \
+            && return
+          case "$state" in
+            files_sub)
+              _describe 'files subcommand' files_subcmds
+              ;;
+          esac
+          ;;
+      esac
+      ;;
+  esac
+}
+
+_pd_cmd_sessions() {
+  _arguments \
+    '--all[show all sessions, not just active]' \
+    '--status[filter by status]:status:(active completed abandoned)' \
+    '--files[include file claims]' \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]'
+}
+
+_pd_cmd_note() {
+  _arguments \
+    '--type[note type]:type:(note handoff commit warning)' \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '1:content:'
+}
+
+_pd_cmd_notes() {
+  _arguments \
+    '--limit[max entries to return]:count:' \
+    '--type[filter by note type]:type:(note handoff commit warning)' \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]'
+}
+
 _pd_cmd_daemon() {
   # Shared completion for daemon lifecycle commands: start stop restart status
   # install uninstall dev ci-gate
@@ -531,6 +628,11 @@ _port_daddy() {
     # Activity
     'log:tail the activity log'
     'activity:show activity summary or stats'
+    # Sessions & Notes
+    'session:manage a session (start/end/abandon/rm/files)'
+    'sessions:list sessions'
+    'note:add a quick note'
+    'notes:list recent notes'
     # System & Monitoring
     'dashboard:open web dashboard in browser'
     'channels:list pub/sub channels'
@@ -602,6 +704,10 @@ _port_daddy() {
         agents)             _pd_cmd_agents ;;
         log)                _pd_cmd_log ;;
         activity)           _pd_cmd_activity ;;
+        session)            _pd_cmd_session ;;
+        sessions)           _pd_cmd_sessions ;;
+        note)               _pd_cmd_note ;;
+        notes)              _pd_cmd_notes ;;
         up)                 _pd_cmd_up ;;
         down)               _pd_cmd_down ;;
         s|scan)             _pd_cmd_scan ;;
