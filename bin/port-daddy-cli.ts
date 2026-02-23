@@ -679,14 +679,14 @@ async function executeDirectMode(
     case 'find':
     case 'list':
     case 'ps': {
-      const pattern = positional[0];
+      const pattern = positional[0] || '*';
       const svc = getDirectServices();
       const findOpts: Record<string, unknown> = {};
-      if (pattern) findOpts.pattern = pattern;
       if (options.status) findOpts.status = options.status;
       if (options.port) findOpts.port = parseInt(options.port as string, 10);
 
-      const result = svc.find(findOpts as Parameters<typeof svc.find>[0]);
+      // services.find() takes (idOrPattern, options), not (options)
+      const result = svc.find(pattern, findOpts as Parameters<typeof svc.find>[1]);
 
       if (options.json) {
         console.log(JSON.stringify(result, null, 2));
@@ -836,7 +836,7 @@ async function executeDirectMode(
         return true;
       }
 
-      const locks = result.locks as Array<{ name: string; owner: string; acquired_at: number; expires_at: number | null }>;
+      const locks = result.locks as Array<{ name: string; owner: string; acquiredAt: number; expiresAt: number | null }>;
       if (!locks || locks.length === 0) {
         console.log('No active locks');
         return true;
@@ -846,8 +846,8 @@ async function executeDirectMode(
       console.error('NAME'.padEnd(25) + 'OWNER'.padEnd(20) + 'EXPIRES');
       console.error('\u2500'.repeat(65));
       for (const lock of locks) {
-        const expires = lock.expires_at
-          ? new Date(lock.expires_at).toISOString().slice(11, 19)
+        const expires = lock.expiresAt
+          ? new Date(lock.expiresAt).toISOString().slice(11, 19)
           : 'never';
         console.error(
           lock.name.padEnd(25) +
@@ -862,7 +862,7 @@ async function executeDirectMode(
     case 'status': {
       // In direct mode, we can't check daemon health — just report DB state
       const svc = getDirectServices();
-      const result = svc.find({});
+      const result = svc.find('*');
       const pkgPath = join(__dirname, '..', 'package.json');
       const ver = existsSync(pkgPath)
         ? (JSON.parse(readFileSync(pkgPath, 'utf8')) as { version: string }).version
@@ -885,19 +885,19 @@ async function executeDirectMode(
         if (options.json) {
           console.log(JSON.stringify(result, null, 2));
         } else if (!options.quiet) {
-          console.log(`Cleanup complete: ${result.released ?? 0} stale ports released`);
+          console.log(`Cleanup complete: ${result.cleaned ?? 0} stale ports released`);
         }
         return true;
       }
 
       // Default: list active ports
-      const findResult = svc.find({});
+      const findResult = svc.find('*');
       if (options.json) {
         console.log(JSON.stringify(findResult, null, 2));
         return true;
       }
 
-      const ports = findResult.services as Array<{ id: string; port: number; created_at: number; expires_at?: number }>;
+      const ports = findResult.services as Array<{ id: string; port: number; createdAt: number; expiresAt?: number | null }>;
       if (!ports || ports.length === 0) {
         console.log('No active port assignments');
         return true;
@@ -907,7 +907,7 @@ async function executeDirectMode(
       console.log(tableHeader(['PORT', 10], ['IDENTITY', 35], ['CLAIMED', 22]));
       separator(67);
       for (const p of ports) {
-        const claimed = p.created_at ? new Date(p.created_at).toISOString().replace('T', ' ').slice(0, 19) : '-';
+        const claimed = p.createdAt ? new Date(p.createdAt).toISOString().replace('T', ' ').slice(0, 19) : '-';
         console.log(
           String(p.port).padEnd(10) +
           (p.id || '-').slice(0, 34).padEnd(35) +
@@ -955,10 +955,12 @@ async function executeDirectMode(
             process.exit(1);
           }
 
+          // sessions.start() returns 'id' not 'sessionId'
+          const sessionId = (result as Record<string, unknown>).id;
           if (options.quiet) {
-            console.log((result as Record<string, unknown>).sessionId);
+            console.log(sessionId);
           } else {
-            console.log(`Started session: ${(result as Record<string, unknown>).sessionId}`);
+            console.log(`Started session: ${sessionId}`);
             console.log(`  Purpose: ${purpose}`);
             if (files.length > 0) console.log(`  Files claimed: ${files.length}`);
           }

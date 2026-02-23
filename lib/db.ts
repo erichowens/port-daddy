@@ -152,6 +152,10 @@ export function initDatabase(options: InitDbOptions = {}): Database.Database {
   // WAL mode for concurrent read/write performance
   db.pragma('journal_mode = WAL');
 
+  // Busy timeout: wait up to 5 seconds for locks instead of failing immediately
+  // This is critical for concurrent CLI invocations sharing the same DB
+  db.pragma('busy_timeout = 5000');
+
   // Foreign key enforcement (needed for CASCADE deletes on sessions)
   db.pragma('foreign_keys = ON');
 
