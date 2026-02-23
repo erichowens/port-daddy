@@ -112,7 +112,8 @@ async function fetchLocal(port, path = '/health', retries = 3) {
 }
 
 // Helper: kill process and wait for exit
-// Kills entire process group (negative PID) to ensure child processes are cleaned up
+// Sends signal to the main process only (not process group) to allow graceful shutdown.
+// Use killProcessGroup() for force cleanup in afterEach.
 function killAndWait(child, signal = 'SIGTERM', timeoutMs = 10000) {
   return new Promise((resolve) => {
     if (child.exitCode !== null) {
@@ -121,7 +122,7 @@ function killAndWait(child, signal = 'SIGTERM', timeoutMs = 10000) {
     }
 
     const timer = setTimeout(() => {
-      // Force kill process group, then the process itself
+      // Timeout: force kill process group and individual process
       try { process.kill(-child.pid, 'SIGKILL'); } catch { /* no process group */ }
       try { child.kill('SIGKILL'); } catch { /* already dead */ }
       resolve('timeout');
@@ -132,10 +133,16 @@ function killAndWait(child, signal = 'SIGTERM', timeoutMs = 10000) {
       resolve('exited');
     });
 
-    // Kill process group first (catches all children), then individual process
-    try { process.kill(-child.pid, signal); } catch { /* no process group */ }
+    // Send signal to main process only — lets graceful shutdown handlers run
     try { child.kill(signal); } catch { resolve('already-dead'); }
   });
+}
+
+// Helper: forcefully kill entire process group (for afterEach cleanup)
+function killProcessGroup(child) {
+  if (!child || child.exitCode !== null) return;
+  try { process.kill(-child.pid, 'SIGKILL'); } catch { /* no process group or already dead */ }
+  try { child.kill('SIGKILL'); } catch { /* already dead */ }
 }
 
 /**
@@ -159,13 +166,12 @@ describe('port-daddy up/down Integration', () => {
   });
 
   afterEach(async () => {
-    // Kill up process if still running — try process group kill on Linux/macOS
+    // Kill up process if still running
     if (upProcess && upProcess.exitCode === null) {
-      // Kill the entire process group to ensure child processes (sh -c node …) are cleaned up
-      try { process.kill(-upProcess.pid, 'SIGTERM'); } catch { /* no process group or already dead */ }
+      // Try graceful shutdown first (allows port release in orchestrator.stop)
       await killAndWait(upProcess, 'SIGTERM', 5000);
-      // Force kill any survivors via process group
-      try { process.kill(-upProcess.pid, 'SIGKILL'); } catch { /* ok */ }
+      // Force kill entire process group to clean up orphaned children (sh -c node …)
+      killProcessGroup(upProcess);
     }
     upProcess = null;
 
@@ -173,8 +179,7 @@ describe('port-daddy up/down Integration', () => {
     try {
       if (existsSync(UP_PID_FILE)) {
         const pid = parseInt(readFileSync(UP_PID_FILE, 'utf-8').trim(), 10);
-        try { process.kill(-pid, 'SIGTERM'); } catch { /* no process group */ }
-        try { process.kill(pid, 'SIGTERM'); } catch { /* already dead */ }
+        try { process.kill(pid, 'SIGKILL'); } catch { /* already dead */ }
       }
     } catch { /* best effort */ }
 
