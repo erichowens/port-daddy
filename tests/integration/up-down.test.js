@@ -112,9 +112,17 @@ async function fetchLocal(port, path = '/health', retries = 3) {
 }
 
 // Helper: kill process and wait for exit
+// Kills entire process group (negative PID) to ensure child processes are cleaned up
 function killAndWait(child, signal = 'SIGTERM', timeoutMs = 10000) {
   return new Promise((resolve) => {
+    if (child.exitCode !== null) {
+      resolve('already-dead');
+      return;
+    }
+
     const timer = setTimeout(() => {
+      // Force kill process group, then the process itself
+      try { process.kill(-child.pid, 'SIGKILL'); } catch { /* no process group */ }
       try { child.kill('SIGKILL'); } catch { /* already dead */ }
       resolve('timeout');
     }, timeoutMs);
@@ -124,6 +132,8 @@ function killAndWait(child, signal = 'SIGTERM', timeoutMs = 10000) {
       resolve('exited');
     });
 
+    // Kill process group first (catches all children), then individual process
+    try { process.kill(-child.pid, signal); } catch { /* no process group */ }
     try { child.kill(signal); } catch { resolve('already-dead'); }
   });
 }
@@ -149,9 +159,13 @@ describe('port-daddy up/down Integration', () => {
   });
 
   afterEach(async () => {
-    // Kill up process if still running
+    // Kill up process if still running — try process group kill on Linux/macOS
     if (upProcess && upProcess.exitCode === null) {
+      // Kill the entire process group to ensure child processes (sh -c node …) are cleaned up
+      try { process.kill(-upProcess.pid, 'SIGTERM'); } catch { /* no process group or already dead */ }
       await killAndWait(upProcess, 'SIGTERM', 5000);
+      // Force kill any survivors via process group
+      try { process.kill(-upProcess.pid, 'SIGKILL'); } catch { /* ok */ }
     }
     upProcess = null;
 
@@ -159,15 +173,27 @@ describe('port-daddy up/down Integration', () => {
     try {
       if (existsSync(UP_PID_FILE)) {
         const pid = parseInt(readFileSync(UP_PID_FILE, 'utf-8').trim(), 10);
+        try { process.kill(-pid, 'SIGTERM'); } catch { /* no process group */ }
         try { process.kill(pid, 'SIGTERM'); } catch { /* already dead */ }
       }
     } catch { /* best effort */ }
 
+    // Release all services from the daemon to prevent state leakage between tests
+    try {
+      const svcRes = await request('/services');
+      if (svcRes.ok && svcRes.data?.services) {
+        for (const svc of svcRes.data.services) {
+          try { await request('/release', { method: 'DELETE', body: { id: svc.id } }); }
+          catch { /* best effort */ }
+        }
+      }
+    } catch { /* daemon unreachable, ok */ }
+
     // Clean up temp dir
     try { rmSync(tempDir, { recursive: true, force: true }); } catch { /* ok */ }
 
-    // Brief pause for port release
-    await new Promise(r => setTimeout(r, 500));
+    // Pause for port release and process cleanup
+    await new Promise(r => setTimeout(r, 1000));
   });
 
   // =========================================================================
@@ -209,10 +235,11 @@ describe('port-daddy up/down Integration', () => {
       name: 'test-up-down'
     }));
 
-    // Spawn `port-daddy up`
+    // Spawn `port-daddy up` — use detached so we can kill the entire process group
     upProcess = spawn(TSX_PATH, [CLI_PATH, 'up', '--dir', tempDir], {
       env: cliEnv(),
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: true
     });
 
     // Wait for "All ... service(s) running"
@@ -311,7 +338,8 @@ createServer((req, res) => {
 
     upProcess = spawn(TSX_PATH, [CLI_PATH, 'up', '--no-health', '--dir', tempDir], {
       env: cliEnv(),
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: true
     });
 
     // With --no-health, it should reach "all started" without waiting for health
@@ -415,7 +443,8 @@ createServer((req, res) => {
       CLI_PATH, 'up', '--service', 'frontend', '--dir', tempDir
     ], {
       env: cliEnv(),
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: true
     });
 
     const output = await waitForOutput(upProcess, 'service(s) running', 45000);
@@ -480,7 +509,8 @@ createServer((req, res) => {
 
     upProcess = spawn(TSX_PATH, [CLI_PATH, 'up', '--no-health', '--dir', tempDir], {
       env: cliEnv(),
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: true
     });
 
     const output = await waitForOutput(upProcess, 'service(s) running', 30000);
