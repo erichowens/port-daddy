@@ -3,86 +3,55 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Port Daddy — Local Development Harbor</title>
-  <meta name="description" content="A safe harbor for your local development. Port management, service orchestration, and agent coordination for multi-agent workflows.">
+  <title>Port Daddy — Port Management & Service Orchestration</title>
+  <meta name="description" content="Stop fighting over ports. Port Daddy manages local development ports, orchestrates services, and coordinates multi-agent workflows.">
   
-  <meta property="og:title" content="Port Daddy — Local Development Harbor">
-  <meta property="og:description" content="A safe harbor for your local development workflow.">
+  <meta property="og:title" content="Port Daddy — Port Management & Service Orchestration">
+  <meta property="og:description" content="Stop fighting over ports.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://portdaddy.dev">
+  <meta property="og:image" content="https://portdaddy.dev/images/og-image.png">
   
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Port Daddy — Local Development Harbor">
+  <meta name="twitter:title" content="Port Daddy">
+  <meta name="twitter:image" content="https://portdaddy.dev/images/og-image.png">
   
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231e3a5f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2v18M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4'/><path d='M12 20a6 6 0 0 1-6-6'/><path d='M12 20a6 6 0 0 0 6-6'/><circle cx='12' cy='7' r='1'/></svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231e3a5f' stroke-width='2'><path d='M12 2v18M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4'/><circle cx='12' cy='7' r='1'/></svg>">
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   
   <style>
     :root {
-      /* New England Harbor Palette */
-      --harbor-fog: #f5f5f0;
-      --harbor-cream: #faf9f6;
-      --harbor-white: #ffffff;
-      --harbor-sand: #e8e4dc;
+      --bg-primary: #faf9f6;
+      --bg-secondary: #f5f4f0;
+      --bg-elevated: #ffffff;
       
-      --navy-deep: #1e3a5f;
-      --navy-medium: #2d4a6f;
-      --navy-light: #3d5a7f;
+      --navy: #1e3a5f;
+      --navy-light: #2d4a6f;
+      --teal: #4a7c7e;
+      --teal-light: #6a9c9e;
       
-      --ocean-teal: #4a7c7e;
-      --ocean-light: #6a9c9e;
-      --ocean-mist: #c5d5d6;
+      --text-primary: #1a1a2e;
+      --text-secondary: #5a5a6e;
+      --text-muted: #8a8a9e;
       
-      --buoy-red: #c44536;
-      --rope-tan: #a08060;
-      --weathered-wood: #8b7355;
-      
-      --fog-gray: #9ca3af;
-      --slate: #64748b;
-      --charcoal: #334155;
+      --border: #e5e4e0;
+      --border-light: #f0f0ec;
       
       --font-serif: 'Playfair Display', Georgia, serif;
-      --font-sans: 'Inter', -apple-system, sans-serif;
+      --font-sans: 'Inter', system-ui, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
-      
-      --radius-sm: 4px;
-      --radius-md: 8px;
-      --radius-lg: 12px;
     }
     
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    html {
-      scroll-behavior: smooth;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     
     body {
       font-family: var(--font-sans);
-      background: var(--harbor-cream);
-      color: var(--charcoal);
+      background: var(--bg-primary);
+      color: var(--text-primary);
       line-height: 1.6;
-    }
-    
-    /* Subtle fog texture */
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: 
-        radial-gradient(ellipse at 20% 30%, rgba(197, 213, 214, 0.3) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 70%, rgba(197, 213, 214, 0.2) 0%, transparent 40%);
-      pointer-events: none;
-      z-index: 0;
     }
     
     /* Navigation */
@@ -93,9 +62,9 @@
       right: 0;
       z-index: 100;
       padding: 1rem 2rem;
-      background: rgba(250, 249, 246, 0.9);
+      background: rgba(250, 249, 246, 0.95);
       backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--harbor-sand);
+      border-bottom: 1px solid var(--border);
     }
     
     .nav-container {
@@ -109,48 +78,35 @@
     .logo {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.5rem;
       font-family: var(--font-serif);
       font-weight: 600;
-      font-size: 1.35rem;
-      color: var(--navy-deep);
+      font-size: 1.25rem;
+      color: var(--navy);
       text-decoration: none;
-    }
-    
-    .logo svg {
-      stroke: var(--navy-deep);
     }
     
     .nav-links {
       display: flex;
-      align-items: center;
-      gap: 2.5rem;
+      gap: 2rem;
     }
     
     .nav-links a {
-      color: var(--slate);
+      color: var(--text-secondary);
       text-decoration: none;
       font-size: 0.9rem;
       font-weight: 500;
       transition: color 0.2s;
     }
     
-    .nav-links a:hover {
-      color: var(--navy-deep);
-    }
-    
-    .nav-cta {
-      display: flex;
-      align-items: center;
-      gap: 1.25rem;
-    }
+    .nav-links a:hover { color: var(--navy); }
     
     .btn {
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
       padding: 0.6rem 1.25rem;
-      border-radius: var(--radius-md);
+      border-radius: 6px;
       font-weight: 500;
       font-size: 0.9rem;
       text-decoration: none;
@@ -160,110 +116,85 @@
       font-family: inherit;
     }
     
-    .btn-secondary {
-      color: var(--navy-medium);
-      background: transparent;
-    }
-    
-    .btn-secondary:hover {
-      color: var(--navy-deep);
-    }
-    
     .btn-primary {
-      background: var(--navy-deep);
-      color: var(--harbor-white);
-      box-shadow: 0 2px 8px rgba(30, 58, 95, 0.15);
+      background: var(--navy);
+      color: white;
     }
     
     .btn-primary:hover {
-      background: var(--navy-medium);
+      background: var(--navy-light);
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(30, 58, 95, 0.2);
     }
     
     .btn-outline {
-      border: 1.5px solid var(--navy-deep);
-      color: var(--navy-deep);
+      border: 1.5px solid var(--navy);
+      color: var(--navy);
       background: transparent;
     }
     
     .btn-outline:hover {
-      background: var(--navy-deep);
-      color: var(--harbor-white);
+      background: var(--navy);
+      color: white;
     }
     
-    /* Hero Section */
+    /* Hero */
     .hero {
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      padding: 8rem 2rem 5rem;
+      padding: 7rem 2rem 4rem;
+      background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
       position: relative;
-      background: 
-        linear-gradient(180deg, var(--harbor-cream) 0%, var(--harbor-fog) 100%);
       overflow: hidden;
     }
     
-    .hero::after {
-      content: '';
+    .hero-image {
       position: absolute;
-      bottom: 0;
-      left: 0;
+      top: 0;
       right: 0;
-      height: 200px;
-      background: linear-gradient(180deg, transparent 0%, var(--harbor-sand) 100%);
-      opacity: 0.3;
+      width: 60%;
+      height: 100%;
+      opacity: 0.15;
+      object-fit: cover;
+      mask-image: linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%);
+      -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%);
     }
     
     .hero-container {
       max-width: 1200px;
       margin: 0 auto;
       display: grid;
-      grid-template-columns: 1fr 1.1fr;
+      grid-template-columns: 1.2fr 1fr;
       gap: 4rem;
       align-items: center;
       position: relative;
       z-index: 1;
     }
     
-    .hero-badge {
+    .badge {
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.4rem 1rem;
-      background: var(--harbor-white);
-      border: 1px solid var(--ocean-mist);
+      padding: 0.35rem 0.9rem;
+      background: white;
+      border: 1px solid var(--border);
       border-radius: 100px;
       font-size: 0.8rem;
-      color: var(--ocean-teal);
+      color: var(--teal);
       font-weight: 500;
       margin-bottom: 1.5rem;
-    }
-    
-    .hero-badge svg {
-      width: 14px;
-      height: 14px;
-      stroke: var(--buoy-red);
     }
     
     .hero h1 {
       font-family: var(--font-serif);
       font-size: 3.5rem;
       font-weight: 600;
-      line-height: 1.15;
+      line-height: 1.1;
       margin-bottom: 1.25rem;
-      color: var(--navy-deep);
-      letter-spacing: -0.01em;
-    }
-    
-    .hero h1 em {
-      font-style: italic;
-      color: var(--ocean-teal);
+      color: var(--navy);
     }
     
     .hero-subtitle {
       font-size: 1.15rem;
-      color: var(--slate);
+      color: var(--text-secondary);
       margin-bottom: 2rem;
       max-width: 480px;
       line-height: 1.7;
@@ -275,56 +206,47 @@
       margin-bottom: 2.5rem;
     }
     
-    .hero-cta .btn {
-      padding: 0.8rem 1.5rem;
-    }
-    
     .install-command {
       display: flex;
       align-items: center;
       gap: 0.75rem;
       padding: 1rem 1.25rem;
-      background: var(--harbor-white);
-      border: 1.5px solid var(--harbor-sand);
-      border-radius: var(--radius-md);
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
       font-family: var(--font-mono);
       font-size: 0.9rem;
-      color: var(--charcoal);
+      color: var(--text-primary);
       cursor: pointer;
       transition: all 0.2s;
       max-width: fit-content;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
     
     .install-command:hover {
-      border-color: var(--ocean-teal);
-      box-shadow: 0 4px 12px rgba(74, 124, 126, 0.1);
+      border-color: var(--teal);
     }
     
     .install-command code {
-      color: var(--navy-deep);
+      color: var(--navy);
       font-weight: 500;
     }
     
     .install-command .copy-hint {
       font-size: 0.75rem;
-      color: var(--fog-gray);
+      color: var(--text-muted);
       opacity: 0;
       transition: opacity 0.2s;
     }
     
-    .install-command:hover .copy-hint {
-      opacity: 1;
-    }
+    .install-command:hover .copy-hint { opacity: 1; }
     
-    /* Terminal - Weathered Dock Style */
+    /* Terminal */
     .terminal {
-      background: var(--navy-deep);
-      border-radius: var(--radius-lg);
+      background: var(--navy);
+      border-radius: 12px;
       overflow: hidden;
-      box-shadow: 
-        0 20px 60px -15px rgba(30, 58, 95, 0.4),
-        0 0 0 1px rgba(255,255,255,0.1) inset;
+      box-shadow: 0 25px 60px rgba(30, 58, 95, 0.3);
     }
     
     .terminal-header {
@@ -332,7 +254,7 @@
       align-items: center;
       gap: 0.5rem;
       padding: 0.875rem 1rem;
-      background: var(--navy-medium);
+      background: var(--navy-light);
       border-bottom: 1px solid rgba(255,255,255,0.08);
     }
     
@@ -342,14 +264,14 @@
       border-radius: 50%;
     }
     
-    .terminal-dot.red { background: var(--buoy-red); }
+    .terminal-dot.red { background: #c44536; }
     .terminal-dot.yellow { background: #d4a017; }
     .terminal-dot.green { background: #5a8f5a; }
     
     .terminal-title {
       margin-left: 0.5rem;
       font-size: 0.8rem;
-      color: rgba(255,255,255,0.5);
+      color: rgba(255,255,255,0.4);
       font-family: var(--font-mono);
     }
     
@@ -358,7 +280,6 @@
       font-family: var(--font-mono);
       font-size: 0.85rem;
       line-height: 1.7;
-      min-height: 380px;
       color: rgba(255,255,255,0.9);
     }
     
@@ -368,29 +289,18 @@
       margin-bottom: 0.25rem;
     }
     
-    .terminal-prompt {
-      color: var(--ocean-light);
-      flex-shrink: 0;
-    }
-    
-    .terminal-command {
-      color: rgba(255,255,255,0.95);
-    }
-    
+    .terminal-prompt { color: var(--teal-light); flex-shrink: 0; }
+    .terminal-command { color: rgba(255,255,255,0.95); }
     .terminal-output {
       color: rgba(255,255,255,0.6);
       margin: 0.5rem 0 1rem 1.5rem;
-    }
-    
-    .terminal-comment {
-      color: rgba(255,255,255,0.35);
     }
     
     .cursor {
       display: inline-block;
       width: 8px;
       height: 1.2em;
-      background: var(--ocean-light);
+      background: var(--teal-light);
       animation: blink 1s infinite;
       vertical-align: text-bottom;
     }
@@ -400,21 +310,9 @@
       51%, 100% { opacity: 0; }
     }
     
-    /* Features - Buoy Cards */
-    .features {
+    /* Sections */
+    .section {
       padding: 6rem 2rem;
-      background: var(--harbor-white);
-      position: relative;
-    }
-    
-    .features::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--harbor-sand), transparent);
     }
     
     .section-header {
@@ -424,16 +322,14 @@
     }
     
     .section-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.4rem 0.9rem;
-      background: var(--harbor-fog);
-      border: 1px solid var(--harbor-sand);
+      display: inline-block;
+      padding: 0.35rem 0.8rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
       border-radius: 100px;
       font-size: 0.75rem;
       font-weight: 600;
-      color: var(--ocean-teal);
+      color: var(--teal);
       text-transform: uppercase;
       letter-spacing: 0.08em;
       margin-bottom: 1rem;
@@ -444,12 +340,17 @@
       font-size: 2.25rem;
       font-weight: 600;
       margin-bottom: 1rem;
-      color: var(--navy-deep);
+      color: var(--navy);
     }
     
     .section-subtitle {
-      color: var(--slate);
+      color: var(--text-secondary);
       font-size: 1.05rem;
+    }
+    
+    /* Features */
+    .features {
+      background: white;
     }
     
     .features-grid {
@@ -462,27 +363,14 @@
     
     .feature-card {
       padding: 1.75rem;
-      background: var(--harbor-cream);
-      border: 1px solid var(--harbor-sand);
-      border-radius: var(--radius-lg);
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
       transition: all 0.3s;
-      position: relative;
-    }
-    
-    .feature-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 40px;
-      height: 3px;
-      background: var(--ocean-mist);
-      border-radius: 0 0 2px 2px;
     }
     
     .feature-card:hover {
-      border-color: var(--ocean-mist);
+      border-color: var(--teal-light);
       transform: translateY(-3px);
       box-shadow: 0 12px 30px rgba(30, 58, 95, 0.08);
     }
@@ -493,36 +381,29 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--harbor-white);
-      border: 1.5px solid var(--ocean-mist);
-      border-radius: var(--radius-md);
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
       margin-bottom: 1.25rem;
-      color: var(--ocean-teal);
-    }
-    
-    .feature-icon svg {
-      stroke: var(--ocean-teal);
+      color: var(--teal);
     }
     
     .feature-card h3 {
-      font-family: var(--font-serif);
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 600;
       margin-bottom: 0.5rem;
-      color: var(--navy-deep);
+      color: var(--navy);
     }
     
     .feature-card p {
-      color: var(--slate);
+      color: var(--text-secondary);
       font-size: 0.9rem;
       line-height: 1.6;
     }
     
-    /* Identity Section - Chart Style */
-    .identity-section {
-      padding: 6rem 2rem;
-      background: linear-gradient(180deg, var(--harbor-fog) 0%, var(--harbor-sand) 100%);
-      border-top: 1px solid var(--harbor-sand);
+    /* Identity */
+    .identity {
+      background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--border-light) 100%);
     }
     
     .identity-container {
@@ -535,11 +416,11 @@
     }
     
     .identity-visual {
-      background: var(--harbor-white);
-      border: 1.5px solid var(--harbor-sand);
-      border-radius: var(--radius-lg);
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
       padding: 2rem;
-      box-shadow: 0 4px 20px rgba(30, 58, 95, 0.06);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.04);
     }
     
     .identity-example {
@@ -547,16 +428,12 @@
       font-size: 1.1rem;
       margin-bottom: 1.5rem;
       padding: 1rem;
-      background: var(--navy-deep);
-      border-radius: var(--radius-md);
+      background: var(--navy);
+      border-radius: 8px;
       color: rgba(255,255,255,0.9);
     }
     
-    .identity-part {
-      display: inline;
-    }
-    
-    .identity-part.project { color: var(--ocean-light); }
+    .identity-part.project { color: var(--teal-light); }
     .identity-part.separator { color: rgba(255,255,255,0.4); }
     .identity-part.stack { color: #d4a017; }
     .identity-part.context { color: #7fb069; }
@@ -571,7 +448,7 @@
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      color: var(--slate);
+      color: var(--text-secondary);
     }
     
     .identity-label span {
@@ -580,31 +457,23 @@
       border-radius: 2px;
     }
     
-    .identity-label.project span { background: var(--ocean-light); }
+    .identity-label.project span { background: var(--teal-light); }
     .identity-label.stack span { background: #d4a017; }
     .identity-label.context span { background: #7fb069; }
     
-    /* Orchestration Section */
-    .orchestration {
-      padding: 6rem 2rem;
-      background: var(--harbor-white);
-    }
-    
-    .orchestration-container {
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-    
+    /* Code Tabs */
     .code-tabs {
-      background: var(--navy-deep);
-      border-radius: var(--radius-lg);
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--navy);
+      border-radius: 12px;
       overflow: hidden;
       box-shadow: 0 20px 50px rgba(30, 58, 95, 0.2);
     }
     
     .code-tabs-header {
       display: flex;
-      background: var(--navy-medium);
+      background: var(--navy-light);
       border-bottom: 1px solid rgba(255,255,255,0.08);
     }
     
@@ -619,15 +488,10 @@
       font-family: var(--font-mono);
     }
     
-    .code-tab:hover {
-      color: rgba(255,255,255,0.8);
-      background: rgba(255,255,255,0.03);
-    }
-    
+    .code-tab:hover { color: rgba(255,255,255,0.8); }
     .code-tab.active {
-      color: var(--harbor-white);
-      border-bottom-color: var(--ocean-light);
-      background: rgba(255,255,255,0.05);
+      color: white;
+      border-bottom-color: var(--teal-light);
     }
     
     .code-tabs-body {
@@ -642,14 +506,8 @@
       color: rgba(255,255,255,0.9);
     }
     
-    .code-panel.active {
-      display: block;
-    }
-    
-    .code-panel pre {
-      margin: 0;
-      overflow-x: auto;
-    }
+    .code-panel.active { display: block; }
+    .code-panel pre { margin: 0; overflow-x: auto; }
     
     .syntax-keyword { color: #c792ea; }
     .syntax-string { color: #c3e88d; }
@@ -659,21 +517,15 @@
     
     /* Frameworks */
     .frameworks {
-      padding: 6rem 2rem;
-      background: linear-gradient(180deg, var(--harbor-fog) 0%, var(--harbor-cream) 100%);
-      border-top: 1px solid var(--harbor-sand);
-    }
-    
-    .frameworks-container {
-      max-width: 1100px;
-      margin: 0 auto;
+      background: linear-gradient(180deg, var(--bg-secondary) 0%, white 100%);
     }
     
     .frameworks-grid {
+      max-width: 1000px;
+      margin: 3rem auto 0;
       display: grid;
       grid-template-columns: repeat(6, 1fr);
       gap: 1rem;
-      margin-top: 3rem;
     }
     
     .framework-item {
@@ -682,42 +534,31 @@
       align-items: center;
       gap: 0.5rem;
       padding: 1.25rem 1rem;
-      background: var(--harbor-white);
-      border: 1px solid var(--harbor-sand);
-      border-radius: var(--radius-md);
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
       transition: all 0.2s;
     }
     
     .framework-item:hover {
-      border-color: var(--ocean-mist);
+      border-color: var(--teal-light);
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(30, 58, 95, 0.06);
     }
     
     .framework-icon {
       width: 28px;
       height: 28px;
-      color: var(--navy-deep);
+      color: var(--navy);
     }
     
     .framework-name {
       font-size: 0.75rem;
       font-weight: 500;
-      color: var(--slate);
-    }
-    
-    .frameworks-note {
-      text-align: center;
-      margin-top: 2rem;
-      color: var(--fog-gray);
-      font-size: 0.9rem;
+      color: var(--text-secondary);
     }
     
     /* Coordination */
-    .coordination {
-      padding: 6rem 2rem;
-      background: var(--harbor-white);
-    }
+    .coordination { background: white; }
     
     .coordination-container {
       max-width: 1100px;
@@ -728,68 +569,16 @@
       align-items: center;
     }
     
-    .coordination-features {
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-    }
-    
-    .coordination-feature {
-      display: flex;
-      gap: 1rem;
-      padding: 1.25rem;
-      background: var(--harbor-cream);
-      border: 1px solid var(--harbor-sand);
-      border-radius: var(--radius-lg);
-      transition: all 0.2s;
-    }
-    
-    .coordination-feature:hover {
-      border-color: var(--ocean-mist);
-      background: var(--harbor-white);
-    }
-    
-    .coordination-feature-icon {
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--harbor-white);
-      border: 1.5px solid var(--ocean-mist);
-      border-radius: var(--radius-md);
-      color: var(--ocean-teal);
-      flex-shrink: 0;
-    }
-    
-    .coordination-feature-content h4 {
-      font-family: var(--font-serif);
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 0.25rem;
-      color: var(--navy-deep);
-    }
-    
-    .coordination-feature-content p {
-      font-size: 0.85rem;
-      color: var(--slate);
+    .coordination-image {
+      width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.1);
     }
     
     /* Stats */
-    .social-proof {
+    .stats {
+      background: var(--navy);
       padding: 4rem 2rem;
-      background: var(--navy-deep);
-      position: relative;
-    }
-    
-    .social-proof::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, var(--buoy-red), var(--rope-tan), var(--ocean-teal));
     }
     
     .stats-grid {
@@ -805,11 +594,11 @@
       font-family: var(--font-serif);
       font-size: 2.5rem;
       font-weight: 600;
-      color: var(--harbor-white);
+      color: white;
     }
     
     .stat-item p {
-      color: var(--ocean-mist);
+      color: var(--teal-light);
       font-size: 0.9rem;
       margin-top: 0.25rem;
     }
@@ -818,12 +607,7 @@
     .cta {
       padding: 6rem 2rem;
       text-align: center;
-      background: linear-gradient(180deg, var(--harbor-cream) 0%, var(--harbor-white) 100%);
-    }
-    
-    .cta-container {
-      max-width: 600px;
-      margin: 0 auto;
+      background: linear-gradient(180deg, var(--bg-primary) 0%, white 100%);
     }
     
     .cta h2 {
@@ -831,11 +615,11 @@
       font-size: 2.5rem;
       font-weight: 600;
       margin-bottom: 1rem;
-      color: var(--navy-deep);
+      color: var(--navy);
     }
     
-    .cta p {
-      color: var(--slate);
+    .cta > p {
+      color: var(--text-secondary);
       font-size: 1.1rem;
       margin-bottom: 2rem;
     }
@@ -846,32 +630,20 @@
       justify-content: center;
     }
     
-    .cta-buttons .btn {
-      padding: 1rem 2rem;
-      font-size: 1rem;
-    }
-    
     /* Footer */
     footer {
       padding: 4rem 2rem 2rem;
-      background: var(--navy-deep);
-      color: rgba(255,255,255,0.7);
+      background: var(--navy);
+      color: rgba(255,255,255,0.6);
     }
     
-    .footer-container {
-      max-width: 1100px;
-      margin: 0 auto;
-    }
+    .footer-container { max-width: 1100px; margin: 0 auto; }
     
     .footer-grid {
       display: grid;
       grid-template-columns: 2fr repeat(3, 1fr);
       gap: 3rem;
       margin-bottom: 3rem;
-    }
-    
-    .footer-brand .logo {
-      color: var(--harbor-white);
     }
     
     .footer-brand p {
@@ -885,29 +657,22 @@
       font-size: 0.85rem;
       font-weight: 600;
       margin-bottom: 1rem;
-      color: var(--harbor-white);
+      color: white;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
     
-    .footer-column ul {
-      list-style: none;
-    }
-    
-    .footer-column li {
-      margin-bottom: 0.5rem;
-    }
+    .footer-column ul { list-style: none; }
+    .footer-column li { margin-bottom: 0.5rem; }
     
     .footer-column a {
-      color: rgba(255,255,255,0.6);
+      color: rgba(255,255,255,0.5);
       text-decoration: none;
       font-size: 0.9rem;
       transition: color 0.2s;
     }
     
-    .footer-column a:hover {
-      color: var(--ocean-light);
-    }
+    .footer-column a:hover { color: var(--teal-light); }
     
     .footer-bottom {
       padding-top: 2rem;
@@ -919,20 +684,6 @@
       color: rgba(255,255,255,0.4);
     }
     
-    .footer-links {
-      display: flex;
-      gap: 1.5rem;
-    }
-    
-    .footer-links a {
-      color: rgba(255,255,255,0.4);
-      text-decoration: none;
-    }
-    
-    .footer-links a:hover {
-      color: rgba(255,255,255,0.7);
-    }
-    
     /* Responsive */
     @media (max-width: 1024px) {
       .hero-container {
@@ -940,97 +691,37 @@
         text-align: center;
       }
       
-      .hero h1 {
-        font-size: 2.75rem;
-      }
+      .hero h1 { font-size: 2.75rem; }
+      .hero-subtitle { margin: 0 auto 2rem; }
+      .hero-cta { justify-content: center; }
+      .install-command { margin: 0 auto; }
+      .hero-image { display: none; }
       
-      .hero-subtitle {
-        margin-left: auto;
-        margin-right: auto;
-      }
-      
-      .hero-cta {
-        justify-content: center;
-      }
-      
-      .install-command {
-        margin: 0 auto;
-      }
-      
-      .features-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      
-      .identity-container,
-      .coordination-container {
-        grid-template-columns: 1fr;
-      }
-      
-      .frameworks-grid {
-        grid-template-columns: repeat(4, 1fr);
-      }
-      
-      .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      
-      .footer-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+      .identity-container, .coordination-container { grid-template-columns: 1fr; }
+      .frameworks-grid { grid-template-columns: repeat(4, 1fr); }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .footer-grid { grid-template-columns: repeat(2, 1fr); }
     }
     
     @media (max-width: 640px) {
-      .nav-links {
-        display: none;
-      }
-      
-      .hero {
-        padding: 6rem 1.5rem 3rem;
-      }
-      
-      .hero h1 {
-        font-size: 2rem;
-      }
-      
-      .features-grid {
-        grid-template-columns: 1fr;
-      }
-      
-      .frameworks-grid {
-        grid-template-columns: repeat(3, 1fr);
-      }
-      
-      .stats-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 1.5rem;
-      }
-      
-      .footer-grid {
-        grid-template-columns: 1fr;
-        gap: 2rem;
-      }
-      
-      .footer-bottom {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-      }
-      
-      .cta-buttons {
-        flex-direction: column;
-      }
+      .nav-links { display: none; }
+      .hero h1 { font-size: 2rem; }
+      .features-grid { grid-template-columns: 1fr; }
+      .frameworks-grid { grid-template-columns: repeat(3, 1fr); }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .footer-grid { grid-template-columns: 1fr; }
+      .footer-bottom { flex-direction: column; gap: 1rem; text-align: center; }
+      .cta-buttons { flex-direction: column; }
     }
   </style>
 </head>
 <body>
-  <!-- Navigation -->
   <nav>
     <div class="nav-container">
       <a href="#" class="logo">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 2v18M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4"/>
-          <path d="M12 20a6 6 0 0 1-6-6"/>
-          <path d="M12 20a6 6 0 0 0 6-6"/>
           <circle cx="12" cy="7" r="1"/>
         </svg>
         <span>Port Daddy</span>
@@ -1039,36 +730,30 @@
         <a href="#features">Features</a>
         <a href="#orchestration">Orchestration</a>
         <a href="#frameworks">Frameworks</a>
-        <a href="#docs">Docs</a>
+        <a href="https://github.com/curiositech/port-daddy" target="_blank">GitHub</a>
       </div>
-      <div class="nav-cta">
-        <a href="https://github.com/curiositech/port-daddy" class="btn btn-secondary" target="_blank">GitHub</a>
-        <a href="#install" class="btn btn-primary">Get Started</a>
-      </div>
+      <a href="#install" class="btn btn-primary">Get Started</a>
     </div>
   </nav>
   
-  <!-- Hero Section -->
   <section class="hero">
+    <img src="images/hero.png" alt="" class="hero-image">
     <div class="hero-container">
       <div class="hero-content">
-        <div class="hero-badge">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
-          v3.1.0 — Now serving 60+ frameworks
-        </div>
-        <h1>
-          A safe <em>harbor</em> for your local development
-        </h1>
+        <div class="badge">v3.1.0 — 60+ frameworks supported</div>
+        <h1>Port management that just works</h1>
         <p class="hero-subtitle">
-          Port Daddy manages your development fleet—assigning ports, orchestrating services, 
-          and coordinating agents so your crew can focus on shipping.
+          Stop fighting over ports. Port Daddy assigns ports atomically, orchestrates your services, 
+          and coordinates multi-agent workflows so you can focus on building.
         </p>
         <div class="hero-cta">
           <a href="#install" class="btn btn-primary">
-            Drop Anchor
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v18M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4"/><path d="M12 20a6 6 0 0 1-6-6"/><path d="M12 20a6 6 0 0 0 6-6"/></svg>
+            Get Started
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
           </a>
-          <a href="https://github.com/curiositech/port-daddy" class="btn btn-outline" target="_blank">View Charts</a>
+          <a href="https://github.com/curiositech/port-daddy" class="btn btn-outline" target="_blank">View on GitHub</a>
         </div>
         <div class="install-command" onclick="copyInstall()">
           <span>$</span>
@@ -1082,7 +767,7 @@
           <div class="terminal-dot red"></div>
           <div class="terminal-dot yellow"></div>
           <div class="terminal-dot green"></div>
-          <span class="terminal-title">harbor-master</span>
+          <span class="terminal-title">~/myproject</span>
         </div>
         <div class="terminal-body">
           <div class="terminal-line">
@@ -1090,12 +775,12 @@
             <span class="terminal-command">port-daddy scan</span>
           </div>
           <div class="terminal-output">
-            <div>Charting /home/dev/myproject...</div>
-            <div>Found 3 vessels:</div>
-            <div style="margin-top: 0.5rem; color: var(--ocean-light);">  api</div>
+            <div>Scanning /home/dev/myproject...</div>
+            <div>Discovered 3 services:</div>
+            <div style="margin-top: 0.5rem; color: var(--teal-light);">  api</div>
             <div style="color: #d4a017;">  web</div>
             <div style="color: #7fb069;">  worker</div>
-            <div style="margin-top: 0.5rem;">→ Logged in ship's manifest (.portdaddyrc)</div>
+            <div style="margin-top: 0.5rem;">→ Saved .portdaddyrc</div>
           </div>
           
           <div class="terminal-line">
@@ -1103,15 +788,15 @@
             <span class="terminal-command">port-daddy up</span>
           </div>
           <div class="terminal-output">
-            <div style="color: var(--ocean-light);">[api]</div>
-            <div style="color: rgba(255,255,255,0.4);">  Moored at port 3100</div>
-            <div style="color: #7fb069;">  ✓ All clear</div>
+            <div style="color: var(--teal-light);">[api]</div>
+            <div style="color: rgba(255,255,255,0.4);">  Port 3100 assigned</div>
+            <div style="color: #7fb069;">  ✓ Healthy</div>
             <div style="margin-top: 0.5rem; color: #d4a017;">[web]</div>
-            <div style="color: rgba(255,255,255,0.4);">  Moored at port 3101</div>
-            <div style="color: #7fb069;">  ✓ All clear</div>
+            <div style="color: rgba(255,255,255,0.4);">  Port 3101 assigned</div>
+            <div style="color: #7fb069;">  ✓ Healthy</div>
             <div style="margin-top: 0.5rem; color: #7fb069;">[worker]</div>
-            <div style="color: #7fb069;">  ✓ Underway</div>
-            <div style="margin-top: 1rem; color: #7fb069; font-weight: 500;">Fleet deployed. Signal flags raised.</div>
+            <div style="color: #7fb069;">  ✓ Started</div>
+            <div style="margin-top: 1rem; color: #7fb069; font-weight: 500;">3 services running. Press Ctrl+C to stop.</div>
           </div>
           
           <div class="terminal-line">
@@ -1123,111 +808,112 @@
     </div>
   </section>
   
-  <!-- Features Section -->
-  <section class="features" id="features">
+  <section class="section features" id="features">
     <div class="section-header">
-      <span class="section-label">Harbor Services</span>
-      <h2 class="section-title">Everything your fleet needs</h2>
-      <p class="section-subtitle">From port assignment to fleet coordination, Port Daddy keeps your development vessels in safe waters.</p>
+      <span class="section-label">Features</span>
+      <h2 class="section-title">Everything you need</h2>
+      <p class="section-subtitle">From atomic port assignment to service orchestration, Port Daddy handles the complexity so you can focus on shipping.</p>
     </div>
     
     <div class="features-grid">
       <div class="feature-card">
         <div class="feature-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
         </div>
         <h3>Atomic Port Assignment</h3>
-        <p>SQLite-backed assignments ensure zero collisions. Same vessel always gets the same berth, even after rough seas.</p>
+        <p>SQLite-backed ACID transactions ensure zero race conditions. Same project always gets the same port.</p>
       </div>
       
       <div class="feature-card">
         <div class="feature-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><circle cx="7" cy="7" r="1"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><circle cx="7" cy="7" r="1"/></svg>
         </div>
-        <h3>Ship's Registry</h3>
-        <p>Semantic identities like <code>fleet:vessel:route</code>. Query with wildcards to find any ship in your harbor.</p>
+        <h3>Semantic Identities</h3>
+        <p>Use <code>project:service:context</code> naming. Query with wildcards to find any service in your stack.</p>
       </div>
       
       <div class="feature-card">
         <div class="feature-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
         </div>
-        <h3>Fleet Deployment</h3>
-        <p><code>port-daddy up</code> launches your entire fleet. Dependency ordering, health signals, and ship-to-ship logs.</p>
+        <h3>Service Orchestration</h3>
+        <p><code>port-daddy up</code> starts your entire stack. Dependency ordering, health checks, colored logs.</p>
       </div>
       
       <div class="feature-card">
         <div class="feature-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </div>
-        <h3>Deep Charting</h3>
-        <p>Scans 5 fathoms deep to chart 60+ frameworks. Handles flotillas, workspaces, and nested harbors automatically.</p>
+        <h3>Deep Auto-Detection</h3>
+        <p>Scans 5 levels deep to find 60+ frameworks. Handles monorepos, workspaces, and nested services.</p>
       </div>
       
       <div class="feature-card">
         <div class="feature-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h2"/><path d="M20 12h2"/><path d="M6 12a6 6 0 0 1 12 0"/><path d="M9 12a3 3 0 0 1 6 0"/><circle cx="12" cy="12" r="1"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h2"/><path d="M20 12h2"/><path d="M6 12a6 6 0 0 1 12 0"/><path d="M9 12a3 3 0 0 1 6 0"/><circle cx="12" cy="12" r="1"/></svg>
         </div>
-        <h3>Signal Flags</h3>
-        <p>Pub/sub messaging between vessels. Real-time SSE for fleet coordination across agents.</p>
+        <h3>Pub/Sub Messaging</h3>
+        <p>Services signal each other when builds finish. Real-time SSE subscriptions for coordination.</p>
       </div>
       
       <div class="feature-card">
         <div class="feature-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </div>
-        <h3>Mooring Locks</h3>
-        <p>Distributed locks prevent collisions at the dock. Exclusive access to shared cargo like databases.</p>
+        <h3>Distributed Locks</h3>
+        <p>Prevent conflicting operations. Take exclusive locks on databases, migrations, or shared resources.</p>
       </div>
       
       <div class="feature-card">
         <div class="feature-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="10" x="3" y="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" x2="8" y1="16" y2="16"/><line x1="16" x2="16" y1="16" y2="16"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="10" x="3" y="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" x2="8" y1="16" y2="16"/><line x1="16" x2="16" y1="16" y2="16"/></svg>
         </div>
-        <h3>Captain's Log</h3>
-        <p>Works with Claude, Cursor, Windsurf, and 40+ AI agents. Every captain knows the fleet's status.</p>
+        <h3>AI Agent Native</h3>
+        <p>Works with Claude, Cursor, Windsurf, Cline, Aider, and 40+ coding agents.</p>
       </div>
       
       <div class="feature-card">
         <div class="feature-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
         </div>
-        <h3>Harbor Master's Office</h3>
-        <p>Web dashboard at <code>localhost:9876</code>. Monitor vessels, locks, and fleet activity in real-time.</p>
+        <h3>Web Dashboard</h3>
+        <p>Monitor services, locks, agents, and activity in real-time at <code>localhost:9876</code>.</p>
       </div>
       
       <div class="feature-card">
         <div class="feature-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
         </div>
-        <h3>Automatic Sweep</h3>
-        <p>Tracks vessel IDs and clears dead ships from the registry. No ghost ships clogging your harbor.</p>
+        <h3>Auto-Cleanup</h3>
+        <p>Tracks process IDs and automatically frees ports from crashed processes.</p>
       </div>
     </div>
   </section>
   
-  <!-- Identity Section -->
-  <section class="identity-section">
+  <section class="section identity">
     <div class="identity-container">
       <div>
-        <span class="section-label">Ship's Registry</span>
-        <h2 class="section-title" style="text-align: left; margin-top: 1rem;">Every vessel has its name</h2>
+        <span class="section-label">Identity</span>
+        <h2 class="section-title" style="text-align: left; margin-top: 1rem;">Named services, not magic numbers</h2>
         <p class="section-subtitle" style="text-align: left;">
-          Port Daddy uses a <code>fleet:vessel:route</code> naming scheme that makes your services discoverable. 
+          Port Daddy uses a <code>project:service:context</code> naming scheme that makes your services discoverable. 
           No more remembering that the API is on port 3001.
         </p>
-        <ul style="margin-top: 1.5rem; color: var(--slate); list-style: none;">
+        <ul style="margin-top: 1.5rem; color: var(--text-secondary); list-style: none;">
           <li style="margin-bottom: 0.75rem; display: flex; gap: 0.5rem;">
-            <span style="color: var(--ocean-teal);">✓</span>
-            <code style="background: var(--harbor-white); padding: 0.1rem 0.4rem; border-radius: 4px;">myapp:api:main</code> — the flagship API
+            <span style="color: var(--teal);">✓</span>
+            <code style="background: white; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.85rem;">myapp:api:main</code>
+            <span>— the main API</span>
           </li>
           <li style="margin-bottom: 0.75rem; display: flex; gap: 0.5rem;">
-            <span style="color: var(--ocean-teal);">✓</span>
-            <code style="background: var(--harbor-white); padding: 0.1rem 0.4rem; border-radius: 4px;">myapp:web:feature-auth</code> — branch-specific
+            <span style="color: var(--teal);">✓</span>
+            <code style="background: white; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.85rem;">myapp:web:feature-auth</code>
+            <span>— branch-specific</span>
           </li>
           <li style="margin-bottom: 0.75rem; display: flex; gap: 0.5rem;">
-            <span style="color: var(--ocean-teal);">✓</span>
-            <code style="background: var(--harbor-white); padding: 0.1rem 0.4rem; border-radius: 4px;">myapp:*:feature-auth</code> — find all on route
+            <span style="color: var(--teal);">✓</span>
+            <code style="background: white; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.85rem;">myapp:*:feature-auth</code>
+            <span>— wildcard search</span>
           </li>
         </ul>
       </div>
@@ -1237,237 +923,183 @@
           <span class="identity-part project">windags</span><span class="identity-part separator">:</span><span class="identity-part stack">api</span><span class="identity-part separator">:</span><span class="identity-part context">feature-auth</span>
         </div>
         <div class="identity-labels">
-          <div class="identity-label project"><span></span>fleet</div>
-          <div class="identity-label stack"><span></span>vessel</div>
-          <div class="identity-label context"><span></span>route</div>
+          <div class="identity-label project"><span></span>project</div>
+          <div class="identity-label stack"><span></span>service</div>
+          <div class="identity-label context"><span></span>context</div>
         </div>
       </div>
     </div>
   </section>
   
-  <!-- Orchestration Section -->
-  <section class="orchestration" id="orchestration">
-    <div class="orchestration-container">
-      <div class="section-header">
-        <span class="section-label">Fleet Command</span>
-        <h2 class="section-title">One command to deploy the fleet</h2>
-        <p class="section-subtitle">
-          Define your vessels in <code>.portdaddyrc</code> and run <code>port-daddy up</code>. 
-          Dependencies are resolved, health signals checked, and logs multiplexed with color-coded prefixes.
-        </p>
+  <section class="section" id="orchestration" style="background: white;">
+    <div class="section-header">
+      <span class="section-label">Orchestration</span>
+      <h2 class="section-title">One command to rule them all</h2>
+      <p class="section-subtitle">
+        Define your services in <code>.portdaddyrc</code> and run <code>port-daddy up</code>. 
+        Dependencies are resolved via topological sort, health checks ensure readiness.
+      </p>
+    </div>
+    
+    <div class="code-tabs">
+      <div class="code-tabs-header">
+        <div class="code-tab active" onclick="switchTab('config')">.portdaddyrc</div>
+        <div class="code-tab" onclick="switchTab('cli')">CLI</div>
+        <div class="code-tab" onclick="switchTab('sdk')">SDK</div>
       </div>
-      
-      <div class="code-tabs">
-        <div class="code-tabs-header">
-          <div class="code-tab active" onclick="switchTab('config')">.portdaddyrc</div>
-          <div class="code-tab" onclick="switchTab('cli')">CLI</div>
-          <div class="code-tab" onclick="switchTab('sdk')">SDK</div>
-        </div>
-        <div class="code-tabs-body">
-          <div class="code-panel active" id="panel-config">
-            <pre><span class="syntax-key">{</span>
-  <span class="syntax-key">"fleet"</span><span class="syntax-keyword">:</span> <span class="syntax-string">"myapp"</span><span class="syntax-keyword">,</span>
-  <span class="syntax-key">"vessels"</span><span class="syntax-keyword">: {</span>
+      <div class="code-tabs-body">
+        <div class="code-panel active" id="panel-config">
+          <pre><span class="syntax-key">{</span>
+  <span class="syntax-key">"project"</span><span class="syntax-keyword">:</span> <span class="syntax-string">"myapp"</span><span class="syntax-keyword">,</span>
+  <span class="syntax-key">"services"</span><span class="syntax-keyword">: {</span>
     <span class="syntax-key">"api"</span><span class="syntax-keyword">: {</span>
       <span class="syntax-key">"cmd"</span><span class="syntax-keyword">:</span> <span class="syntax-string">"npm run dev:api"</span><span class="syntax-keyword">,</span>
       <span class="syntax-key">"port"</span><span class="syntax-keyword">:</span> <span class="syntax-number">3001</span><span class="syntax-keyword">,</span>
-      <span class="syntax-key">"health"</span><span class="syntax-keyword">:</span> <span class="syntax-string">"/health"</span>
+      <span class="syntax-key">"healthPath"</span><span class="syntax-keyword">:</span> <span class="syntax-string">"/health"</span>
     <span class="syntax-keyword">},</span>
     <span class="syntax-key">"web"</span><span class="syntax-keyword">: {</span>
       <span class="syntax-key">"cmd"</span><span class="syntax-keyword">:</span> <span class="syntax-string">"npm run dev"</span><span class="syntax-keyword">,</span>
       <span class="syntax-key">"port"</span><span class="syntax-keyword">:</span> <span class="syntax-number">3000</span><span class="syntax-keyword">,</span>
       <span class="syntax-key">"needs"</span><span class="syntax-keyword">:</span> <span class="syntax-key">[</span><span class="syntax-string">"api"</span><span class="syntax-key">]</span>
-    <span class="syntax-keyword">},</span>
-    <span class="syntax-key">"worker"</span><span class="syntax-keyword">: {</span>
-      <span class="syntax-key">"cmd"</span><span class="syntax-keyword">:</span> <span class="syntax-string">"npm run worker"</span><span class="syntax-keyword">,</span>
-      <span class="syntax-key">"needs"</span><span class="syntax-keyword">:</span> <span class="syntax-key">[</span><span class="syntax-string">"api"</span><span class="syntax-key">],</span>
-      <span class="syntax-key">"noPort"</span><span class="syntax-keyword">:</span> <span class="syntax-keyword">true</span>
     <span class="syntax-keyword">}</span>
   <span class="syntax-keyword">}</span>
 <span class="syntax-key">}</span></pre>
-          </div>
-          <div class="code-panel" id="panel-cli">
-            <pre><span class="syntax-comment"># Chart the waters (auto-detect)</span>
+        </div>
+        <div class="code-panel" id="panel-cli">
+          <pre><span class="syntax-comment"># Auto-detect and configure</span>
 $ <span class="syntax-keyword">port-daddy</span> scan
 
-<span class="syntax-comment"># Deploy the fleet</span>
+<span class="syntax-comment"># Start everything</span>
 $ <span class="syntax-keyword">port-daddy</span> up
 
-<span class="syntax-comment"># Deploy single vessel + dependencies</span>
+<span class="syntax-comment"># Start one service + dependencies</span>
 $ <span class="syntax-keyword">port-daddy</span> up --service web
 
-<span class="syntax-comment"># Use git branch as route</span>
-$ <span class="syntax-keyword">port-daddy</span> up --branch
-
-<span class="syntax-comment"># Signal other vessels</span>
-$ <span class="syntax-keyword">port-daddy</span> pub build:api <span class="syntax-string">'{"status":"moored"}'</span>
+<span class="syntax-comment"># Pub/sub between agents</span>
+$ <span class="syntax-keyword">port-daddy</span> pub build:api <span class="syntax-string">'{"status":"ready"}'</span>
 $ <span class="syntax-keyword">port-daddy</span> sub build:*
 
-<span class="syntax-comment"># Mooring locks</span>
-$ <span class="syntax-keyword">port-daddy</span> lock db-migrations && npm run migrate
-$ <span class="syntax-keyword">port-daddy</span> unlock db-migrations</pre>
-          </div>
-          <div class="code-panel" id="panel-sdk">
-            <pre><span class="syntax-keyword">import</span> { PortDaddy } <span class="syntax-keyword">from</span> <span class="syntax-string">'port-daddy/client'</span><span class="syntax-keyword">;</span>
+<span class="syntax-comment"># Distributed locks</span>
+$ <span class="syntax-keyword">port-daddy</span> lock db-migrations && npm run migrate</pre>
+        </div>
+        <div class="code-panel" id="panel-sdk">
+          <pre><span class="syntax-keyword">import</span> { PortDaddy } <span class="syntax-keyword">from</span> <span class="syntax-string">'port-daddy/client'</span><span class="syntax-keyword">;</span>
 
-<span class="syntax-keyword">const</span> harbor = <span class="syntax-keyword">new</span> <span class="syntax-keyword">PortDaddy</span>();
+<span class="syntax-keyword">const</span> pd = <span class="syntax-keyword">new</span> <span class="syntax-keyword">PortDaddy</span>();
 
-<span class="syntax-comment">// Claim a berth</span>
-<span class="syntax-keyword">const</span> { port } = <span class="syntax-keyword">await</span> harbor.<span class="syntax-keyword">claim</span>(<span class="syntax-string">'myapp:api'</span>);
+<span class="syntax-comment">// Claim a port</span>
+<span class="syntax-keyword">const</span> { port } = <span class="syntax-keyword">await</span> pd.<span class="syntax-keyword">claim</span>(<span class="syntax-string">'myapp:api'</span>);
 
-<span class="syntax-comment">// Signal flags</span>
-<span class="syntax-keyword">await</span> harbor.<span class="syntax-keyword">publish</span>(<span class="syntax-string">'fleet:ready'</span>, { vessel: <span class="syntax-string">'api'</span> });
-<span class="syntax-keyword">const</span> watch = harbor.<span class="syntax-keyword">subscribe</span>(<span class="syntax-string">'deployments'</span>);
-watch.<span class="syntax-keyword">on</span>(<span class="syntax-string">'message'</span>, (signal) => <span class="syntax-keyword">console</span>.<span class="syntax-keyword">log</span>(signal));
+<span class="syntax-comment">// Subscribe to events</span>
+<span class="syntax-keyword">const</span> sub = pd.<span class="syntax-keyword">subscribe</span>(<span class="syntax-string">'builds'</span>);
+sub.<span class="syntax-keyword">on</span>(<span class="syntax-string">'message'</span>, (data) => <span class="syntax-keyword">console</span>.<span class="syntax-keyword">log</span>(data));
 
-<span class="syntax-comment">// Mooring locks</span>
-<span class="syntax-keyword">await</span> harbor.<span class="syntax-keyword">withLock</span>(<span class="syntax-string">'cargo-bay'</span>, <span class="syntax-keyword">async</span> () => {
-  <span class="syntax-keyword">await</span> <span class="syntax-keyword">unloadCargo</span>();
+<span class="syntax-comment">// Use locks</span>
+<span class="syntax-keyword">await</span> pd.<span class="syntax-keyword">withLock</span>(<span class="syntax-string">'deploy'</span>, <span class="syntax-keyword">async</span> () => {
+  <span class="syntax-keyword">await</span> <span class="syntax-keyword">deploy</span>();
 });</pre>
-          </div>
         </div>
       </div>
     </div>
   </section>
   
-  <!-- Frameworks Section -->
-  <section class="frameworks" id="frameworks">
-    <div class="frameworks-container">
-      <div class="section-header">
-        <span class="section-label">Fleet Registry</span>
-        <h2 class="section-title">All vessels welcome</h2>
-        <p class="section-subtitle">
-          Deep charting detects 60+ vessel types across Node.js, Python, Ruby, PHP, Java, Go, Rust, and more.
-        </p>
-      </div>
-      
-      <div class="frameworks-grid">
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
-          <div class="framework-name">Next.js</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
-          <div class="framework-name">Vite</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 12l10 10 10-10L12 2zm0 3.5L18.5 12 12 18.5 5.5 12 12 5.5z"/></svg></div>
-          <div class="framework-name">Nuxt</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 12l10 10 10-10L12 2zm0 2.5L18 12l-6 7.5L6 12 12 4.5z"/></svg></div>
-          <div class="framework-name">SvelteKit</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 19h20L12 2zm0 3.5L17.5 17h-11L12 5.5z"/></svg></div>
-          <div class="framework-name">Astro</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2z"/></svg></div>
-          <div class="framework-name">Remix</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 6l2 12 8 4 8-4 2-12-10-4zm0 2.5l6 2.2-1.5 9.3-4.5 2.2-4.5-2.2L6 6.7l6-2.2z"/></svg></div>
-          <div class="framework-name">Angular</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 3h4l6 10.5L18 3h4L12 21 2 3z"/></svg></div>
-          <div class="framework-name">Vue</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
-          <div class="framework-name">Express</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l-10 6v8l10 6 10-6V8L12 2zm0 2.5L19.5 8 12 12.5 4.5 8 12 4.5z"/></svg></div>
-          <div class="framework-name">Fastify</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
-          <div class="framework-name">FastAPI</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/></svg></div>
-          <div class="framework-name">Flask</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></div>
-          <div class="framework-name">Django</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></div>
-          <div class="framework-name">Rails</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
-          <div class="framework-name">Laravel</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg></div>
-          <div class="framework-name">Spring</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div>
-          <div class="framework-name">Phoenix</div>
-        </div>
-        <div class="framework-item">
-          <div class="framework-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-5c-1.7 0-3 1.3-3 3"/><path d="M17.5 19H6.5c-1.7 0-3-1.3-3-3 0-1.4 1-2.6 2.3-2.9.3-2.3 2.3-4.1 4.7-4.1.6 0 1.2.1 1.7.4C13.3 7.1 16 5 19 5c3.2 0 5.7 2.7 5.5 6 .8.9 1.3 2 1.3 3.2 0 2.5-2 4.6-4.5 4.8z"/></svg></div>
-          <div class="framework-name">Workers</div>
-        </div>
-      </div>
-      
-      <p class="frameworks-note">And 40+ more vessel types in the fleet register</p>
+  <section class="section frameworks" id="frameworks">
+    <div class="section-header">
+      <span class="section-label">Frameworks</span>
+      <h2 class="section-title">Works with everything</h2>
+      <p class="section-subtitle">
+        Deep scanning detects 60+ frameworks across Node.js, Python, Ruby, PHP, Java, Go, Rust, and more.
+      </p>
     </div>
+    
+    <div class="frameworks-grid">
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
+        <div class="framework-name">Next.js</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+        <div class="framework-name">Vite</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 12l10 10 10-10L12 2zm0 2.5L18.5 12 12 18.5 5.5 12 12 5.5z"/></svg></div>
+        <div class="framework-name">Nuxt</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 12l10 10 10-10L12 2zm0 2.5L18 12l-6 7.5L6 12 12 4.5z"/></svg></div>
+        <div class="framework-name">Svelte</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 19h20L12 2zm0 3.5L17.5 17h-11L12 5.5z"/></svg></div>
+        <div class="framework-name">Astro</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2z"/></svg></div>
+        <div class="framework-name">Remix</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 6l2 12 8 4 8-4 2-12-10-4zm0 2.5l6 2.2-1.5 9.3-4.5 2.2-4.5-2.2L6 6.7l6-2.2z"/></svg></div>
+        <div class="framework-name">Angular</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 3h4l6 10.5L18 3h4L12 21 2 3z"/></svg></div>
+        <div class="framework-name">Vue</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
+        <div class="framework-name">Express</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l-10 6v8l10 6 10-6V8L12 2zm0 2.5L19.5 8 12 12.5 4.5 8 12 4.5z"/></svg></div>
+        <div class="framework-name">Fastify</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
+        <div class="framework-name">FastAPI</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/></svg></div>
+        <div class="framework-name">Flask</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></div>
+        <div class="framework-name">Django</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></div>
+        <div class="framework-name">Rails</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+        <div class="framework-name">Laravel</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg></div>
+        <div class="framework-name">Spring</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div>
+        <div class="framework-name">Phoenix</div>
+      </div>
+      <div class="framework-item">
+        <div class="framework-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-5c-1.7 0-3 1.3-3 3"/><path d="M17.5 19H6.5c-1.7 0-3-1.3-3-3 0-1.4 1-2.6 2.3-2.9.3-2.3 2.3-4.1 4.7-4.1.6 0 1.2.1 1.7.4C13.3 7.1 16 5 19 5c3.2 0 5.7 2.7 5.5 6 .8.9 1.3 2 1.3 3.2 0 2.5-2 4.6-4.5 4.8z"/></svg></div>
+        <div class="framework-name">Workers</div>
+      </div>
+    </div>
+    
+    <p style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.9rem;">And 40+ more frameworks</p>
   </section>
   
-  <!-- Coordination Section -->
-  <section class="coordination">
+  <section class="section coordination">
     <div class="coordination-container">
-      <div class="coordination-features">
-        <div class="coordination-feature">
-          <div class="coordination-feature-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h2"/><path d="M20 12h2"/><path d="M6 12a6 6 0 0 1 12 0"/><path d="M9 12a3 3 0 0 1 6 0"/><circle cx="12" cy="12" r="1"/></svg>
-          </div>
-          <div class="coordination-feature-content">
-            <h4>Signal Flags</h4>
-            <p>Vessels broadcast signals and listen for fleet-wide alerts. Real-time SSE for harbor coordination.</p>
-          </div>
-        </div>
-        <div class="coordination-feature">
-          <div class="coordination-feature-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          </div>
-          <div class="coordination-feature-content">
-            <h4>Mooring Locks</h4>
-            <p>Prevent collisions at the dock. Exclusive access to shared cargo with TTL and automatic release.</p>
-          </div>
-        </div>
-        <div class="coordination-feature">
-          <div class="coordination-feature-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </div>
-          <div class="coordination-feature-content">
-            <h4>Captain's Registry</h4>
-            <p>Register vessels with regular position reports. Auto-cleanup when ships go dark.</p>
-          </div>
-        </div>
-        <div class="coordination-feature">
-          <div class="coordination-feature-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          </div>
-          <div class="coordination-feature-content">
-            <h4>Harbor Telegraph</h4>
-            <p>Subscribe to harbor events with signed payloads. Integrate with external port authorities.</p>
-          </div>
-        </div>
-      </div>
+      <img src="images/coordination.png" alt="Service coordination" class="coordination-image">
       
       <div>
-        <span class="section-label">Fleet Coordination</span>
-        <h2 class="section-title" style="text-align: left; margin-top: 1rem;">Multiple captains, one harbor</h2>
+        <span class="section-label">Coordination</span>
+        <h2 class="section-title" style="text-align: left; margin-top: 1rem;">Multiple agents, one source of truth</h2>
         <p class="section-subtitle" style="text-align: left;">
-          Running Claude + Cursor + Aider simultaneously? Port Daddy provides the coordination 
-          signals that let your fleet work together instead of competing for the same berths.
+          Running Claude + Cursor + Aider simultaneously? Port Daddy provides the coordination layer 
+          that lets your AI agents work together instead of stepping on each other's ports.
         </p>
         <div style="margin-top: 2rem;">
           <div class="terminal">
@@ -1475,28 +1107,28 @@ watch.<span class="syntax-keyword">on</span>(<span class="syntax-string">'messag
               <div class="terminal-dot red"></div>
               <div class="terminal-dot yellow"></div>
               <div class="terminal-dot green"></div>
-              <span class="terminal-title">fleet-signals</span>
+              <span class="terminal-title">multi-agent</span>
             </div>
             <div class="terminal-body">
               <div class="terminal-line">
-                <span class="terminal-comment"># Captain A signals cargo ready</span>
+                <span class="terminal-comment"># Agent A signals completion</span>
               </div>
               <div class="terminal-line">
-                <span class="terminal-prompt">captain-a $</span>
-                <span class="terminal-command">port-daddy pub build:api '{"status":"moored","port":3100}'</span>
+                <span class="terminal-prompt">agent-a $</span>
+                <span class="terminal-command">port-daddy pub build:api '{"status":"ready","port":3100}'</span>
               </div>
-              <div class="terminal-output" style="color: #7fb069;">signal raised on build:api</div>
+              <div class="terminal-output" style="color: #7fb069;">published to build:api</div>
               
               <div class="terminal-line" style="margin-top: 1rem;">
-                <span class="terminal-comment"># Captain B monitors fleet signals</span>
+                <span class="terminal-comment"># Agent B subscribes and waits</span>
               </div>
               <div class="terminal-line">
-                <span class="terminal-prompt">captain-b $</span>
+                <span class="terminal-prompt">agent-b $</span>
                 <span class="terminal-command">port-daddy sub build:*</span>
               </div>
               <div class="terminal-output">
-                <div>[2025-01-15T10:30:00Z] build:api {"status":"moored","port":3100}</div>
-                <div style="color: #7fb069;">Fleet ready. Commencing integration...</div>
+                <div>[2025-01-15T10:30:00Z] build:api {"status":"ready","port":3100}</div>
+                <div style="color: #7fb069;">Starting integration tests...</div>
               </div>
             </div>
           </div>
@@ -1505,89 +1137,83 @@ watch.<span class="syntax-keyword">on</span>(<span class="syntax-string">'messag
     </div>
   </section>
   
-  <!-- Stats -->
-  <section class="social-proof">
+  <section class="stats">
     <div class="stats-grid">
       <div class="stat-item">
         <h3>60+</h3>
-        <p>Vessel types</p>
+        <p>Frameworks detected</p>
       </div>
       <div class="stat-item">
         <h3>40+</h3>
-        <p>Captains supported</p>
+        <p>AI agents supported</p>
       </div>
       <div class="stat-item">
         <h3>&lt;10ms</h3>
-        <p>Berth assignment</p>
+        <p>Port assignment</p>
       </div>
       <div class="stat-item">
         <h3>0</h3>
-        <p>Collisions at sea</p>
+        <p>Race conditions</p>
       </div>
     </div>
   </section>
   
-  <!-- CTA Section -->
   <section class="cta" id="install">
-    <div class="cta-container">
-      <h2>Ready to drop anchor?</h2>
-      <p>Install Port Daddy and never worry about port conflicts again.</p>
+    <div style="max-width: 600px; margin: 0 auto;">
+      <h2>Ready to stop fighting over ports?</h2>
+      <p style="color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 2rem;">Install Port Daddy and never worry about port conflicts again.</p>
       <div class="cta-buttons">
         <a href="https://www.npmjs.com/package/port-daddy" class="btn btn-primary" target="_blank">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M0 7.5v9h6.75v1.5H12V16.5h12V7.5H0zm6.75 7.5H4.5V9h2.25v6zm4.5 0H9V9h2.25v6zm4.5 0h-2.25V9H15.75v6zm4.5 0H18V9h2.25v6z"/></svg>
           npm install -g port-daddy
         </a>
-        <a href="https://github.com/curiositech/port-daddy" class="btn btn-outline" target="_blank">
-          View Documentation
-        </a>
+        <a href="https://github.com/curiositech/port-daddy" class="btn btn-outline" target="_blank">Documentation</a>
       </div>
     </div>
   </section>
   
-  <!-- Footer -->
   <footer>
     <div class="footer-container">
       <div class="footer-grid">
         <div class="footer-brand">
-          <a href="#" class="logo">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v18M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4"/><path d="M12 20a6 6 0 0 1-6-6"/><path d="M12 20a6 6 0 0 0 6-6"/></svg>
+          <a href="#" class="logo" style="color: white;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v18M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4"/>
+              <circle cx="12" cy="7" r="1"/>
+            </svg>
             <span>Port Daddy</span>
           </a>
-          <p>A safe harbor for local development. Port management, service orchestration, and fleet coordination.</p>
+          <p>Port management, service orchestration, and agent coordination for modern development workflows.</p>
         </div>
         
         <div class="footer-column">
-          <h4>Harbor</h4>
+          <h4>Product</h4>
           <ul>
             <li><a href="#features">Features</a></li>
             <li><a href="#orchestration">Orchestration</a></li>
-            <li><a href="#frameworks">Fleet Registry</a></li>
+            <li><a href="#frameworks">Frameworks</a></li>
           </ul>
         </div>
         
         <div class="footer-column">
-          <h4>Charts</h4>
+          <h4>Resources</h4>
           <ul>
             <li><a href="https://github.com/curiositech/port-daddy" target="_blank">GitHub</a></li>
             <li><a href="https://github.com/curiositech/port-daddy#readme" target="_blank">Documentation</a></li>
-            <li><a href="https://github.com/curiositech/port-daddy/issues" target="_blank">Report Issue</a></li>
+            <li><a href="https://github.com/curiositech/port-daddy/issues" target="_blank">Issues</a></li>
           </ul>
         </div>
         
         <div class="footer-column">
-          <h4>Captain's Office</h4>
+          <h4>Connect</h4>
           <ul>
             <li><a href="https://github.com/curiositech" target="_blank">@curiositech</a></li>
-            <li><a href="https://curiositech.ai" target="_blank">Curiositech</a></li>
           </ul>
         </div>
       </div>
       
       <div class="footer-bottom">
         <p>&copy; 2025 Curiositech LLC. Released under the MIT License.</p>
-        <div class="footer-links">
-          <a href="https://github.com/curiositech/port-daddy/blob/main/LICENSE" target="_blank">License</a>
-        </div>
       </div>
     </div>
   </footer>
@@ -1606,14 +1232,6 @@ watch.<span class="syntax-keyword">on</span>(<span class="syntax-string">'messag
       event.target.classList.add('active');
       document.getElementById('panel-' + tab).classList.add('active');
     }
-    
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    });
   </script>
 </body>
 </html>
