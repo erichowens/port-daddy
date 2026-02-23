@@ -442,7 +442,8 @@ export function createWebhooks(db: Database.Database) {
 
         if (attempt < MAX_RETRY_ATTEMPTS) {
           const delay = Math.pow(2, attempt - 1) * 1000;
-          setTimeout(() => deliverWebhook(delivery, attempt + 1), delay);
+          const timer = setTimeout(() => deliverWebhook(delivery, attempt + 1), delay);
+          if (typeof timer.unref === 'function') timer.unref();
         } else {
           stmts.updateStats.run(Date.now(), 0, 1, webhookId);
         }
@@ -455,7 +456,8 @@ export function createWebhooks(db: Database.Database) {
 
       if (attempt < MAX_RETRY_ATTEMPTS) {
         const delay = Math.pow(2, attempt - 1) * 1000;
-        setTimeout(() => deliverWebhook(delivery, attempt + 1), delay);
+        const timer = setTimeout(() => deliverWebhook(delivery, attempt + 1), delay);
+        if (typeof timer.unref === 'function') timer.unref();
       } else {
         stmts.updateStats.run(Date.now(), 0, 1, webhookId);
       }

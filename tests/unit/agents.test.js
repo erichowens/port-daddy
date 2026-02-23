@@ -435,7 +435,7 @@ describe('Agents Module', () => {
       const staleTime = Date.now() - (agents.DEFAULT_AGENT_TTL + 10000);
       db.prepare('UPDATE agents SET last_heartbeat = ? WHERE id = ?').run(staleTime, 'agent2');
 
-      const result = agents.cleanup(services, locks);
+      const result = agents.cleanup(locks);
 
       expect(result.cleaned).toBe(1);
       expect(result.message).toMatch(/cleaned 1 stale agent/);
@@ -447,6 +447,29 @@ describe('Agents Module', () => {
       // Verify agent2 is gone
       const agent2Check = agents.get('agent2');
       expect(agent2Check.success).toBe(false);
+    });
+
+    it('should release locks held by stale agents', () => {
+      // Register an agent and acquire a lock as that agent
+      agents.register('doomed-agent');
+      locks.acquire('agent-lock', { owner: 'doomed-agent', ttl: 600000 });
+
+      // Verify lock exists
+      const before = locks.list({ owner: 'doomed-agent' });
+      expect(before.locks.length).toBe(1);
+
+      // Make agent stale
+      const staleTime = Date.now() - (agents.DEFAULT_AGENT_TTL + 10000);
+      db.prepare('UPDATE agents SET last_heartbeat = ? WHERE id = ?').run(staleTime, 'doomed-agent');
+
+      // Cleanup should release the lock
+      const result = agents.cleanup(locks);
+      expect(result.cleaned).toBe(1);
+      expect(result.releasedLocks).toBe(1);
+
+      // Verify lock is gone
+      const after = locks.check('agent-lock');
+      expect(after.held).toBe(false);
     });
 
     it('should preserve registered_at on re-registration', () => {

@@ -19,6 +19,9 @@ describe('Messaging Module', () => {
   });
 
   afterEach(() => {
+    if (messaging) {
+      messaging.destroy();
+    }
     if (db) {
       db.close();
     }

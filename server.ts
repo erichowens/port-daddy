@@ -270,12 +270,7 @@ function cleanupStale(): ReturnType<typeof services.cleanup> {
   const serviceResult = services.cleanup();
   messaging.cleanup();
 
-  // Cast to satisfy agents.cleanup's ServicesLike/LocksLike structural interfaces.
-  // The runtime objects are compatible; the TS types have a minor mismatch in optional fields.
-  const agentCleanup = agents.cleanup(
-    services as unknown as Parameters<typeof agents.cleanup>[0],
-    locks as unknown as Parameters<typeof agents.cleanup>[1]
-  );
+  const agentCleanup = agents.cleanup(locks);
   if (agentCleanup.cleaned > 0) {
     logger.info('agent_cleanup', agentCleanup);
     activityLog.log(ActivityType.AGENT_CLEANUP, {

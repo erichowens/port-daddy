@@ -625,6 +625,55 @@ describe('Services Module - Cleanup Operations (2 tests)', () => {
 
     expect(result.cleaned).toBe(3);
   });
+
+  it('should cleanup services with dead PIDs', () => {
+    // Claim a service with a PID that definitely doesn't exist
+    const deadPid = 99999999;
+    services.claim('zombie:api:main', { pid: deadPid, cmd: 'node index.js' });
+
+    // Set it to 'running' status (cleanup only checks running services)
+    services.setStatus('zombie:api:main', 'running');
+
+    // Verify it exists
+    const before = services.get('zombie:api:main');
+    expect(before.success).toBe(true);
+
+    // Cleanup should detect dead PID and remove it
+    const result = services.cleanup();
+    expect(result.cleaned).toBeGreaterThanOrEqual(1);
+
+    // Verify it's gone
+    const after = services.get('zombie:api:main');
+    expect(after.success).toBe(false);
+  });
+
+  it('should not cleanup services with alive PIDs', () => {
+    // Claim with our own PID (definitely alive)
+    services.claim('alive:api:main', { pid: process.pid, cmd: 'node index.js' });
+    services.setStatus('alive:api:main', 'running');
+
+    // Cleanup should not touch it
+    services.cleanup();
+
+    const after = services.get('alive:api:main');
+    expect(after.success).toBe(true);
+  });
+
+  it('should not cleanup assigned services regardless of PID', () => {
+    // Assigned services haven't started - don't check their PID
+    const deadPid = 99999999;
+    services.claim('assigned:api:main', { pid: deadPid });
+
+    // Status is 'assigned' by default (not 'running')
+    const before = services.get('assigned:api:main');
+    expect(before.service.status).toBe('assigned');
+
+    services.cleanup();
+
+    // Should still exist
+    const after = services.get('assigned:api:main');
+    expect(after.success).toBe(true);
+  });
 });
 
 describe('Services Module - Edge Cases and Error Handling (3 tests)', () => {

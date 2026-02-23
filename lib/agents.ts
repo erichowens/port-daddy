@@ -62,10 +62,6 @@ interface ResourceCheck {
   max?: number;
 }
 
-interface ServicesLike {
-  release(pattern: string, options?: Record<string, unknown>): { released?: number };
-}
-
 interface LocksLike {
   list(options: { owner: string }): { locks?: Array<{ name: string }> };
   release(name: string, options: { force: boolean }): void;
@@ -342,21 +338,17 @@ export function createAgents(db: Database.Database) {
   /**
    * Cleanup stale agents and release their resources
    */
-  function cleanup(services?: ServicesLike, locks?: LocksLike) {
+  function cleanup(locks?: LocksLike) {
     const now = Date.now();
     const staleAgents = stmts.listStale.all(now - DEFAULT_AGENT_TTL) as AgentRow[];
 
-    let releasedServices = 0;
     let releasedLocks = 0;
 
     for (const agent of staleAgents) {
-      // Release services owned by this agent
-      if (services) {
-        const svcResult = services.release(`*`, { agentId: agent.id });
-        releasedServices += svcResult.released || 0;
-      }
-
-      // Release locks owned by this agent
+      // Release locks owned by this agent.
+      // Note: services don't track agent ownership (no agent_id column),
+      // so service cleanup relies on expires_at TTL and PID liveness checks
+      // in services.cleanup() instead.
       if (locks) {
         const lockResult = locks.list({ owner: agent.id });
         for (const lock of lockResult.locks || []) {
@@ -371,7 +363,6 @@ export function createAgents(db: Database.Database) {
 
     return {
       cleaned: deleteResult.changes,
-      releasedServices,
       releasedLocks,
       message: `cleaned ${deleteResult.changes} stale agent(s)`
     };

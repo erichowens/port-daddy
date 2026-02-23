@@ -303,6 +303,13 @@ export function createMessaging(db: Database.Database) {
   /**
    * Get subscriber count for a channel (for monitoring)
    */
+  /**
+   * Destroy all in-memory state (subscribers). Call on teardown.
+   */
+  function destroy() {
+    subscribers.clear();
+  }
+
   function subscriberCount(channel: string): number {
     const subs = subscribers.get(channel);
     return subs ? subs.size : 0;
@@ -316,6 +323,7 @@ export function createMessaging(db: Database.Database) {
     clear,
     listChannels,
     cleanup,
-    subscriberCount
+    subscriberCount,
+    destroy
   };
 }

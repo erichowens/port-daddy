@@ -469,11 +469,43 @@ export function createServices(db: Database.Database) {
   }
 
   /**
-   * Cleanup expired services
+   * Check if a PID is still alive
+   */
+  function isPidAlive(pid: number): boolean {
+    try {
+      process.kill(pid, 0); // signal 0 = liveness probe, no actual signal sent
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Cleanup expired services and services with dead PIDs
    */
   function cleanup() {
-    const result = stmts.deleteExpired.run(Date.now());
-    return { cleaned: result.changes };
+    const now = Date.now();
+
+    // 1. Remove expired services
+    const expiredResult = stmts.deleteExpired.run(now);
+    let cleaned = expiredResult.changes;
+
+    // 2. Remove services whose PID is no longer alive (zombie cleanup).
+    // Only check services that have a PID and are in 'running' status
+    // — 'assigned' services haven't started yet so no PID to check.
+    const running = db.prepare(
+      "SELECT * FROM services WHERE pid IS NOT NULL AND status = 'running'"
+    ).all() as ServiceRow[];
+
+    for (const svc of running) {
+      if (svc.pid && !isPidAlive(svc.pid)) {
+        stmts.deleteAllEndpoints.run(svc.id);
+        stmts.deleteById.run(svc.id);
+        cleaned++;
+      }
+    }
+
+    return { cleaned };
   }
 
   return {
