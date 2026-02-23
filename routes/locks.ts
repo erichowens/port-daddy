@@ -58,7 +58,7 @@ export function createLocksRoutes(deps: LocksRouteDeps): Router {
       // Validate lock name
       const nameValidation = validateLockName(name);
       if (!nameValidation.valid) {
-        return res.status(400).json({ error: nameValidation.error });
+        return res.status(400).json({ error: nameValidation.error, code: 'VALIDATION_ERROR' });
       }
 
       // Check agent resource limits
@@ -82,7 +82,7 @@ export function createLocksRoutes(deps: LocksRouteDeps): Router {
       });
 
       if (!result.success) {
-        return res.status(409).json(result); // Conflict - lock is held
+        return res.status(409).json({ ...result, code: 'LOCK_HELD' }); // Conflict - lock is held
       }
 
       logger.info('lock_acquired', { name, owner: result.owner as string });
@@ -120,7 +120,7 @@ export function createLocksRoutes(deps: LocksRouteDeps): Router {
       });
 
       if (!result.success) {
-        return res.status(403).json(result);
+        return res.status(403).json({ ...result, code: 'LOCK_NOT_FOUND' });
       }
 
       logger.info('lock_released', { name, released: result.released as boolean });
@@ -183,7 +183,7 @@ export function createLocksRoutes(deps: LocksRouteDeps): Router {
       });
 
       if (!result.success) {
-        return res.status(400).json(result);
+        return res.status(400).json({ ...result, code: 'LOCK_NOT_FOUND' });
       }
 
       res.json(result);

@@ -47,7 +47,7 @@ type ConnectionTarget = SocketTarget | TcpTarget;
 interface ClaimOptions {
   port?: number;
   range?: [number, number];
-  expires?: number;
+  expires?: string | number;
   cmd?: string;
   cwd?: string;
   pair?: string;
@@ -765,6 +765,39 @@ interface HeartbeatHandle {
   stop: () => void;
 }
 
+/** Response from waitForService / waitForServices */
+interface WaitResponse {
+  success: boolean;
+  services: ServiceEntry[];
+  resolved: number;
+  requested: number;
+  timedOut: boolean;
+}
+
+/** Options for lockWithRetry */
+interface LockWithRetryOptions extends LockOptions {
+  /** Max time to keep retrying in ms (default: 10000) */
+  timeout?: number;
+  /** Interval between retry attempts in ms (default: 500) */
+  interval?: number;
+}
+
+/** Options for withLock with auto-extend */
+interface WithLockOptions extends LockOptions {
+  /** Interval in ms to auto-extend the lock TTL (default: ttl/2 or 30000) */
+  extendInterval?: number;
+}
+
+/** Options for subscribe with auto-reconnect */
+interface SubscribeOptions {
+  /** Whether to auto-reconnect on disconnect (default: true) */
+  reconnect?: boolean;
+  /** Maximum number of reconnect attempts (default: 10) */
+  maxRetries?: number;
+  /** Base delay between reconnect attempts in ms (default: 1000) */
+  reconnectDelay?: number;
+}
+
 // =============================================================================
 // Error classes
 // =============================================================================
@@ -945,6 +978,44 @@ class PortDaddy {
   }
 
   // ===========================================================================
+  // Waiting -- Block until services are available
+  // ===========================================================================
+
+  /**
+   * Wait for a service to exist, blocking until found or timeout.
+   *
+   * @param id - Service identity to wait for
+   * @param timeout - Max wait time in ms (default: 30000)
+   */
+  async waitForService(id: string, timeout: number = 30000): Promise<WaitResponse> {
+    const prevTimeout = this.timeout;
+    this.timeout = Math.max(this.timeout, timeout + 5000);
+    try {
+      const params = new URLSearchParams();
+      params.set('timeout', String(timeout));
+      return await (this._request('GET', `/wait/${encodeURIComponent(id)}?${params}`) as Promise<WaitResponse>);
+    } finally {
+      this.timeout = prevTimeout;
+    }
+  }
+
+  /**
+   * Wait for multiple services to exist, blocking until all are found or timeout.
+   *
+   * @param ids - Array of service identities to wait for
+   * @param timeout - Max wait time in ms (default: 30000)
+   */
+  async waitForServices(ids: string[], timeout: number = 30000): Promise<WaitResponse> {
+    const prevTimeout = this.timeout;
+    this.timeout = Math.max(this.timeout, timeout + 5000);
+    try {
+      return await (this._request('POST', '/wait', { ids, timeout }) as Promise<WaitResponse>);
+    } finally {
+      this.timeout = prevTimeout;
+    }
+  }
+
+  // ===========================================================================
   // Messaging -- Pub/sub for agent coordination
   // ===========================================================================
 
@@ -997,83 +1068,122 @@ class PortDaddy {
    * Subscribe to a channel via Server-Sent Events.
    *
    * Returns an object with an `on()` method and an `unsubscribe()` cleanup function.
-   * Requires the `eventsource` package or a browser environment with native EventSource.
+   * Supports auto-reconnect on disconnect with configurable retries.
+   *
+   * @param channel - Channel name to subscribe to
+   * @param options - Subscribe options (reconnect, maxRetries, reconnectDelay)
    */
-  subscribe(channel: string): Subscription {
+  subscribe(channel: string, options: SubscribeOptions = {}): Subscription {
+    const { reconnect = true, maxRetries = 10, reconnectDelay = 1000 } = options;
     const url = `${this.url}/msg/${encodeURIComponent(channel)}/subscribe`;
+    const headers = this._headers();
     const handlers: Record<SubscriptionEventType, SubscriptionHandler[]> = {
       message: [],
       error: [],
       connected: []
     };
 
-    // Use native EventSource if available (browser), otherwise fall back
-    const EventSourceImpl = typeof EventSource !== 'undefined' ? EventSource : null;
+    let active = true;
+    let retryCount = 0;
+    let controller = new AbortController();
 
-    if (!EventSourceImpl) {
-      // Node.js fallback using native fetch with streaming
-      const controller = new AbortController();
-      let active = true;
+    const connect = () => {
+      if (!active) return;
+      controller = new AbortController();
 
-      (async () => {
-        try {
-          const res = await fetch(url, {
-            headers: this._headers(),
-            signal: controller.signal,
-          });
+      // Use native EventSource if available (browser), otherwise fall back
+      const EventSourceImpl = typeof EventSource !== 'undefined' ? EventSource : null;
 
-          const reader = res.body!.getReader();
-          const decoder = new TextDecoder();
-          let buffer = '';
+      if (!EventSourceImpl) {
+        // Node.js fallback using native fetch with streaming
+        (async () => {
+          try {
+            const res = await fetch(url, {
+              headers,
+              signal: controller.signal,
+            });
 
-          while (active) {
-            const { done, value } = await reader.read();
-            if (done) break;
+            retryCount = 0; // Reset on successful connection
+            const reader = res.body!.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
 
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop()!; // Keep incomplete line in buffer
+            while (active) {
+              const { done, value } = await reader.read();
+              if (done) break;
 
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                try {
-                  const data: unknown = JSON.parse(line.slice(6));
-                  handlers.message.forEach(fn => fn(data));
-                } catch {
-                  // Non-JSON data line, skip
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop()!; // Keep incomplete line in buffer
+
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  try {
+                    const data: unknown = JSON.parse(line.slice(6));
+                    handlers.message.forEach(fn => fn(data));
+                  } catch {
+                    // Non-JSON data line, skip
+                  }
+                } else if (line.startsWith('event: connected')) {
+                  handlers.connected.forEach(fn => fn(undefined));
                 }
-              } else if (line.startsWith('event: connected')) {
-                handlers.connected.forEach(fn => fn(undefined));
+              }
+            }
+
+            // Stream ended — reconnect if enabled
+            if (active && reconnect && retryCount < maxRetries) {
+              retryCount++;
+              setTimeout(connect, reconnectDelay * retryCount);
+            }
+          } catch (err) {
+            if (active) {
+              handlers.error.forEach(fn => fn(err));
+              // Reconnect on error if enabled
+              if (reconnect && retryCount < maxRetries) {
+                retryCount++;
+                setTimeout(connect, reconnectDelay * retryCount);
               }
             }
           }
-        } catch (err) {
-          if (active) {
-            handlers.error.forEach(fn => fn(err));
+        })();
+      } else {
+        // Browser EventSource path
+        const es = new EventSourceImpl(url);
+        es.onmessage = (e: MessageEvent) => {
+          try {
+            const data: unknown = JSON.parse(e.data);
+            handlers.message.forEach(fn => fn(data));
+          } catch { /* ignore non-JSON */ }
+        };
+        es.onerror = (e: Event) => {
+          handlers.error.forEach(fn => fn(e));
+          if (active && reconnect && retryCount < maxRetries) {
+            retryCount++;
+            es.close();
+            setTimeout(connect, reconnectDelay * retryCount);
           }
-        }
-      })();
+        };
+        es.addEventListener('connected', () => {
+          retryCount = 0;
+          handlers.connected.forEach(fn => fn(undefined));
+        });
 
-      return {
-        on(event: SubscriptionEventType, fn: SubscriptionHandler): Subscription { (handlers[event] || []).push(fn); return this; },
-        unsubscribe(): void { active = false; controller.abort(); },
-      };
-    }
-
-    // Browser EventSource path
-    const es = new EventSourceImpl(url);
-    es.onmessage = (e: MessageEvent) => {
-      try {
-        const data: unknown = JSON.parse(e.data);
-        handlers.message.forEach(fn => fn(data));
-      } catch { /* ignore non-JSON */ }
+        // Store close fn for unsubscribe
+        const origUnsubscribe = () => es.close();
+        (controller as unknown as Record<string, unknown>)._esClose = origUnsubscribe;
+      }
     };
-    es.onerror = (e: Event) => handlers.error.forEach(fn => fn(e));
-    es.addEventListener('connected', () => handlers.connected.forEach(fn => fn(undefined)));
+
+    connect();
 
     return {
       on(event: SubscriptionEventType, fn: SubscriptionHandler): Subscription { (handlers[event] || []).push(fn); return this; },
-      unsubscribe(): void { es.close(); },
+      unsubscribe(): void {
+        active = false;
+        controller.abort();
+        const esClose = (controller as unknown as Record<string, (() => void) | undefined>)._esClose;
+        if (esClose) esClose();
+      },
     };
   }
 
@@ -1137,14 +1247,81 @@ class PortDaddy {
   }
 
   /**
+   * Acquire a lock with automatic retry on contention.
+   *
+   * Repeatedly attempts to acquire a lock until success or timeout.
+   *
+   * @param name - Lock name
+   * @param options - Lock options plus timeout and interval for retry
+   * @returns Lock response on success
+   * @throws PortDaddyError if lock cannot be acquired within timeout
+   */
+  async lockWithRetry(name: string, options: LockWithRetryOptions = {}): Promise<LockResponse> {
+    const { timeout = 10000, interval = 500, ...lockOpts } = options;
+    const deadline = Date.now() + timeout;
+
+    while (true) {
+      try {
+        const result = await this.lock(name, lockOpts);
+        return result;
+      } catch (err) {
+        const isConflict = err instanceof PortDaddyError && err.status === 409;
+        const hasTime = Date.now() + interval < deadline;
+
+        if (isConflict && hasTime) {
+          // Lock is held by someone else — wait and retry
+          await new Promise(resolve => setTimeout(resolve, interval));
+          continue;
+        }
+
+        // If it was a 409 but we ran out of time, throw timeout error
+        if (isConflict) {
+          throw new PortDaddyError(
+            `Failed to acquire lock "${name}" within ${timeout}ms`,
+            408,
+            { code: 'TIMEOUT', name }
+          );
+        }
+
+        // Non-409 errors are thrown immediately
+        throw err;
+      }
+    }
+  }
+
+  /**
    * Execute a function while holding a lock. The lock is automatically
    * released when the function completes (or throws).
+   *
+   * If the function takes longer than `extendInterval`, the lock TTL is
+   * automatically extended to prevent expiration during execution.
+   *
+   * @param name - Lock name
+   * @param fn - Async function to execute while holding the lock
+   * @param options - Lock options plus extendInterval for auto-extension
    */
-  async withLock<T>(name: string, fn: () => Promise<T>, options: LockOptions = {}): Promise<T> {
-    await this.lock(name, options);
+  async withLock<T>(name: string, fn: () => Promise<T>, options: WithLockOptions = {}): Promise<T> {
+    const { extendInterval, ...lockOpts } = options;
+    const ttl = lockOpts.ttl || 300000;
+    const autoExtendMs = extendInterval || Math.min(ttl / 2, 30000);
+
+    await this.lock(name, lockOpts);
+
+    let extendTimer: ReturnType<typeof setInterval> | undefined;
+
     try {
+      // Start auto-extend timer
+      if (autoExtendMs > 0) {
+        extendTimer = setInterval(() => {
+          this.extendLock(name, { owner: lockOpts.owner, ttl }).catch(() => {
+            // Best-effort extend — if it fails, the lock may expire
+          });
+        }, autoExtendMs);
+      }
+
       return await fn();
     } finally {
+      if (extendTimer) clearInterval(extendTimer);
       await this.unlock(name).catch(() => {}); // Best-effort release
     }
   }
@@ -1592,4 +1769,14 @@ class PortDaddy {
 }
 
 export { PortDaddy, PortDaddyError, ConnectionError };
+export type {
+  WaitResponse,
+  LockWithRetryOptions,
+  WithLockOptions,
+  SubscribeOptions,
+  ClaimOptions,
+  LockOptions,
+  LockResponse,
+  Subscription,
+};
 export default PortDaddy;

@@ -87,7 +87,8 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
       if (!purpose || typeof purpose !== 'string') {
         return res.status(400).json({
           success: false,
-          error: 'purpose must be a non-empty string'
+          error: 'purpose must be a non-empty string',
+          code: 'VALIDATION_ERROR'
         });
       }
 
@@ -98,6 +99,7 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
           return res.status(409).json({
             success: false,
             error: 'File conflicts detected',
+            code: 'FILE_CONFLICT',
             conflicts: conflictCheck.conflicts,
             hint: 'Use force=true to claim files anyway'
           });
@@ -107,7 +109,7 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
       const result = sessions.start(purpose, { agentId, files, metadata });
 
       if (!result.success) {
-        return res.status(400).json(result);
+        return res.status(400).json({ ...result, code: 'VALIDATION_ERROR' });
       }
 
       logger.info('session_started', {
@@ -168,7 +170,7 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
       const result = sessions.get(sessionId);
 
       if (!result.success) {
-        return res.status(404).json(result);
+        return res.status(404).json({ ...result, code: 'SESSION_NOT_FOUND' });
       }
 
       res.json(result);
@@ -198,7 +200,7 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
       }
 
       if (!result.success) {
-        return res.status(404).json(result);
+        return res.status(404).json({ ...result, code: 'SESSION_NOT_FOUND' });
       }
 
       logger.info('session_ended', {
@@ -234,7 +236,7 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
       const result = sessions.remove(sessionId);
 
       if (!result.success) {
-        return res.status(404).json(result);
+        return res.status(404).json({ ...result, code: 'SESSION_NOT_FOUND' });
       }
 
       logger.info('session_deleted', { sessionId });
@@ -263,14 +265,15 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
       if (!content || typeof content !== 'string') {
         return res.status(400).json({
           success: false,
-          error: 'content must be a non-empty string'
+          error: 'content must be a non-empty string',
+          code: 'VALIDATION_ERROR'
         });
       }
 
       const result = sessions.addNote(sessionId, content, { type });
 
       if (!result.success) {
-        return res.status(404).json(result);
+        return res.status(404).json({ ...result, code: 'SESSION_NOT_FOUND' });
       }
 
       logger.info('session_note_added', {
@@ -313,7 +316,7 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
       const result = sessions.getNotes(sessionId, { type, limit, since });
 
       if (!result.success) {
-        return res.status(404).json(result);
+        return res.status(404).json({ ...result, code: 'SESSION_NOT_FOUND' });
       }
 
       res.json(result);
@@ -337,7 +340,8 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
       if (!files || !Array.isArray(files) || files.length === 0) {
         return res.status(400).json({
           success: false,
-          error: 'files must be a non-empty array'
+          error: 'files must be a non-empty array',
+          code: 'VALIDATION_ERROR'
         });
       }
 
@@ -348,6 +352,7 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
           return res.status(409).json({
             success: false,
             error: 'File conflicts detected',
+            code: 'FILE_CONFLICT',
             conflicts: conflictCheck.conflicts,
             hint: 'Use force=true to claim files anyway'
           });
@@ -357,7 +362,7 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
       const result = sessions.claimFiles(sessionId, files);
 
       if (!result.success) {
-        return res.status(404).json(result);
+        return res.status(404).json({ ...result, code: 'SESSION_NOT_FOUND' });
       }
 
       logger.info('session_files_claimed', {
@@ -400,14 +405,15 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
       } else {
         return res.status(400).json({
           success: false,
-          error: 'files must be provided via query param ?paths=file1,file2 or body { files: [] }'
+          error: 'files must be provided via query param ?paths=file1,file2 or body { files: [] }',
+          code: 'VALIDATION_ERROR'
         });
       }
 
       const result = sessions.releaseFiles(sessionId, files);
 
       if (!result.success) {
-        return res.status(404).json(result);
+        return res.status(404).json({ ...result, code: 'SESSION_NOT_FOUND' });
       }
 
       logger.info('session_files_released', {
@@ -441,14 +447,15 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
       if (!content || typeof content !== 'string') {
         return res.status(400).json({
           success: false,
-          error: 'content must be a non-empty string'
+          error: 'content must be a non-empty string',
+          code: 'VALIDATION_ERROR'
         });
       }
 
       const result = sessions.quickNote(content, { agentId, type });
 
       if (!result.success) {
-        return res.status(400).json(result);
+        return res.status(400).json({ ...result, code: 'VALIDATION_ERROR' });
       }
 
       logger.info('quick_note_added', {
