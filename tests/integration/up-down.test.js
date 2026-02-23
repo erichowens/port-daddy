@@ -183,13 +183,17 @@ describe('port-daddy up/down Integration', () => {
       }
     } catch { /* best effort */ }
 
-    // Release all services from the daemon to prevent state leakage between tests
+    // Release services from THIS test's projects only (not all — other test suites
+    // run in parallel on the same daemon and we'd nuke their claimed services).
+    const testProjectPrefixes = ['test-up-down:', 'test-nohealth:', 'test-selective:', 'test-remote:'];
     try {
       const svcRes = await request('/services');
       if (svcRes.ok && svcRes.data?.services) {
         for (const svc of svcRes.data.services) {
-          try { await request('/release', { method: 'DELETE', body: { id: svc.id } }); }
-          catch { /* best effort */ }
+          if (testProjectPrefixes.some(p => svc.id.startsWith(p))) {
+            try { await request('/release', { method: 'DELETE', body: { id: svc.id } }); }
+            catch { /* best effort */ }
+          }
         }
       }
     } catch { /* daemon unreachable, ok */ }
