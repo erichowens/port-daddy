@@ -156,6 +156,45 @@ export function createTestDb() {
     );
   `);
 
+  // V2 schema - Sessions & Notes
+  // NOTE: sessions.ts creates its own tables via createSessions(db).
+  // We pre-create them here so tests that use createSessions don't
+  // double-create, and so the schema is visible in one place.
+  db.pragma('foreign_keys = ON');
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      purpose TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      agent_id TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      completed_at INTEGER,
+      metadata TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
+    CREATE INDEX IF NOT EXISTS idx_sessions_agent ON sessions(agent_id);
+
+    CREATE TABLE IF NOT EXISTS session_files (
+      session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+      file_path TEXT NOT NULL,
+      claimed_at INTEGER NOT NULL,
+      released_at INTEGER,
+      PRIMARY KEY (session_id, file_path)
+    );
+    CREATE INDEX IF NOT EXISTS idx_session_files_path ON session_files(file_path);
+
+    CREATE TABLE IF NOT EXISTS session_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'note',
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_session_notes_session ON session_notes(session_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_session_notes_type ON session_notes(type);
+  `);
+
   return db;
 }
 

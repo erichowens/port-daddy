@@ -30,6 +30,7 @@ import { createAgents } from './lib/agents.js';
 import { createActivityLog, ActivityType } from './lib/activity.js';
 import { createWebhooks, WebhookEvent } from './lib/webhooks.js';
 import { createProjects } from './lib/projects.js';
+import { createSessions } from './lib/sessions.js';
 
 // Route aggregator
 import { createRoutes } from './routes/index.js';
@@ -186,6 +187,38 @@ db.exec(`
     created_at INTEGER NOT NULL,
     metadata TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    purpose TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    agent_id TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    completed_at INTEGER,
+    metadata TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
+  CREATE INDEX IF NOT EXISTS idx_sessions_agent ON sessions(agent_id);
+
+  CREATE TABLE IF NOT EXISTS session_files (
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    file_path TEXT NOT NULL,
+    claimed_at INTEGER NOT NULL,
+    released_at INTEGER,
+    PRIMARY KEY (session_id, file_path)
+  );
+  CREATE INDEX IF NOT EXISTS idx_session_files_path ON session_files(file_path);
+
+  CREATE TABLE IF NOT EXISTS session_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'note',
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_session_notes_session ON session_notes(session_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_session_notes_type ON session_notes(type);
 `);
 
 // =============================================================================
@@ -202,6 +235,7 @@ const agents = createAgents(db);
 const activityLog = createActivityLog(db);
 const webhooks = createWebhooks(db);
 const projects = createProjects(db);
+const sessions = createSessions(db);
 
 interface DaemonMetrics {
   total_assignments: number;
@@ -252,6 +286,7 @@ function cleanupStale(): ReturnType<typeof services.cleanup> {
 
   activityLog.cleanup();
   webhooks.cleanup();
+  sessions.cleanup();
 
   metrics.total_cleanups++;
   return serviceResult;
@@ -305,7 +340,7 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
 // Mount all routes via aggregator
 app.use(createRoutes({
   db, logger, metrics, config,
-  services, messaging, locks, health, agents, activityLog, webhooks, projects,
+  services, messaging, locks, health, agents, activityLog, webhooks, projects, sessions,
   VERSION, CODE_HASH, STARTED_AT, __dirname,
   cleanupStale, getSystemPorts
 }));
