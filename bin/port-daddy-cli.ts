@@ -27,6 +27,13 @@ import {
   createOrchestrator
 } from '../lib/orchestrator.js';
 
+// Direct-DB mode: allows Tier 1 commands to work without the daemon
+import { initDatabase, isPortAvailable, resolveDbPath } from '../lib/db.js';
+import { createServices } from '../lib/services.js';
+import { createLocks } from '../lib/locks.js';
+import { createSessions } from '../lib/sessions.js';
+import { createActivityLog } from '../lib/activity.js';
+
 const __dirname: string = dirname(fileURLToPath(import.meta.url));
 const PORT_DADDY_URL: string = process.env.PORT_DADDY_URL || 'http://localhost:9876';
 
@@ -34,6 +41,74 @@ const PORT_DADDY_URL: string = process.env.PORT_DADDY_URL || 'http://localhost:9
 // Falls back to TCP (PORT_DADDY_URL) if socket doesn't exist.
 const DEFAULT_SOCK: string = '/tmp/port-daddy.sock';
 const SOCK_PATH: string = process.env.PORT_DADDY_SOCK || DEFAULT_SOCK;
+
+// =============================================================================
+// Direct-DB Mode: Tier 1 commands work without the daemon
+// =============================================================================
+
+/**
+ * Tier 1 commands can work via direct SQLite access (no daemon needed).
+ * Tier 2 commands require the running daemon for real-time features.
+ */
+const TIER_1_COMMANDS: Set<string> = new Set([
+  'claim', 'c',
+  'release', 'r',
+  'find', 'f', 'list', 'l', 'ps',
+  'lock', 'unlock', 'locks',
+  'status',
+  'ports',               // 'ports cleanup' is Tier 1
+  'session', 'sessions',
+  'note', 'notes',
+]);
+
+const TIER_2_COMMANDS: Set<string> = new Set([
+  'pub', 'publish', 'sub', 'subscribe', 'wait',
+  'agent', 'agents',
+  'up', 'down',
+  'channels', 'webhook', 'webhooks',
+  'metrics', 'health', 'dashboard',
+]);
+
+/**
+ * Lazily initialized direct-DB modules.
+ * Shared across all direct-mode calls within a single CLI invocation.
+ */
+let _directDb: ReturnType<typeof initDatabase> | null = null;
+let _directServices: ReturnType<typeof createServices> | null = null;
+let _directLocks: ReturnType<typeof createLocks> | null = null;
+let _directSessions: ReturnType<typeof createSessions> | null = null;
+
+function getDirectDb(): ReturnType<typeof initDatabase> {
+  if (!_directDb) {
+    _directDb = initDatabase();
+  }
+  return _directDb;
+}
+
+function getDirectServices(): ReturnType<typeof createServices> {
+  if (!_directServices) {
+    _directServices = createServices(getDirectDb());
+  }
+  return _directServices;
+}
+
+function getDirectLocks(): ReturnType<typeof createLocks> {
+  if (!_directLocks) {
+    _directLocks = createLocks(getDirectDb());
+  }
+  return _directLocks;
+}
+
+function getDirectSessions(): ReturnType<typeof createSessions> {
+  if (!_directSessions) {
+    const db = getDirectDb();
+    _directSessions = createSessions(db);
+    // Wire up activity log for direct mode too
+    const activityLog = createActivityLog(db);
+    _directSessions.setActivityLog(activityLog);
+  }
+  return _directSessions;
+}
 
 // =============================================================================
 // Types
@@ -475,6 +550,673 @@ function suggestCommand(input: string): string | undefined {
 
 let autoStartAttempted: boolean = false;
 
+// =============================================================================
+// Direct-DB Mode — Tier 1 command execution without the daemon
+// =============================================================================
+
+/**
+ * Execute a Tier 1 command via direct SQLite access.
+ * Returns true if the command was handled, false if not applicable.
+ */
+async function executeDirectMode(
+  command: string,
+  positional: string[],
+  options: CLIOptions
+): Promise<boolean> {
+  // Only Tier 1 commands are supported
+  if (!TIER_1_COMMANDS.has(command)) {
+    return false;
+  }
+
+  // Tier 2 message (should not reach here, but safety net)
+  if (TIER_2_COMMANDS.has(command)) {
+    console.error(`"${command}" requires the running daemon.`);
+    console.error('Start with: port-daddy start');
+    return true;
+  }
+
+  if (IS_TTY && !options.direct) {
+    console.error('[direct mode] Daemon unreachable — using local database');
+  }
+
+  switch (command) {
+    case 'c':
+    case 'claim': {
+      let id: string | undefined = positional[0];
+      if (!id) {
+        id = autoIdentityFromPackageJson();
+        if (!id) {
+          console.error('Usage: port-daddy claim <identity> [options]');
+          console.error('  Tip: Run from a directory with package.json for auto-detection');
+          process.exit(1);
+        }
+        if (IS_TTY) console.error(`Auto-detected identity: ${id}`);
+      }
+
+      const svc = getDirectServices();
+      const claimOpts: Record<string, unknown> = {};
+      if (options.port) claimOpts.port = parseInt(options.port as string, 10);
+      if (options.range) {
+        const [min, max] = (options.range as string).split('-').map((n: string) => parseInt(n, 10));
+        claimOpts.range = [min, max];
+      }
+      if (options.expires) claimOpts.expires = options.expires;
+      if (options.pair) claimOpts.pair = options.pair;
+      if (options.cmd) claimOpts.cmd = options.cmd;
+
+      const result = svc.claim(id, claimOpts as Parameters<typeof svc.claim>[1]);
+
+      if (!result.success) {
+        console.error(result.error || 'Failed to claim port');
+        process.exit(1);
+      }
+
+      // In direct mode, verify port is actually free at OS level
+      if (!result.existing) {
+        const portFree = await isPortAvailable(result.port as number);
+        if (!portFree && IS_TTY) {
+          console.error(`  Warning: port ${result.port} is assigned but appears in use by another process`);
+        }
+      }
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else if (options.export) {
+        console.log(`export PORT=${result.port}`);
+      } else if (options.quiet) {
+        console.log(result.port);
+      } else {
+        if (IS_TTY) {
+          console.error(`${result.id} \u2192 port ${result.port}`);
+          if (result.existing) console.error('  (reused existing)');
+        }
+        console.log(result.port);
+      }
+      return true;
+    }
+
+    case 'r':
+    case 'release': {
+      const svc = getDirectServices();
+
+      if (options.expired) {
+        const result = svc.release('*', { expired: true });
+        if (options.json) {
+          console.log(JSON.stringify(result, null, 2));
+        } else if (options.quiet) {
+          console.log(result.released);
+        } else {
+          console.log(result.message);
+        }
+        return true;
+      }
+
+      const id = positional[0];
+      if (!id) {
+        console.error('Usage: port-daddy release <identity> [options]');
+        console.error('       port-daddy release --expired');
+        process.exit(1);
+      }
+
+      const result = svc.release(id);
+      if (!result.success) {
+        console.error(result.error || 'Failed to release');
+        process.exit(1);
+      }
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else if (options.quiet) {
+        console.log(result.released);
+      } else {
+        console.log(result.message);
+      }
+      return true;
+    }
+
+    case 'f':
+    case 'l':
+    case 'find':
+    case 'list':
+    case 'ps': {
+      const pattern = positional[0];
+      const svc = getDirectServices();
+      const findOpts: Record<string, unknown> = {};
+      if (pattern) findOpts.pattern = pattern;
+      if (options.status) findOpts.status = options.status;
+      if (options.port) findOpts.port = parseInt(options.port as string, 10);
+
+      const result = svc.find(findOpts as Parameters<typeof svc.find>[0]);
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+        return true;
+      }
+
+      if (result.count === 0) {
+        console.error('No services found');
+        if (pattern && !pattern.includes('*')) {
+          console.error('');
+          console.error(`Hint: To find all services for "${pattern}", try:`);
+          console.error(`  port-daddy find '${pattern}:*'`);
+        }
+        return true;
+      }
+
+      console.error('');
+      console.error('ID'.padEnd(35) + 'PORT'.padEnd(8) + 'STATUS'.padEnd(12));
+      console.error('\u2500'.repeat(55));
+
+      const services = result.services as Array<{ id: string; port: number; status: string }>;
+      for (const s of services) {
+        console.error(
+          s.id.padEnd(35) +
+          String(s.port).padEnd(8) +
+          s.status.padEnd(12)
+        );
+      }
+      console.error('');
+      console.error(`Total: ${result.count} service(s)`);
+      return true;
+    }
+
+    case 'lock': {
+      const name = positional[0];
+      const lk = getDirectLocks();
+
+      // Handle 'lock extend'
+      if (name === 'extend') {
+        const extArgs = process.argv.slice(process.argv.indexOf('extend') + 1);
+        let extName: string | undefined;
+        let extTtl: string | undefined;
+        for (let i = 0; i < extArgs.length; i++) {
+          if (extArgs[i] === '--ttl' && extArgs[i + 1]) {
+            extTtl = extArgs[++i];
+          } else if (!extArgs[i].startsWith('-') && !extName) {
+            extName = extArgs[i];
+          }
+        }
+        if (!extName) {
+          console.error('Usage: port-daddy lock extend <name> [--ttl <ms>]');
+          process.exit(1);
+        }
+
+        const result = lk.extend(extName, {
+          ttl: extTtl ? parseInt(extTtl, 10) : 300000,
+          owner: options.owner as string | undefined,
+        });
+
+        if (!result.success) {
+          console.error(result.error || 'Failed to extend lock');
+          process.exit(1);
+        }
+        if (options.json) {
+          console.log(JSON.stringify(result, null, 2));
+        } else if (!options.quiet) {
+          console.log(`Extended lock: ${extName}`);
+        }
+        return true;
+      }
+
+      if (!name) {
+        console.error('Usage: port-daddy lock <name> [--ttl <ms>] [--owner <id>]');
+        process.exit(1);
+      }
+
+      const result = lk.acquire(name, {
+        owner: options.owner as string | undefined,
+        ttl: options.ttl ? parseInt(options.ttl as string, 10) : 300000,
+        pid: process.pid,
+      });
+
+      if (!result.success) {
+        if (result.error === 'lock is held') {
+          console.error(`Lock '${name}' is held by ${result.holder}`);
+          if (result.heldSince) console.error(`  Held since: ${new Date(result.heldSince as number).toISOString()}`);
+          if (result.expiresAt) {
+            const remaining = Math.max(0, (result.expiresAt as number) - Date.now());
+            console.error(`  Expires in: ${Math.ceil(remaining / 1000)}s`);
+          }
+          process.exit(1);
+        }
+        console.error(result.error || 'Failed to acquire lock');
+        process.exit(1);
+      }
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else if (options.quiet) {
+        // Silent success for scripting
+      } else {
+        console.log(`Acquired lock: ${name}`);
+        if (result.expiresAt) {
+          const ttlSeconds = Math.ceil(((result.expiresAt as number) - (result.acquiredAt as number)) / 1000);
+          console.log(`  TTL: ${ttlSeconds}s`);
+        }
+      }
+      return true;
+    }
+
+    case 'unlock': {
+      const name = positional[0];
+      if (!name) {
+        console.error('Usage: port-daddy unlock <name> [--force]');
+        process.exit(1);
+      }
+
+      const lk = getDirectLocks();
+      const result = lk.release(name, {
+        owner: options.owner as string | undefined,
+        force: options.force === true,
+      });
+
+      if (!result.success) {
+        console.error(result.error || 'Failed to release lock');
+        process.exit(1);
+      }
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else if (!options.quiet) {
+        if (result.released) {
+          console.log(`Released lock: ${name}`);
+        } else {
+          console.log(`Lock '${name}' was not held`);
+        }
+      }
+      return true;
+    }
+
+    case 'locks': {
+      const lk = getDirectLocks();
+      const result = lk.list();
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+        return true;
+      }
+
+      const locks = result.locks as Array<{ name: string; owner: string; acquired_at: number; expires_at: number | null }>;
+      if (!locks || locks.length === 0) {
+        console.log('No active locks');
+        return true;
+      }
+
+      console.error('');
+      console.error('NAME'.padEnd(25) + 'OWNER'.padEnd(20) + 'EXPIRES');
+      console.error('\u2500'.repeat(65));
+      for (const lock of locks) {
+        const expires = lock.expires_at
+          ? new Date(lock.expires_at).toISOString().slice(11, 19)
+          : 'never';
+        console.error(
+          lock.name.padEnd(25) +
+          lock.owner.slice(0, 19).padEnd(20) +
+          expires
+        );
+      }
+      console.error('');
+      return true;
+    }
+
+    case 'status': {
+      // In direct mode, we can't check daemon health — just report DB state
+      const svc = getDirectServices();
+      const result = svc.find({});
+      const pkgPath = join(__dirname, '..', 'package.json');
+      const ver = existsSync(pkgPath)
+        ? (JSON.parse(readFileSync(pkgPath, 'utf8')) as { version: string }).version
+        : 'unknown';
+
+      console.log('Port Daddy daemon is not running (direct-DB mode)');
+      console.log(`  Version: ${ver}`);
+      console.log(`  Database: ${resolveDbPath()}`);
+      console.log(`  Active ports: ${result.count}`);
+      console.log('  Start daemon with: port-daddy start');
+      return true;
+    }
+
+    case 'ports': {
+      const sub = positional[0];
+      const svc = getDirectServices();
+
+      if (sub === 'cleanup') {
+        const result = svc.cleanup();
+        if (options.json) {
+          console.log(JSON.stringify(result, null, 2));
+        } else if (!options.quiet) {
+          console.log(`Cleanup complete: ${result.released ?? 0} stale ports released`);
+        }
+        return true;
+      }
+
+      // Default: list active ports
+      const findResult = svc.find({});
+      if (options.json) {
+        console.log(JSON.stringify(findResult, null, 2));
+        return true;
+      }
+
+      const ports = findResult.services as Array<{ id: string; port: number; created_at: number; expires_at?: number }>;
+      if (!ports || ports.length === 0) {
+        console.log('No active port assignments');
+        return true;
+      }
+
+      console.log('');
+      console.log(tableHeader(['PORT', 10], ['IDENTITY', 35], ['CLAIMED', 22]));
+      separator(67);
+      for (const p of ports) {
+        const claimed = p.created_at ? new Date(p.created_at).toISOString().replace('T', ' ').slice(0, 19) : '-';
+        console.log(
+          String(p.port).padEnd(10) +
+          (p.id || '-').slice(0, 34).padEnd(35) +
+          claimed.padEnd(22)
+        );
+      }
+      console.log('');
+      return true;
+    }
+
+    case 'session': {
+      const subcommand = positional[0];
+      const rest = positional.slice(1);
+      const sess = getDirectSessions();
+
+      if (!subcommand) {
+        console.error('Usage: port-daddy session <start|end|done|abandon|rm> [args]');
+        process.exit(1);
+      }
+
+      switch (subcommand) {
+        case 'start': {
+          const purpose = rest[0];
+          if (!purpose) {
+            console.error('Usage: port-daddy session start <purpose> [--agent AGENT_ID] [--force]');
+            process.exit(1);
+          }
+
+          const startOpts: Record<string, unknown> = {};
+          if (options.agent) startOpts.agentId = options.agent;
+          if (options.force) startOpts.force = true;
+
+          // Collect files
+          const files: string[] = [];
+          if (typeof options.files === 'string') files.push(options.files);
+          for (let i = 1; i < rest.length; i++) {
+            if (!rest[i].startsWith('-')) files.push(rest[i]);
+          }
+          if (files.length > 0) startOpts.files = files;
+
+          const result = sess.start(purpose, startOpts as Parameters<typeof sess.start>[1]);
+
+          if (!(result as Record<string, unknown>).success) {
+            console.error((result as Record<string, unknown>).error || 'Failed to start session');
+            process.exit(1);
+          }
+
+          if (options.quiet) {
+            console.log((result as Record<string, unknown>).sessionId);
+          } else {
+            console.log(`Started session: ${(result as Record<string, unknown>).sessionId}`);
+            console.log(`  Purpose: ${purpose}`);
+            if (files.length > 0) console.log(`  Files claimed: ${files.length}`);
+          }
+          break;
+        }
+
+        case 'end':
+        case 'done': {
+          const note = rest[0];
+          const status = (options.status as string) || 'completed';
+
+          // Find active session
+          const listResult = sess.list({ status: 'active', limit: 1 });
+          const sessionsList = (listResult as Record<string, unknown>).sessions as Array<{ id: string }>;
+          if (!sessionsList || sessionsList.length === 0) {
+            console.error('No active session found');
+            process.exit(1);
+          }
+
+          const sessionId = sessionsList[0].id;
+          const endOpts: Record<string, unknown> = { status };
+          if (note) endOpts.note = note;
+
+          const result = sess.end(sessionId, endOpts as Parameters<typeof sess.end>[1]);
+
+          if (!result.success) {
+            console.error(result.error || 'Failed to end session');
+            process.exit(1);
+          }
+
+          if (!options.quiet) {
+            console.log(`Ended session: ${sessionId}`);
+            console.log(`  Status: ${status}`);
+          }
+          break;
+        }
+
+        case 'abandon': {
+          const note = rest[0];
+
+          const listResult = sess.list({ status: 'active', limit: 1 });
+          const sessionsList = (listResult as Record<string, unknown>).sessions as Array<{ id: string }>;
+          if (!sessionsList || sessionsList.length === 0) {
+            console.error('No active session found');
+            process.exit(1);
+          }
+
+          const sessionId = sessionsList[0].id;
+          const result = sess.abandon(sessionId);
+
+          if (!result.success) {
+            console.error(result.error || 'Failed to abandon session');
+            process.exit(1);
+          }
+
+          if (!options.quiet) {
+            console.log(`Abandoned session: ${sessionId}`);
+          }
+          break;
+        }
+
+        case 'rm': {
+          const sessionId = rest[0];
+          if (!sessionId) {
+            console.error('Usage: port-daddy session rm <id>');
+            process.exit(1);
+          }
+
+          const result = sess.remove(sessionId);
+          if (!result.success) {
+            console.error(result.error || 'Failed to delete session');
+            process.exit(1);
+          }
+
+          if (!options.quiet) {
+            console.log(`Deleted session: ${sessionId}`);
+          }
+          break;
+        }
+
+        case 'files': {
+          const filesCmd = rest[0];
+          if (!filesCmd || !['add', 'rm'].includes(filesCmd)) {
+            console.error('Usage: port-daddy session files <add|rm> <paths...>');
+            process.exit(1);
+          }
+
+          const paths = rest.slice(1);
+          if (paths.length === 0) {
+            console.error(`Usage: port-daddy session files ${filesCmd} <paths...>`);
+            process.exit(1);
+          }
+
+          const listResult = sess.list({ status: 'active', limit: 1 });
+          const sessionsList = (listResult as Record<string, unknown>).sessions as Array<{ id: string }>;
+          if (!sessionsList || sessionsList.length === 0) {
+            console.error('No active session found');
+            process.exit(1);
+          }
+
+          const sessionId = sessionsList[0].id;
+
+          if (filesCmd === 'add') {
+            const result = sess.claimFiles(sessionId, paths);
+            if (!(result as Record<string, unknown>).success) {
+              console.error((result as Record<string, unknown>).error || 'Failed to claim files');
+              process.exit(1);
+            }
+            if (!options.quiet) {
+              console.log(`Claimed ${paths.length} file(s) in session ${sessionId}`);
+            }
+          } else {
+            const result = sess.releaseFiles(sessionId, paths);
+            if (!(result as Record<string, unknown>).success) {
+              console.error((result as Record<string, unknown>).error || 'Failed to release files');
+              process.exit(1);
+            }
+            if (!options.quiet) {
+              console.log(`Released file(s) from session ${sessionId}`);
+            }
+          }
+          break;
+        }
+
+        default:
+          console.error(`Unknown session command: ${subcommand}`);
+          process.exit(1);
+      }
+      return true;
+    }
+
+    case 'sessions': {
+      const sess = getDirectSessions();
+      const listOpts: Record<string, unknown> = {};
+
+      if (!options.all) {
+        listOpts.status = 'active';
+      }
+      if (options.status) {
+        listOpts.status = options.status;
+      }
+
+      const result = sess.list(listOpts as Parameters<typeof sess.list>[0]);
+      const data = result as Record<string, unknown>;
+
+      if (options.json) {
+        console.log(JSON.stringify(data, null, 2));
+        return true;
+      }
+
+      const count = data.count as number;
+      if (count === 0) {
+        console.log('No sessions found');
+        return true;
+      }
+
+      const sessions = data.sessions as Array<{
+        id: string; purpose: string; status: string;
+        startedAt: number; endedAt?: number; fileCount: number; noteCount: number;
+      }>;
+
+      console.log('');
+      console.log(tableHeader(
+        ['ID', 16], ['PURPOSE', 30], ['STATUS', 10], ['FILES', 6], ['NOTES', 6], ['AGE', 6]
+      ));
+      separator(74);
+
+      for (const s of sessions) {
+        const age = s.endedAt
+          ? relativeTime(s.endedAt - s.startedAt)
+          : relativeTime(Date.now() - s.startedAt);
+        console.log(
+          s.id.slice(0, 15).padEnd(16) +
+          s.purpose.slice(0, 29).padEnd(30) +
+          s.status.padEnd(10) +
+          String(s.fileCount).padEnd(6) +
+          String(s.noteCount).padEnd(6) +
+          age
+        );
+      }
+      console.log('');
+      console.log(`Total: ${count} session(s)`);
+      return true;
+    }
+
+    case 'note': {
+      const content = positional[0];
+      if (!content) {
+        console.error('Usage: port-daddy note <content> [--type TYPE]');
+        process.exit(1);
+      }
+
+      const sess = getDirectSessions();
+      const noteOpts: Record<string, unknown> = {};
+      if (options.type) noteOpts.type = options.type;
+
+      const result = sess.quickNote(content, noteOpts as Parameters<typeof sess.quickNote>[1]);
+      const data = result as Record<string, unknown>;
+
+      if (!data.success) {
+        console.error(data.error || 'Failed to create note');
+        process.exit(1);
+      }
+
+      if (options.quiet) {
+        console.log(data.noteId);
+      } else {
+        console.log(`Created note: ${data.noteId}`);
+        console.log(`  Session: ${data.sessionId}`);
+        if (data.sessionCreated) {
+          console.log(`  (New session auto-created)`);
+        }
+      }
+      return true;
+    }
+
+    case 'notes': {
+      const sessionId = positional[0];
+      const sess = getDirectSessions();
+
+      // getNotes(sessionId) for specific session, getNotes(null) for recent across all
+      const noteOpts: Record<string, unknown> = {};
+      if (options.limit) noteOpts.limit = parseInt(options.limit as string, 10);
+      if (options.type) noteOpts.type = options.type;
+
+      const result = sess.getNotes(
+        sessionId || null,
+        noteOpts as Parameters<typeof sess.getNotes>[1]
+      );
+      const data = result as Record<string, unknown>;
+
+      if (options.json) {
+        console.log(JSON.stringify(data, null, 2));
+        return true;
+      }
+
+      const notes = data.notes as Array<{ id: string; sessionId?: string; content: string; type: string; createdAt: number }>;
+      if (!notes || notes.length === 0) {
+        console.log('No notes found');
+        return true;
+      }
+
+      console.log('');
+      for (const note of notes) {
+        const age = relativeTime(Date.now() - note.createdAt);
+        const typeLabel = note.type !== 'general' && note.type !== 'note' ? ` [${note.type}]` : '';
+        console.log(`  [${age} ago]${typeLabel} ${note.content}`);
+      }
+      console.log('');
+      console.log(`Total: ${notes.length} note(s)`);
+      return true;
+    }
+
+    default:
+      return false;
+  }
+}
+
 async function main(): Promise<void> {
   const args: string[] = process.argv.slice(2);
   const command: string | undefined = args[0];
@@ -491,8 +1233,9 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  // Check for stale daemon before running commands (skip for daemon management)
-  const skipFreshnessCheck: boolean = ['start', 'stop', 'restart', 'install', 'uninstall', 'status', 'version', 'dev', 'ci-gate', 'doctor', 'diagnose', 'up', 'down', 'dashboard'].includes(command as string);
+  // Check for stale daemon before running commands (skip for daemon management and --direct mode)
+  const hasDirectFlag: boolean = args.includes('--direct');
+  const skipFreshnessCheck: boolean = hasDirectFlag || ['start', 'stop', 'restart', 'install', 'uninstall', 'status', 'version', 'dev', 'ci-gate', 'doctor', 'diagnose', 'up', 'down', 'dashboard'].includes(command as string);
   if (!skipFreshnessCheck) {
     await checkDaemonFreshness();
   }
@@ -563,6 +1306,21 @@ async function main(): Promise<void> {
     } else {
       positional.push(arg);
     }
+  }
+
+  // --direct flag: skip daemon, go straight to direct-DB mode
+  if (options.direct) {
+    if (TIER_2_COMMANDS.has(command)) {
+      console.error(`"${command}" requires the running daemon. It cannot work in --direct mode.`);
+      console.error('Start with: port-daddy start');
+      process.exit(1);
+    }
+
+    const handled = await executeDirectMode(command, positional, options);
+    if (handled) return;
+
+    // Not a Tier 1 command — fall through to normal handling
+    // (e.g., daemon management commands like 'start', 'version', etc.)
   }
 
   try {
@@ -770,6 +1528,25 @@ async function main(): Promise<void> {
     const error = err as Error & { code?: string; cause?: { code?: string } };
     const errCode = error.code || error.cause?.code;
     if (errCode === 'ECONNREFUSED' || errCode === 'ENOENT') {
+      // Daemon unreachable — try direct-DB mode for Tier 1 commands
+      if (TIER_1_COMMANDS.has(command)) {
+        try {
+          const handled = await executeDirectMode(command, positional, options);
+          if (handled) return;
+        } catch (directErr: unknown) {
+          const dError = directErr as Error;
+          console.error('Direct-DB mode failed:', dError.message);
+          process.exit(1);
+        }
+      }
+
+      // Tier 2 commands or unhandled — need the daemon
+      if (TIER_2_COMMANDS.has(command)) {
+        console.error(`"${command}" requires the running daemon.`);
+        console.error('Start with: port-daddy start');
+        process.exit(1);
+      }
+
       if (!autoStartAttempted) {
         // Auto-start daemon on first use
         autoStartAttempted = true;
