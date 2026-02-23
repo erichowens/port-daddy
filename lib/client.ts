@@ -659,6 +659,100 @@ interface DeleteProjectResponse {
   message: string;
 }
 
+/** Matches the actual POST /sessions response */
+interface SessionResponse {
+  success: boolean;
+  id: string;
+  purpose: string;
+  status: string;
+  agentId?: string | null;
+  createdAt: number;
+  updatedAt: number;
+  completedAt?: number | null;
+  metadata?: Record<string, unknown> | null;
+  files?: Array<{ path: string; claimedAt: number; releasedAt?: number | null }>;
+  conflicts?: Array<{ path: string; sessionId: string; purpose: string; claimedAt: number }>;
+}
+
+/** Matches the actual GET /sessions/:id response */
+interface SessionDetailResponse {
+  success: boolean;
+  session: {
+    id: string;
+    purpose: string;
+    status: string;
+    agentId: string | null;
+    createdAt: number;
+    updatedAt: number;
+    completedAt: number | null;
+    metadata: Record<string, unknown> | null;
+  };
+  notes: Array<{
+    id: number;
+    sessionId: string;
+    content: string;
+    type: string;
+    createdAt: number;
+  }>;
+  files: Array<{
+    path: string;
+    claimedAt: number;
+    releasedAt: number | null;
+  }>;
+}
+
+/** Matches the actual GET /sessions response */
+interface SessionListResponse {
+  success: boolean;
+  sessions: Array<{
+    id: string;
+    purpose: string;
+    status: string;
+    agentId: string | null;
+    createdAt: number;
+    updatedAt: number;
+    completedAt: number | null;
+    metadata: Record<string, unknown> | null;
+    noteCount?: number;
+    fileCount?: number;
+  }>;
+  count: number;
+}
+
+/** Matches the actual POST /sessions/:id/notes or POST /notes response */
+interface NoteResponse {
+  success: boolean;
+  noteId: number;
+  sessionId: string;
+}
+
+/** Matches the actual GET /notes or GET /sessions/:id/notes response */
+interface NotesResponse {
+  success: boolean;
+  notes: Array<{
+    id: number;
+    sessionId: string;
+    content: string;
+    type: string;
+    createdAt: number;
+    sessionPurpose?: string;
+  }>;
+  count: number;
+}
+
+/** Matches the actual POST /sessions/:id/files response */
+interface FileClaimResponse {
+  success: boolean;
+  claimed: string[];
+  conflicts: Array<{ path: string; sessionId: string; purpose: string; claimedAt: number }>;
+}
+
+/** Matches the actual DELETE /sessions/:id/files response */
+interface FileReleaseResponse {
+  success: boolean;
+  released: string[];
+}
+
 type SubscriptionEventType = 'message' | 'error' | 'connected';
 type SubscriptionHandler = (data: unknown) => void;
 
@@ -1341,6 +1435,147 @@ class PortDaddy {
    */
   async deleteProject(id: string): Promise<DeleteProjectResponse> {
     return this._request('DELETE', `/projects/${encodeURIComponent(id)}`) as Promise<DeleteProjectResponse>;
+  }
+
+  // ===========================================================================
+  // Sessions -- Agent work sessions and file coordination
+  // ===========================================================================
+
+  /**
+   * Start a new session.
+   */
+  async startSession(options: {
+    purpose: string;
+    agentId?: string;
+    files?: string[];
+    force?: boolean;
+    metadata?: Record<string, unknown>;
+  }): Promise<SessionResponse> {
+    return this._request('POST', '/sessions', options) as Promise<SessionResponse>;
+  }
+
+  /**
+   * End a session (complete it).
+   */
+  async endSession(sessionIdOrNote?: string, options?: {
+    status?: string;
+    note?: string;
+  }): Promise<SessionResponse> {
+    // If first arg looks like a session ID, use it directly
+    // Otherwise treat it as a note and find active session
+    const isSessionId = sessionIdOrNote?.startsWith('session-');
+    const sessionId = isSessionId ? sessionIdOrNote : undefined;
+    const note = isSessionId ? options?.note : sessionIdOrNote;
+
+    if (sessionId) {
+      return this._request('PUT', `/sessions/${sessionId}`, {
+        status: options?.status || 'completed',
+        note,
+      }) as Promise<SessionResponse>;
+    }
+
+    // Find active session
+    const list = await this.sessions({ status: 'active', limit: 1 });
+    if (!list.sessions.length) {
+      return { success: false, id: '', purpose: '', status: '', createdAt: 0, updatedAt: 0 } as SessionResponse;
+    }
+
+    return this._request('PUT', `/sessions/${list.sessions[0].id}`, {
+      status: options?.status || 'completed',
+      note,
+    }) as Promise<SessionResponse>;
+  }
+
+  /**
+   * Abandon a session.
+   */
+  async abandonSession(sessionIdOrNote?: string): Promise<SessionResponse> {
+    return this.endSession(sessionIdOrNote, { status: 'abandoned' });
+  }
+
+  /**
+   * Delete a session entirely.
+   */
+  async removeSession(sessionId: string): Promise<{ success: boolean }> {
+    return this._request('DELETE', `/sessions/${sessionId}`) as Promise<{ success: boolean }>;
+  }
+
+  /**
+   * Add a quick note (auto-creates session if needed).
+   */
+  async note(content: string, options?: {
+    type?: string;
+    agentId?: string;
+    sessionId?: string;
+  }): Promise<NoteResponse> {
+    if (options?.sessionId) {
+      return this._request('POST', `/sessions/${options.sessionId}/notes`, {
+        content,
+        type: options?.type,
+      }) as Promise<NoteResponse>;
+    }
+    return this._request('POST', '/notes', {
+      content,
+      agentId: options?.agentId,
+      type: options?.type,
+    }) as Promise<NoteResponse>;
+  }
+
+  /**
+   * Get notes.
+   */
+  async notes(sessionIdOrOptions?: string | {
+    limit?: number;
+    type?: string;
+    since?: number;
+  }): Promise<NotesResponse> {
+    if (typeof sessionIdOrOptions === 'string') {
+      return this._request('GET', `/sessions/${sessionIdOrOptions}/notes`) as Promise<NotesResponse>;
+    }
+    const params = new URLSearchParams();
+    if (sessionIdOrOptions?.limit) params.set('limit', String(sessionIdOrOptions.limit));
+    if (sessionIdOrOptions?.type) params.set('type', sessionIdOrOptions.type);
+    if (sessionIdOrOptions?.since) params.set('since', String(sessionIdOrOptions.since));
+    const qs = params.toString();
+    return this._request('GET', `/notes${qs ? `?${qs}` : ''}`) as Promise<NotesResponse>;
+  }
+
+  /**
+   * List sessions.
+   */
+  async sessions(options?: {
+    status?: string;
+    agentId?: string;
+    all?: boolean;
+    limit?: number;
+  }): Promise<SessionListResponse> {
+    const params = new URLSearchParams();
+    if (options?.status) params.set('status', options.status);
+    if (options?.agentId) params.set('agent', options.agentId);
+    if (options?.limit) params.set('limit', String(options.limit));
+    const qs = params.toString();
+    return this._request('GET', `/sessions${qs ? `?${qs}` : ''}`) as Promise<SessionListResponse>;
+  }
+
+  /**
+   * Get session details.
+   */
+  async sessionDetails(id: string): Promise<SessionDetailResponse> {
+    return this._request('GET', `/sessions/${id}`) as Promise<SessionDetailResponse>;
+  }
+
+  /**
+   * Claim files for a session.
+   */
+  async claimFiles(sessionId: string, files: string[], force?: boolean): Promise<FileClaimResponse> {
+    return this._request('POST', `/sessions/${sessionId}/files`, { files, force }) as Promise<FileClaimResponse>;
+  }
+
+  /**
+   * Release files from a session.
+   */
+  async releaseFiles(sessionId: string, files: string[]): Promise<FileReleaseResponse> {
+    return this._request('DELETE', `/sessions/${sessionId}/files`, { files }) as Promise<FileReleaseResponse>;
   }
 
   /**
