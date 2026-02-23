@@ -843,7 +843,7 @@ async function handleClaim(id: string | undefined, options: CLIOptions): Promise
     // Usage: eval $(port-daddy claim myapp --export)
     console.log(`export PORT=${data.port}`);
   } else if (options.quiet) {
-    // Quiet mode: just the port to stdout
+    // Quiet mode: just the port to stdout (-q or --quiet both set options.quiet)
     console.log(data.port);
   } else {
     // Normal mode: friendly message to stderr, port to stdout
@@ -885,7 +885,7 @@ async function handleRelease(id: string | undefined, options: CLIOptions): Promi
 
   if (options.json) {
     console.log(JSON.stringify(data, null, 2));
-  } else if (options.quiet || options.q) {
+  } else if (options.quiet) {
     console.log(data.released);
   } else {
     console.log(data.message);
@@ -1046,7 +1046,7 @@ async function handlePub(channel: string | undefined, message: string | undefine
 
   if (options.json) {
     console.log(JSON.stringify(data, null, 2));
-  } else if (!options.quiet && !options.q) {
+  } else if (!options.quiet) {
     console.log(`Published to ${channel} (id: ${data.id})`);
   }
 }
@@ -2635,13 +2635,23 @@ async function handlePorts(subcommand: string | undefined, options: CLIOptions):
     process.exit(1);
   }
 
+  // Detect API errors that returned 200 but no ports array
+  if (data.error) {
+    console.error((data.error as string) || 'Failed to list ports');
+    process.exit(1);
+  }
+
   if (options.json) {
     console.log(JSON.stringify(data, null, 2));
     return;
   }
 
-  const ports = data.ports as Array<{ port: number; identity: string; claimedAt?: number; expiresAt?: number }>;
-  if (!ports || ports.length === 0) {
+  const ports = data.ports as Array<{ port: number; identity: string; claimedAt?: number; expiresAt?: number }> | undefined;
+  if (!ports) {
+    console.error('Unexpected API response: missing ports array');
+    process.exit(1);
+  }
+  if (ports.length === 0) {
     console.log('No active port assignments');
     return;
   }

@@ -462,6 +462,25 @@ _pd_cmd_ports() {
   esac
 }
 
+_pd_cmd_up() {
+  _arguments \
+    '--service[start only this service and its dependencies]:service name:' \
+    '--no-health[skip health checks]' \
+    '--branch[use git branch as context in identity]' \
+    '--timeout[health check timeout in ms]:milliseconds:' \
+    '--dir[target directory]:directory:_directories' \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]'
+}
+
+_pd_cmd_down() {
+  _arguments \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]'
+}
+
 _pd_cmd_doctor() {
   _arguments \
     '(-j --json)'{-j,--json}'[JSON output]' \
@@ -521,12 +540,16 @@ _port_daddy() {
     'config:show resolved configuration'
     'health:check service health'
     'ports:list active port assignments'
+    # Orchestration
+    'up:start all services (auto-detect or from .portdaddyrc)'
+    'down:stop all services started by up'
     # Project (+ aliases)
     'scan:deep-scan project for frameworks and register with daemon'
     's:deep-scan project (alias for scan)'
     'projects:list or manage registered projects'
     'p:list or manage projects (alias for projects)'
     'doctor:run environment diagnostics'
+    'diagnose:run environment diagnostics (alias for doctor)'
     # Daemon lifecycle
     'start:start the Port Daddy daemon'
     'stop:stop the Port Daddy daemon'
@@ -579,9 +602,11 @@ _port_daddy() {
         agents)             _pd_cmd_agents ;;
         log)                _pd_cmd_log ;;
         activity)           _pd_cmd_activity ;;
+        up)                 _pd_cmd_up ;;
+        down)               _pd_cmd_down ;;
         s|scan)             _pd_cmd_scan ;;
         p|projects)         _pd_cmd_projects ;;
-        doctor)             _pd_cmd_doctor ;;
+        doctor|diagnose)    _pd_cmd_doctor ;;
         start|stop|restart|status|install|uninstall|dev|ci-gate)
                             _pd_cmd_daemon ;;
         dashboard)              _pd_cmd_dashboard ;;

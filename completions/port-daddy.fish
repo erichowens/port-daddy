@@ -95,8 +95,9 @@ set -l __pd_commands \
     'claim' 'c' 'release' 'r' 'find' 'f' 'list' 'l' 'ps' 'url' 'env' \
     'pub' 'publish' 'sub' 'subscribe' 'wait' 'lock' 'unlock' 'locks' \
     'agent' 'agents' 'log' 'activity' \
+    'up' 'down' \
     'dashboard' 'channels' 'webhook' 'webhooks' 'metrics' 'config' 'health' 'ports' \
-    'scan' 's' 'projects' 'p' 'doctor' \
+    'scan' 's' 'projects' 'p' 'doctor' 'diagnose' \
     'start' 'stop' 'restart' 'status' 'install' 'uninstall' 'dev' 'ci-gate' \
     'version' 'help'
 
@@ -143,12 +144,17 @@ for prog in port-daddy pd
     complete -c $prog -n __pd_needs_command -a health -d 'Check service health'
     complete -c $prog -n __pd_needs_command -a ports -d 'List active port assignments'
 
+    # Orchestration
+    complete -c $prog -n __pd_needs_command -a up -d 'Start all services'
+    complete -c $prog -n __pd_needs_command -a down -d 'Stop all services started by up'
+
     # Project
     complete -c $prog -n __pd_needs_command -a scan -d 'Deep-scan project for frameworks'
     complete -c $prog -n __pd_needs_command -a s -d 'Scan project (alias)'
     complete -c $prog -n __pd_needs_command -a projects -d 'List or manage registered projects'
     complete -c $prog -n __pd_needs_command -a p -d 'List projects (alias)'
     complete -c $prog -n __pd_needs_command -a doctor -d 'Run environment diagnostics'
+    complete -c $prog -n __pd_needs_command -a diagnose -d 'Run diagnostics (alias for doctor)'
 
     # Daemon lifecycle
     complete -c $prog -n __pd_needs_command -a start -d 'Start the daemon'
@@ -255,6 +261,13 @@ for prog in port-daddy pd
 
     # scan / s
     complete -c $prog -n "__pd_using_command scan s" -l dry-run -d 'Preview without saving'
+
+    # up
+    complete -c $prog -n "__pd_using_command up" -l service -d 'Start only this service + dependencies' -x
+    complete -c $prog -n "__pd_using_command up" -l no-health -d 'Skip health checks'
+    complete -c $prog -n "__pd_using_command up" -l branch -d 'Use git branch as context'
+    complete -c $prog -n "__pd_using_command up" -l timeout -d 'Health check timeout in ms' -x
+    complete -c $prog -n "__pd_using_command up" -l dir -d 'Target directory' -r
 
     # projects / p
     complete -c $prog -n "__pd_using_command projects p" -x -a 'rm'

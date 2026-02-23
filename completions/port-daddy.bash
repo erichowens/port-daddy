@@ -95,8 +95,10 @@ _port_daddy() {
     log activity
     # System & Monitoring
     dashboard channels webhook webhooks metrics config health ports
+    # Orchestration
+    up down
     # Project (+ alias)
-    scan s projects p doctor
+    scan s projects p doctor diagnose
     # Daemon lifecycle
     start stop restart status install uninstall dev ci-gate
     # Info
@@ -464,7 +466,7 @@ _port_daddy() {
           # shellcheck disable=SC2207
           COMPREPLY=( $(compgen -W "$ids" -- "$cur") )
           ;;
-        --limit|--since)
+        --limit|--since|--from|--to)
           COMPREPLY=()  # Free-form
           ;;
         *)
@@ -529,9 +531,34 @@ _port_daddy() {
       ;;
 
     # -----------------------------------------------------------------------
-    # doctor  (environment diagnostics)
+    # up  [--service NAME] [--no-health] [--branch] [--timeout N] [--dir PATH]
     # -----------------------------------------------------------------------
-    doctor)
+    up)
+      case "$prev" in
+        --service|--timeout)
+          COMPREPLY=()  # Free-form
+          ;;
+        --dir)
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -d -- "$cur") )
+          ;;
+        *)
+          _pd_opts '--service --no-health --branch --timeout --dir'
+          ;;
+      esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # down  (stop all services)
+    # -----------------------------------------------------------------------
+    down)
+      _pd_opts ''
+      ;;
+
+    # -----------------------------------------------------------------------
+    # doctor / diagnose  (environment diagnostics)
+    # -----------------------------------------------------------------------
+    doctor|diagnose)
       _pd_opts ''
       ;;
 
