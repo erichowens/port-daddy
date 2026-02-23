@@ -7,11 +7,10 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DB_PATH = process.env.PORT_DADDY_DB || join(__dirname, '../../port-registry-test.db');
 
-// Create a test server instance
+// Create a test server instance (uses in-memory SQLite for isolation)
 function createTestServer() {
-  const db = new Database(DB_PATH);
+  const db = new Database(':memory:');
   db.pragma('journal_mode = WAL');
 
   db.exec(`

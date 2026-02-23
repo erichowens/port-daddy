@@ -1608,17 +1608,6 @@ async function handleDown(_options: CLIOptions): Promise<void> {
     process.exit(1);
   }
 
-  // Snapshot services before shutdown so we can verify release
-  let servicesBefore: string[] = [];
-  try {
-    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/services`);
-    if (res.ok) {
-      const data = await res.json();
-      const svcs = (data as { services?: { id: string }[] }).services || [];
-      servicesBefore = svcs.map((s: { id: string }) => s.id);
-    }
-  } catch { /* daemon unreachable — proceed anyway */ }
-
   // Send SIGTERM to trigger graceful shutdown
   console.log(`Stopping port-daddy up (PID ${pid})...`);
   try {
@@ -1642,36 +1631,30 @@ async function handleDown(_options: CLIOptions): Promise<void> {
     await new Promise(r => setTimeout(r, 500));
   }
 
-  // Verify ports were released (poll up to 3s)
-  if (servicesBefore.length > 0) {
-    let remaining: string[] = servicesBefore;
-    const releaseDeadline: number = Date.now() + 3000;
-    while (Date.now() < releaseDeadline && remaining.length > 0) {
-      await new Promise(r => setTimeout(r, 300));
-      try {
-        const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/services`);
-        if (res.ok) {
-          const data = await res.json();
-          const svcs = (data as { services?: { id: string }[] }).services || [];
-          const activeIds: string[] = svcs.map((s: { id: string }) => s.id);
-          remaining = servicesBefore.filter(id => activeIds.includes(id));
-        }
-      } catch { break; /* daemon unreachable */ }
-    }
-
-    // Force-release any stragglers (graceful shutdown was interrupted)
-    if (remaining.length > 0) {
-      for (const id of remaining) {
+  // Force-release any services still registered to the killed PID.
+  // The graceful shutdown in `up` tries to release ports via orchestrator.stop(),
+  // but on slow CI or under load it may not complete before the process dies.
+  // Query all services and release any that belong to this PID.
+  try {
+    const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/services`);
+    if (res.ok) {
+      const data = await res.json();
+      const svcs = (data as { services?: { id: string; pid?: number }[] }).services || [];
+      const orphaned = svcs.filter((s: { pid?: number }) => s.pid === pid);
+      for (const svc of orphaned) {
         try {
           await pdFetch(`${PORT_DADDY_URL}/release`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id })
+            body: JSON.stringify({ id: (svc as { id: string }).id })
           });
         } catch { /* best effort */ }
       }
+      if (orphaned.length > 0) {
+        console.log(`  Released ${orphaned.length} orphaned service(s).`);
+      }
     }
-  }
+  } catch { /* daemon unreachable — nothing more we can do */ }
 
   // Clean up PID file
   removePidFile();
