@@ -307,7 +307,11 @@ export function createSessions(db: Database.Database) {
    */
   function start(purpose: string, options: StartOptions = {}) {
     if (!purpose || typeof purpose !== 'string') {
-      return { success: false, error: 'purpose must be a non-empty string' };
+      return { success: false, error: 'purpose must be a non-empty string', code: 'VALIDATION_ERROR' };
+    }
+    const trimmedPurpose = purpose.trim();
+    if (!trimmedPurpose) {
+      return { success: false, error: 'purpose must be a non-empty string', code: 'VALIDATION_ERROR' };
     }
 
     const now = Date.now();
@@ -318,10 +322,25 @@ export function createSessions(db: Database.Database) {
       metadata = null,
     } = options;
 
+    // Validate agentId if provided
+    if (agentId !== null && typeof agentId !== 'string') {
+      return { success: false, error: 'agentId must be a string', code: 'VALIDATION_ERROR' };
+    }
+
+    // Validate files array contents
+    if (!Array.isArray(files)) {
+      return { success: false, error: 'files must be an array', code: 'VALIDATION_ERROR' };
+    }
+    for (const file of files) {
+      if (typeof file !== 'string' || !file.trim()) {
+        return { success: false, error: 'files must contain non-empty strings', code: 'VALIDATION_ERROR' };
+      }
+    }
+
     try {
       stmts.insert.run(
         id,
-        purpose,
+        trimmedPurpose,
         'active',
         agentId,
         now,
@@ -348,7 +367,7 @@ export function createSessions(db: Database.Database) {
     const result: Record<string, unknown> = {
       success: true,
       id,
-      purpose,
+      purpose: trimmedPurpose,
       status: 'active',
     };
 
@@ -361,8 +380,8 @@ export function createSessions(db: Database.Database) {
 
     if (activityLog) {
       activityLog.log(ActivityType.SESSION_START, {
-        details: `Session started: ${purpose}`,
-        metadata: { sessionId: id, purpose, agentId: agentId || undefined } as unknown as Record<string, unknown>,
+        details: `Session started: ${trimmedPurpose}`,
+        metadata: { sessionId: id, purpose: trimmedPurpose, agentId: agentId || undefined } as unknown as Record<string, unknown>,
       });
     }
 
@@ -443,10 +462,14 @@ export function createSessions(db: Database.Database) {
    */
   function addNote(sessionId: string, content: string, options: AddNoteOptions = {}) {
     if (!sessionId || typeof sessionId !== 'string') {
-      return { success: false, error: 'sessionId must be a non-empty string' };
+      return { success: false, error: 'sessionId must be a non-empty string', code: 'VALIDATION_ERROR' };
     }
     if (!content || typeof content !== 'string') {
-      return { success: false, error: 'content must be a non-empty string' };
+      return { success: false, error: 'content must be a non-empty string', code: 'VALIDATION_ERROR' };
+    }
+    const trimmedContent = content.trim();
+    if (!trimmedContent) {
+      return { success: false, error: 'content must be a non-empty string', code: 'VALIDATION_ERROR' };
     }
 
     const session = stmts.getById.get(sessionId) as SessionRow | undefined;
@@ -457,7 +480,7 @@ export function createSessions(db: Database.Database) {
     const now = Date.now();
     const { type = 'note' } = options;
 
-    const result = stmts.insertNote.run(sessionId, content, type, now);
+    const result = stmts.insertNote.run(sessionId, trimmedContent, type, now);
     const noteId = Number(result.lastInsertRowid);
 
     if (activityLog) {
@@ -479,7 +502,11 @@ export function createSessions(db: Database.Database) {
    */
   function quickNote(content: string, options: QuickNoteOptions = {}) {
     if (!content || typeof content !== 'string') {
-      return { success: false, error: 'content must be a non-empty string' };
+      return { success: false, error: 'content must be a non-empty string', code: 'VALIDATION_ERROR' };
+    }
+    const trimmedContent = content.trim();
+    if (!trimmedContent) {
+      return { success: false, error: 'content must be a non-empty string', code: 'VALIDATION_ERROR' };
     }
 
     const { agentId = null, type = 'note' } = options;
@@ -505,7 +532,7 @@ export function createSessions(db: Database.Database) {
       sessionId = session.id;
     }
 
-    const noteResult = addNote(sessionId, content, { type });
+    const noteResult = addNote(sessionId, trimmedContent, { type });
     if (!noteResult.success) {
       return noteResult;
     }
@@ -572,10 +599,16 @@ export function createSessions(db: Database.Database) {
    */
   function claimFiles(sessionId: string, filePaths: string[]) {
     if (!sessionId || typeof sessionId !== 'string') {
-      return { success: false, error: 'sessionId must be a non-empty string' };
+      return { success: false, error: 'sessionId must be a non-empty string', code: 'VALIDATION_ERROR' };
     }
     if (!Array.isArray(filePaths) || filePaths.length === 0) {
-      return { success: false, error: 'filePaths must be a non-empty array' };
+      return { success: false, error: 'filePaths must be a non-empty array', code: 'VALIDATION_ERROR' };
+    }
+    // Validate all filePaths are non-empty strings
+    for (const filePath of filePaths) {
+      if (typeof filePath !== 'string' || !filePath.trim()) {
+        return { success: false, error: 'filePaths must contain non-empty strings', code: 'VALIDATION_ERROR' };
+      }
     }
 
     const session = stmts.getById.get(sessionId) as SessionRow | undefined;

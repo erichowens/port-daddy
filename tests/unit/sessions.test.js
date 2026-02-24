@@ -1450,4 +1450,134 @@ describe('Sessions Module', () => {
       expect(ActivityType.FILE_RELEASE).toBe('file.release');
     });
   });
+
+  // ===========================================================================
+  // Input Validation Regression Tests (Bugs #18-22)
+  // ===========================================================================
+  describe('Input Validation (regression tests for Bugs #18-22)', () => {
+    describe('start() purpose validation', () => {
+      it('should reject whitespace-only purpose (Bug #18)', () => {
+        const result = sessions.start('     ');
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('purpose must be a non-empty string');
+        expect(result.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject tabs and newlines as purpose', () => {
+        expect(sessions.start('\t\n').success).toBe(false);
+        expect(sessions.start('  \t  \n  ').success).toBe(false);
+      });
+
+      it('should trim purpose but store trimmed value', () => {
+        const result = sessions.start('  test purpose  ');
+        expect(result.success).toBe(true);
+        expect(result.purpose).toBe('test purpose');
+      });
+    });
+
+    describe('start() files validation', () => {
+      it('should reject numeric array for files (Bug #20)', () => {
+        const result = sessions.start('test', { files: [123, 456] });
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('files must contain non-empty strings');
+        expect(result.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject mixed array with numbers', () => {
+        const result = sessions.start('test', { files: ['valid.js', 123] });
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('files must contain non-empty strings');
+      });
+
+      it('should reject empty strings in files array', () => {
+        const result = sessions.start('test', { files: ['valid.js', ''] });
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('files must contain non-empty strings');
+      });
+
+      it('should reject whitespace-only strings in files array', () => {
+        const result = sessions.start('test', { files: ['valid.js', '   '] });
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('files must contain non-empty strings');
+      });
+
+      it('should reject non-array files (Bug #19)', () => {
+        const result = sessions.start('test', { files: 'not-an-array' });
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('files must be an array');
+        expect(result.code).toBe('VALIDATION_ERROR');
+      });
+    });
+
+    describe('start() agentId validation', () => {
+      it('should reject numeric agentId (Bug #21)', () => {
+        const result = sessions.start('test', { agentId: 123 });
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('agentId must be a string');
+        expect(result.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject object agentId', () => {
+        const result = sessions.start('test', { agentId: { id: 'test' } });
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('agentId must be a string');
+      });
+
+      it('should accept null agentId', () => {
+        const result = sessions.start('test', { agentId: null });
+        expect(result.success).toBe(true);
+      });
+    });
+
+    describe('addNote() content validation', () => {
+      it('should reject whitespace-only content (Bug #22)', () => {
+        const started = sessions.start('test');
+        const result = sessions.addNote(started.id, '     ');
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('content must be a non-empty string');
+        expect(result.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject tabs and newlines as content', () => {
+        const started = sessions.start('test');
+        expect(sessions.addNote(started.id, '\t\n').success).toBe(false);
+      });
+
+      it('should trim content but store trimmed value', () => {
+        const started = sessions.start('test');
+        const result = sessions.addNote(started.id, '  note content  ');
+        expect(result.success).toBe(true);
+
+        // Verify the stored content is trimmed
+        const notes = sessions.getNotes(started.id);
+        expect(notes.notes[0].content).toBe('note content');
+      });
+    });
+
+    describe('quickNote() content validation', () => {
+      it('should reject whitespace-only content', () => {
+        const result = sessions.quickNote('     ');
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('content must be a non-empty string');
+        expect(result.code).toBe('VALIDATION_ERROR');
+      });
+    });
+
+    describe('claimFiles() filePaths validation', () => {
+      it('should reject numeric array for filePaths', () => {
+        const started = sessions.start('test');
+        const result = sessions.claimFiles(started.id, [123, 456]);
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('filePaths must contain non-empty strings');
+        expect(result.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject whitespace-only strings in filePaths', () => {
+        const started = sessions.start('test');
+        const result = sessions.claimFiles(started.id, ['valid.js', '   ']);
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('filePaths must contain non-empty strings');
+      });
+    });
+  });
 });
