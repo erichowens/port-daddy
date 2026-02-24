@@ -62,6 +62,18 @@ export interface CLIOptions {
   level?: string;
   service?: string;
 
+  // Webhook flags
+  url?: string;
+  events?: string;
+
+  // Project flags
+  dir?: string;
+  branch?: boolean;
+  'dry-run'?: boolean;
+
+  // Orchestration flags
+  'no-health'?: boolean;
+
   // Generic extensibility
   [key: string]: unknown;
 }
