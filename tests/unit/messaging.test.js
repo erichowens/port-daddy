@@ -101,6 +101,14 @@ describe('Messaging Module', () => {
       expect(result.error).toMatch(/non-empty string/);
     });
 
+    it('should reject whitespace-only channel name', () => {
+      const result = messaging.publish('   ', 'msg');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/non-empty string/);
+      expect(result.code).toBe('VALIDATION_ERROR');
+    });
+
     it('should reject non-string channel name', () => {
       const result = messaging.publish(123, 'msg');
 
@@ -801,14 +809,12 @@ describe('Messaging Module', () => {
       }
     });
 
-    it('should handle null payload gracefully', () => {
-      // JSON.stringify(null) = "null"
+    it('should reject null payload', () => {
       const result = messaging.publish('test-channel', null);
 
-      expect(result.success).toBe(true);
-
-      const messages = messaging.getMessages('test-channel');
-      expect(messages.messages[0].payload).toBeNull();
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('payload is required');
+      expect(result.code).toBe('VALIDATION_ERROR');
     });
 
     it('should handle boolean payloads', () => {
@@ -831,12 +837,20 @@ describe('Messaging Module', () => {
       expect(messages.messages[1].payload).toBe(3.14);
     });
 
-    it('should handle empty string payload', () => {
-      messaging.publish('test-channel', '');
+    it('should reject empty string payload', () => {
+      const result = messaging.publish('test-channel', '');
 
-      const messages = messaging.getMessages('test-channel');
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('payload must be a non-empty string');
+      expect(result.code).toBe('VALIDATION_ERROR');
+    });
 
-      expect(messages.messages[0].payload).toBe('');
+    it('should reject whitespace-only payload', () => {
+      const result = messaging.publish('test-channel', '   ');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('payload must be a non-empty string');
+      expect(result.code).toBe('VALIDATION_ERROR');
     });
 
     it('should handle complex nested objects', () => {

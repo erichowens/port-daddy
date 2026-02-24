@@ -95,7 +95,21 @@ export function createMessaging(db: Database.Database) {
    */
   function publish(channel: string, payload: unknown, options: PublishOptions = {}) {
     if (!channel || typeof channel !== 'string') {
-      return { success: false, error: 'channel must be a non-empty string' };
+      return { success: false, error: 'channel must be a non-empty string', code: 'VALIDATION_ERROR' };
+    }
+    const trimmedChannel = channel.trim();
+    if (!trimmedChannel) {
+      return { success: false, error: 'channel must be a non-empty string', code: 'VALIDATION_ERROR' };
+    }
+
+    // Validate payload
+    if (payload === null || payload === undefined) {
+      return { success: false, error: 'payload is required', code: 'VALIDATION_ERROR' };
+    }
+    if (typeof payload === 'string') {
+      if (!payload.trim()) {
+        return { success: false, error: 'payload must be a non-empty string', code: 'VALIDATION_ERROR' };
+      }
     }
 
     const now = Date.now();
@@ -110,23 +124,23 @@ export function createMessaging(db: Database.Database) {
     const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
 
     try {
-      const result = stmts.insert.run(channel, payloadStr, sender, now, expiresAt);
+      const result = stmts.insert.run(trimmedChannel, payloadStr, sender, now, expiresAt);
 
       const message: MessagePayload = {
         id: result.lastInsertRowid,
-        channel,
+        channel: trimmedChannel,
         payload: payloadStr,
         sender,
         createdAt: now
       };
 
       // Notify subscribers
-      notifySubscribers(channel, message);
+      notifySubscribers(trimmedChannel, message);
 
       return {
         success: true,
         id: result.lastInsertRowid,
-        message: `published to ${channel}`
+        message: `published to ${trimmedChannel}`
       };
     } catch (err) {
       return { success: false, error: (err as Error).message };
@@ -138,22 +152,26 @@ export function createMessaging(db: Database.Database) {
    */
   function getMessages(channel: string, options: GetMessagesOptions = {}) {
     if (!channel || typeof channel !== 'string') {
-      return { success: false, error: 'channel must be a non-empty string' };
+      return { success: false, error: 'channel must be a non-empty string', code: 'VALIDATION_ERROR' };
+    }
+    const trimmedChannel = channel.trim();
+    if (!trimmedChannel) {
+      return { success: false, error: 'channel must be a non-empty string', code: 'VALIDATION_ERROR' };
     }
 
     const { limit = 50, after = null } = options;
 
     let messages: MessageRow[];
     if (after !== null) {
-      messages = stmts.getAfter.all(channel, after) as MessageRow[];
+      messages = stmts.getAfter.all(trimmedChannel, after) as MessageRow[];
     } else {
-      messages = stmts.getLatest.all(channel, limit) as MessageRow[];
+      messages = stmts.getLatest.all(trimmedChannel, limit) as MessageRow[];
       messages.reverse(); // Return in chronological order
     }
 
     return {
       success: true,
-      channel,
+      channel: trimmedChannel,
       messages: messages.map(m => ({
         id: m.id,
         payload: tryParseJson(m.payload),
@@ -170,19 +188,23 @@ export function createMessaging(db: Database.Database) {
    */
   function poll(channel: string, afterId: number = 0) {
     if (!channel || typeof channel !== 'string') {
-      return { success: false, error: 'channel must be a non-empty string' };
+      return { success: false, error: 'channel must be a non-empty string', code: 'VALIDATION_ERROR' };
+    }
+    const trimmedChannel = channel.trim();
+    if (!trimmedChannel) {
+      return { success: false, error: 'channel must be a non-empty string', code: 'VALIDATION_ERROR' };
     }
 
-    const messages = stmts.getAfter.all(channel, afterId) as MessageRow[];
+    const messages = stmts.getAfter.all(trimmedChannel, afterId) as MessageRow[];
 
     if (messages.length === 0) {
-      return { success: true, channel, message: null, lastId: afterId };
+      return { success: true, channel: trimmedChannel, message: null, lastId: afterId };
     }
 
     const first = messages[0];
     return {
       success: true,
-      channel,
+      channel: trimmedChannel,
       message: {
         id: first.id,
         payload: tryParseJson(first.payload),
@@ -266,14 +288,18 @@ export function createMessaging(db: Database.Database) {
    */
   function clear(channel: string) {
     if (!channel || typeof channel !== 'string') {
-      return { success: false, error: 'channel must be a non-empty string' };
+      return { success: false, error: 'channel must be a non-empty string', code: 'VALIDATION_ERROR' };
+    }
+    const trimmedChannel = channel.trim();
+    if (!trimmedChannel) {
+      return { success: false, error: 'channel must be a non-empty string', code: 'VALIDATION_ERROR' };
     }
 
-    const result = stmts.deleteByChannel.run(channel);
+    const result = stmts.deleteByChannel.run(trimmedChannel);
     return {
       success: true,
       deleted: result.changes,
-      message: `cleared ${result.changes} message(s) from ${channel}`
+      message: `cleared ${result.changes} message(s) from ${trimmedChannel}`
     };
   }
 
