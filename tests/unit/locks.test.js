@@ -764,12 +764,15 @@ describe('Locks Module', () => {
       expect(result.metadata).toEqual(metadata);
     });
 
-    it('should handle very large TTL values', () => {
+    it('should cap very large TTL values to MAX_TTL (1 hour)', () => {
       const largeTTL = 365 * 24 * 60 * 60 * 1000; // 1 year
+      const MAX_TTL = 3600000; // 1 hour (hardcoded in lib/locks.ts)
       const result = locks.acquire('my-lock', { ttl: largeTTL });
 
       expect(result.success).toBe(true);
-      expect(result.expiresAt).toBeGreaterThan(Date.now() + largeTTL - 1000);
+      // TTL should be capped at MAX_TTL, not the requested 1 year
+      expect(result.expiresAt).toBeLessThanOrEqual(Date.now() + MAX_TTL + 1000);
+      expect(result.expiresAt).toBeGreaterThan(Date.now() + MAX_TTL - 1000);
     });
 
     it('should handle zero and negative PIDs', () => {
@@ -902,6 +905,74 @@ describe('Locks Module', () => {
       expect(locks.extend(null).success).toBe(false);
       expect(locks.extend(undefined).success).toBe(false);
       expect(locks.extend(123).success).toBe(false);
+    });
+  });
+
+  describe('TTL Validation (regression tests for Bug #16/#17)', () => {
+    it('should accept string TTL that starts with valid number (parseInt behavior)', () => {
+      // parseInt('300s', 10) === 300, so '300s' is accepted as 300ms
+      const result = locks.acquire('my-lock', { ttl: '300s' });
+      expect(result.success).toBe(true);
+      // The 's' is ignored, parsed as 300ms
+    });
+
+    it('should reject string TTL that does not start with a number', () => {
+      const result = locks.acquire('my-lock', { ttl: 'abc' });
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('INVALID_TTL');
+    });
+
+    it('should reject NaN TTL', () => {
+      const result = locks.acquire('my-lock', { ttl: 'NaN' });
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('INVALID_TTL');
+    });
+
+    it('should reject Infinity TTL', () => {
+      const result = locks.acquire('my-lock', { ttl: Infinity });
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('INVALID_TTL');
+    });
+
+    it('should use default TTL for negative values', () => {
+      const result = locks.acquire('my-lock', { ttl: -100 });
+      expect(result.success).toBe(true);
+      // Default TTL is 300000 (5 minutes)
+      const expectedExpiry = Date.now() + 300000;
+      expect(result.expiresAt).toBeGreaterThan(expectedExpiry - 2000);
+      expect(result.expiresAt).toBeLessThan(expectedExpiry + 2000);
+    });
+
+    it('should use default TTL for zero', () => {
+      const result = locks.acquire('my-lock', { ttl: 0 });
+      expect(result.success).toBe(true);
+      const expectedExpiry = Date.now() + 300000;
+      expect(result.expiresAt).toBeGreaterThan(expectedExpiry - 2000);
+      expect(result.expiresAt).toBeLessThan(expectedExpiry + 2000);
+    });
+
+    it('should accept string TTL that parses to valid number', () => {
+      const result = locks.acquire('my-lock', { ttl: '60000' });
+      expect(result.success).toBe(true);
+      const expectedExpiry = Date.now() + 60000;
+      expect(result.expiresAt).toBeGreaterThan(expectedExpiry - 2000);
+      expect(result.expiresAt).toBeLessThan(expectedExpiry + 2000);
+    });
+
+    it('should cap TTL at MAX_TTL (1 hour) for acquire', () => {
+      const hugeTtl = 999999999;
+      const result = locks.acquire('my-lock', { ttl: hugeTtl });
+      expect(result.success).toBe(true);
+      // Should be capped at 1 hour (3600000ms)
+      const expectedExpiry = Date.now() + 3600000;
+      expect(result.expiresAt).toBeLessThan(expectedExpiry + 2000);
+    });
+
+    it('should validate TTL in extend() too', () => {
+      locks.acquire('my-lock', { owner: 'test-agent' });
+      const result = locks.extend('my-lock', { ttl: 'invalid', owner: 'test-agent' });
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('INVALID_TTL');
     });
   });
 

@@ -99,9 +99,38 @@ export function createLocks(db: Database.Database) {
     const {
       owner = `agent-${process.pid}`,
       pid = process.pid,
-      ttl = 300000, // 5 minutes default
+      ttl: rawTtl = 300000, // 5 minutes default
       metadata = null
     } = options;
+
+    // Validate and normalize TTL
+    const DEFAULT_TTL = 300000; // 5 minutes
+    const MAX_TTL = 3600000;    // 1 hour max
+    let ttl: number;
+
+    if (rawTtl === null || rawTtl === undefined) {
+      ttl = DEFAULT_TTL;
+    } else if (typeof rawTtl === 'string') {
+      const parsed = parseInt(rawTtl, 10);
+      if (isNaN(parsed)) {
+        return { success: false, error: 'ttl must be a valid number', code: 'INVALID_TTL' };
+      }
+      ttl = parsed;
+    } else if (typeof rawTtl === 'number') {
+      if (!Number.isFinite(rawTtl)) {
+        return { success: false, error: 'ttl must be a finite number', code: 'INVALID_TTL' };
+      }
+      ttl = rawTtl;
+    } else {
+      return { success: false, error: 'ttl must be a number', code: 'INVALID_TTL' };
+    }
+
+    // Enforce bounds
+    if (ttl <= 0) {
+      ttl = DEFAULT_TTL;
+    } else if (ttl > MAX_TTL) {
+      ttl = MAX_TTL;
+    }
 
     // Clean up expired locks first
     stmts.releaseExpired.run(now);
@@ -257,8 +286,36 @@ export function createLocks(db: Database.Database) {
       return { success: false, error: 'lock name must be a non-empty string' };
     }
 
-    const { owner = null, ttl = 300000 } = options;
+    const { owner = null, ttl: rawTtl = 300000 } = options;
     const now = Date.now();
+
+    // Validate and normalize TTL (same logic as acquire)
+    const DEFAULT_TTL = 300000;
+    const MAX_TTL = 3600000;
+    let ttl: number;
+
+    if (rawTtl === null || rawTtl === undefined) {
+      ttl = DEFAULT_TTL;
+    } else if (typeof rawTtl === 'string') {
+      const parsed = parseInt(rawTtl, 10);
+      if (isNaN(parsed)) {
+        return { success: false, error: 'ttl must be a valid number', code: 'INVALID_TTL' };
+      }
+      ttl = parsed;
+    } else if (typeof rawTtl === 'number') {
+      if (!Number.isFinite(rawTtl)) {
+        return { success: false, error: 'ttl must be a finite number', code: 'INVALID_TTL' };
+      }
+      ttl = rawTtl;
+    } else {
+      return { success: false, error: 'ttl must be a number', code: 'INVALID_TTL' };
+    }
+
+    if (ttl <= 0) {
+      ttl = DEFAULT_TTL;
+    } else if (ttl > MAX_TTL) {
+      ttl = MAX_TTL;
+    }
 
     const existing = stmts.get.get(name) as LockRow | undefined;
     if (!existing) {

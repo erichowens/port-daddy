@@ -749,7 +749,7 @@ async function executeDirectMode(
         });
 
         if (!result.success) {
-          console.error(result.error || 'Failed to extend lock');
+          console.error(maritimeStatus('error', result.error || 'Failed to extend lock'));
           process.exit(1);
         }
         if (options.json) {
@@ -781,7 +781,7 @@ async function executeDirectMode(
           }
           process.exit(1);
         }
-        console.error(result.error || 'Failed to acquire lock');
+        console.error(maritimeStatus('error', result.error || 'Failed to acquire lock'));
         process.exit(1);
       }
 
@@ -1663,7 +1663,7 @@ async function handleClaim(id: string | undefined, options: CLIOptions): Promise
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to claim port');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to claim port'));
     process.exit(1);
   }
 
@@ -1711,7 +1711,7 @@ async function handleRelease(id: string | undefined, options: CLIOptions): Promi
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to release');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to release'));
     process.exit(1);
   }
 
@@ -1736,7 +1736,7 @@ async function handleFind(pattern: string | undefined, options: CLIOptions): Pro
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to find services');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to find services'));
     process.exit(1);
   }
 
@@ -1791,7 +1791,7 @@ async function handleUrl(id: string | undefined, options: CLIOptions): Promise<v
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Service not found');
+    console.error(maritimeStatus('error', (data.error as string) || 'Service not found'));
     process.exit(1);
   }
 
@@ -1819,7 +1819,7 @@ async function handleEnv(id: string | undefined, options: CLIOptions): Promise<v
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to get services');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to get services'));
     process.exit(1);
   }
 
@@ -1872,7 +1872,7 @@ async function handlePub(channel: string | undefined, message: string | undefine
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to publish');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to publish'));
     process.exit(1);
   }
 
@@ -1967,7 +1967,7 @@ async function handleWait(serviceIds: string[], options: CLIOptions): Promise<vo
     const data = await res.json();
 
     if (!res.ok) {
-      console.error((data.error as string) || 'Wait failed');
+      console.error(maritimeStatus('error', (data.error as string) || 'Wait failed'));
       process.exit(1);
     }
 
@@ -1987,7 +1987,7 @@ async function handleWait(serviceIds: string[], options: CLIOptions): Promise<vo
     const data = await res.json();
 
     if (!res.ok) {
-      console.error((data.error as string) || 'Wait failed');
+      console.error(maritimeStatus('error', (data.error as string) || 'Wait failed'));
       process.exit(1);
     }
 
@@ -2036,7 +2036,7 @@ async function handleLock(name: string | undefined, options: CLIOptions): Promis
     });
     const data = await res.json();
     if (!res.ok) {
-      console.error((data.error as string) || 'Failed to extend lock');
+      console.error(maritimeStatus('error', (data.error as string) || 'Failed to extend lock'));
       process.exit(1);
     }
     if (options.json) {
@@ -2083,7 +2083,7 @@ async function handleLock(name: string | undefined, options: CLIOptions): Promis
       }
       process.exit(1);
     }
-    console.error((data.error as string) || 'Failed to acquire lock');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to acquire lock'));
     process.exit(1);
   }
 
@@ -2144,7 +2144,7 @@ async function handleLocks(options: CLIOptions): Promise<void> {
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to list locks');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to list locks'));
     process.exit(1);
   }
 
@@ -2542,7 +2542,7 @@ async function handleScan(dir: string | undefined, options: CLIOptions): Promise
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Scan failed');
+    console.error(maritimeStatus('error', (data.error as string) || 'Scan failed'));
     if (data.details) console.error(`  ${data.details}`);
     process.exit(1);
   }
@@ -2626,7 +2626,7 @@ async function handleProjects(subcommand: string | undefined, args: string[], op
     const data = await res.json();
 
     if (!res.ok) {
-      console.error((data.error as string) || 'Failed to remove project');
+      console.error(maritimeStatus('error', (data.error as string) || 'Failed to remove project'));
       process.exit(1);
     }
 
@@ -2644,7 +2644,7 @@ async function handleProjects(subcommand: string | undefined, args: string[], op
     const data = await res.json();
 
     if (!res.ok) {
-      console.error((data.error as string) || 'Project not found');
+      console.error(maritimeStatus('error', (data.error as string) || 'Project not found'));
       if (data.suggestion) console.error(`  ${data.suggestion}`);
       process.exit(1);
     }
@@ -2679,7 +2679,7 @@ async function handleProjects(subcommand: string | undefined, args: string[], op
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to list projects');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to list projects'));
     process.exit(1);
   }
 
@@ -2755,7 +2755,7 @@ async function handleAgent(subcommand: string | undefined, args: string[], optio
       const data = await res.json();
 
       if (!res.ok) {
-        console.error((data.error as string) || 'Failed to register agent');
+        console.error(maritimeStatus('error', (data.error as string) || 'Failed to register agent'));
         process.exit(1);
       }
 
@@ -2779,7 +2779,7 @@ async function handleAgent(subcommand: string | undefined, args: string[], optio
       const data = await res.json();
 
       if (!res.ok) {
-        console.error((data.error as string) || 'Failed to send heartbeat');
+        console.error(maritimeStatus('error', (data.error as string) || 'Failed to send heartbeat'));
         process.exit(1);
       }
 
@@ -2800,7 +2800,7 @@ async function handleAgent(subcommand: string | undefined, args: string[], optio
       const data = await res.json();
 
       if (!res.ok) {
-        console.error((data.error as string) || 'Failed to unregister agent');
+        console.error(maritimeStatus('error', (data.error as string) || 'Failed to unregister agent'));
         process.exit(1);
       }
 
@@ -2818,7 +2818,7 @@ async function handleAgent(subcommand: string | undefined, args: string[], optio
       const data = await res.json();
 
       if (!res.ok) {
-        console.error((data.error as string) || 'Agent not found');
+        console.error(maritimeStatus('error', (data.error as string) || 'Agent not found'));
         process.exit(1);
       }
 
@@ -2848,7 +2848,7 @@ async function handleAgents(options: CLIOptions): Promise<void> {
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to list agents');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to list agents'));
     process.exit(1);
   }
 
@@ -2895,7 +2895,7 @@ async function handleLog(subcommand: string | undefined, options: CLIOptions): P
     const data = await res.json();
 
     if (!res.ok) {
-      console.error((data.error as string) || 'Failed to get summary');
+      console.error(maritimeStatus('error', (data.error as string) || 'Failed to get summary'));
       process.exit(1);
     }
 
@@ -2927,7 +2927,7 @@ async function handleLog(subcommand: string | undefined, options: CLIOptions): P
     const data = await res.json();
 
     if (!res.ok) {
-      console.error((data.error as string) || 'Failed to get stats');
+      console.error(maritimeStatus('error', (data.error as string) || 'Failed to get stats'));
       process.exit(1);
     }
 
@@ -3011,7 +3011,7 @@ async function handleLog(subcommand: string | undefined, options: CLIOptions): P
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to get activity');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to get activity'));
     process.exit(1);
   }
 
@@ -3281,7 +3281,7 @@ async function handleSession(subcommand: string | undefined, rest: string[], opt
         const data = await res.json();
 
         if (!res.ok) {
-          console.error((data.error as string) || 'Failed to claim files');
+          console.error(maritimeStatus('error', (data.error as string) || 'Failed to claim files'));
           if (data.conflicts) {
             const conflicts = data.conflicts as Array<{ file: string; sessionId: string; purpose: string }>;
             console.error('');
@@ -3309,7 +3309,7 @@ async function handleSession(subcommand: string | undefined, rest: string[], opt
         const data = await res.json();
 
         if (!res.ok) {
-          console.error((data.error as string) || 'Failed to release files');
+          console.error(maritimeStatus('error', (data.error as string) || 'Failed to release files'));
           process.exit(1);
         }
 
@@ -3346,7 +3346,7 @@ async function handleSessions(options: CLIOptions): Promise<void> {
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to list sessions');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to list sessions'));
     process.exit(1);
   }
 
@@ -3413,7 +3413,7 @@ async function handleNote(content: string | undefined, options: CLIOptions): Pro
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to create note');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to create note'));
     process.exit(1);
   }
 
@@ -3447,7 +3447,7 @@ async function handleNotes(sessionId: string | undefined, options: CLIOptions): 
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to get notes');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to get notes'));
     process.exit(1);
   }
 
@@ -3514,7 +3514,7 @@ async function handleChannels(subcommand: string | undefined, args: string[], op
     });
     const data = await res.json();
     if (!res.ok) {
-      console.error((data.error as string) || 'Failed to clear channel');
+      console.error(maritimeStatus('error', (data.error as string) || 'Failed to clear channel'));
       process.exit(1);
     }
     if (options.json) {
@@ -3571,7 +3571,7 @@ async function handleWebhook(subcommand: string | undefined, args: string[], opt
     const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/webhooks`);
     const data = await res.json();
     if (!res.ok) {
-      console.error((data.error as string) || 'Failed to list webhooks');
+      console.error(maritimeStatus('error', (data.error as string) || 'Failed to list webhooks'));
       process.exit(1);
     }
     if (options.json) {
@@ -3602,7 +3602,7 @@ async function handleWebhook(subcommand: string | undefined, args: string[], opt
     const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/webhooks/events`);
     const data = await res.json();
     if (!res.ok) {
-      console.error((data.error as string) || 'Failed to list webhook events');
+      console.error(maritimeStatus('error', (data.error as string) || 'Failed to list webhook events'));
       process.exit(1);
     }
     if (options.json) {
@@ -3628,7 +3628,7 @@ async function handleWebhook(subcommand: string | undefined, args: string[], opt
     });
     const data = await res.json();
     if (!res.ok) {
-      console.error((data.error as string) || 'Failed to test webhook');
+      console.error(maritimeStatus('error', (data.error as string) || 'Failed to test webhook'));
       process.exit(1);
     }
     if (options.json) {
@@ -3661,7 +3661,7 @@ async function handleWebhook(subcommand: string | undefined, args: string[], opt
     });
     const data = await res.json();
     if (!res.ok) {
-      console.error((data.error as string) || 'Failed to update webhook');
+      console.error(maritimeStatus('error', (data.error as string) || 'Failed to update webhook'));
       process.exit(1);
     }
     if (options.json) {
@@ -3683,7 +3683,7 @@ async function handleWebhook(subcommand: string | undefined, args: string[], opt
     });
     const data = await res.json();
     if (!res.ok) {
-      console.error((data.error as string) || 'Failed to delete webhook');
+      console.error(maritimeStatus('error', (data.error as string) || 'Failed to delete webhook'));
       process.exit(1);
     }
     if (options.json) {
@@ -3703,7 +3703,7 @@ async function handleWebhook(subcommand: string | undefined, args: string[], opt
     const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/webhooks/${encodeURIComponent(id)}/deliveries`);
     const data = await res.json();
     if (!res.ok) {
-      console.error((data.error as string) || 'Failed to get deliveries');
+      console.error(maritimeStatus('error', (data.error as string) || 'Failed to get deliveries'));
       process.exit(1);
     }
     if (options.json) {
@@ -3735,7 +3735,7 @@ async function handleWebhook(subcommand: string | undefined, args: string[], opt
   const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/webhooks/${encodeURIComponent(subcommand)}`);
   const data = await res.json();
   if (!res.ok) {
-    console.error((data.error as string) || `Webhook '${subcommand}' not found`);
+    console.error(maritimeStatus('error', (data.error as string) || `Webhook '${subcommand}' not found`));
     console.error('Subcommands: list, events, test <id>, update <id>, rm <id>, deliveries <id>');
     process.exit(1);
   }
@@ -3747,7 +3747,7 @@ async function handleMetrics(options: CLIOptions): Promise<void> {
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to get metrics');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to get metrics'));
     process.exit(1);
   }
 
@@ -3781,7 +3781,7 @@ async function handleConfigCmd(options: CLIOptions): Promise<void> {
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to get config');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to get config'));
     process.exit(1);
   }
 
@@ -3810,7 +3810,7 @@ async function handleHealth(id: string | undefined, options: CLIOptions): Promis
     const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/services/health/${encodeURIComponent(id)}`);
     const data = await res.json();
     if (!res.ok) {
-      console.error((data.error as string) || `Health check failed for '${id}'`);
+      console.error(maritimeStatus('error', (data.error as string) || `Health check failed for '${id}'`));
       process.exit(1);
     }
     if (options.json) {
@@ -3831,7 +3831,7 @@ async function handleHealth(id: string | undefined, options: CLIOptions): Promis
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to get health');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to get health'));
     process.exit(1);
   }
 
@@ -3868,7 +3868,7 @@ async function handlePorts(subcommand: string | undefined, options: CLIOptions):
     });
     const data = await res.json();
     if (!res.ok) {
-      console.error((data.error as string) || 'Cleanup failed');
+      console.error(maritimeStatus('error', (data.error as string) || 'Cleanup failed'));
       process.exit(1);
     }
     if (options.json) {
@@ -3884,7 +3884,7 @@ async function handlePorts(subcommand: string | undefined, options: CLIOptions):
     const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/ports/system`);
     const data = await res.json();
     if (!res.ok) {
-      console.error((data.error as string) || 'Failed to get system ports');
+      console.error(maritimeStatus('error', (data.error as string) || 'Failed to get system ports'));
       process.exit(1);
     }
     if (options.json) {
@@ -3915,13 +3915,13 @@ async function handlePorts(subcommand: string | undefined, options: CLIOptions):
   const data = await res.json();
 
   if (!res.ok) {
-    console.error((data.error as string) || 'Failed to list ports');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to list ports'));
     process.exit(1);
   }
 
   // Detect API errors that returned 200 but no ports array
   if (data.error) {
-    console.error((data.error as string) || 'Failed to list ports');
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to list ports'));
     process.exit(1);
   }
 

@@ -82,7 +82,10 @@ export function createLocksRoutes(deps: LocksRouteDeps): Router {
       });
 
       if (!result.success) {
-        return res.status(409).json({ ...result, code: 'LOCK_HELD' }); // Conflict - lock is held
+        // Preserve the error code from the module if provided, otherwise default to LOCK_HELD
+        const code = result.code || 'LOCK_HELD';
+        const status = code === 'INVALID_TTL' ? 400 : 409; // 400 for validation errors, 409 for conflicts
+        return res.status(status).json({ ...result, code });
       }
 
       logger.info('lock_acquired', { name, owner: result.owner as string });
@@ -183,7 +186,9 @@ export function createLocksRoutes(deps: LocksRouteDeps): Router {
       });
 
       if (!result.success) {
-        return res.status(400).json({ ...result, code: 'LOCK_NOT_FOUND' });
+        // Preserve the error code from the module if provided
+        const code = result.code || 'LOCK_NOT_FOUND';
+        return res.status(400).json({ ...result, code });
       }
 
       res.json(result);
