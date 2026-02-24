@@ -679,7 +679,8 @@ async function executeDirectMode(
     case 'l':
     case 'find':
     case 'list':
-    case 'ps': {
+    case 'ps':
+    case 'services': {
       const pattern = positional[0] || '*';
       const svc = getDirectServices();
       const findOpts: Record<string, unknown> = {};
@@ -1118,27 +1119,24 @@ async function executeDirectMode(
         return true;
       }
 
+      // sessions.list() returns: { id, purpose, status, agentId, createdAt, updatedAt, completedAt, metadata }
       const sessions = data.sessions as Array<{
         id: string; purpose: string; status: string;
-        startedAt: number; endedAt?: number; fileCount: number; noteCount: number;
+        createdAt: number; updatedAt: number; completedAt?: number;
       }>;
 
       console.log('');
       console.log(tableHeader(
-        ['ID', 16], ['PURPOSE', 30], ['STATUS', 10], ['FILES', 6], ['NOTES', 6], ['AGE', 6]
+        ['ID', 16], ['PURPOSE', 30], ['STATUS', 10], ['AGE', 10]
       ));
-      separator(74);
+      separator(66);
 
       for (const s of sessions) {
-        const age = s.endedAt
-          ? relativeTime(s.endedAt - s.startedAt)
-          : relativeTime(Date.now() - s.startedAt);
+        const age = relativeTime(Date.now() - s.createdAt);
         console.log(
           s.id.slice(0, 15).padEnd(16) +
           s.purpose.slice(0, 29).padEnd(30) +
           s.status.padEnd(10) +
-          String(s.fileCount).padEnd(6) +
-          String(s.noteCount).padEnd(6) +
           age
         );
       }
@@ -1344,6 +1342,7 @@ async function main(): Promise<void> {
       case 'find':
       case 'list':
       case 'ps':
+      case 'services':
         await handleFind(positional[0], options);
         break;
 
@@ -3106,10 +3105,12 @@ async function handleSession(subcommand: string | undefined, rest: string[], opt
         process.exit(1);
       }
 
+      // API returns 'id', not 'sessionId'
+      const sessionId = data.id;
       if (options.quiet) {
-        console.log(data.sessionId);
+        console.log(sessionId);
       } else {
-        console.log(maritimeStatus('success', `Started session: ${data.sessionId}`));
+        console.log(maritimeStatus('success', `Started session: ${sessionId}`));
         console.log(`  Purpose: ${purpose}`);
         if (files.length > 0) {
           console.log(`  Files claimed: ${files.length}`);
@@ -3336,69 +3337,34 @@ async function handleSessions(options: CLIOptions): Promise<void> {
     return;
   }
 
+  // API returns: { id, purpose, status, agentId, createdAt, updatedAt, completedAt, metadata }
   const sessions = data.sessions as Array<{
     id: string;
     purpose: string;
     status: string;
-    startedAt: number;
-    endedAt?: number;
-    fileCount: number;
-    noteCount: number;
+    createdAt: number;
+    updatedAt: number;
+    completedAt?: number;
   }>;
 
-  // Show files column if --files option
-  if (options.files) {
-    console.log('');
-    console.log(tableHeader(
-      ['ID', 16],
-      ['PURPOSE', 30],
-      ['STATUS', 10],
-      ['FILES', 6],
-      ['NOTES', 6],
-      ['AGE', 6]
-    ));
-    separator(74);
+  console.log('');
+  console.log(tableHeader(
+    ['ID', 16],
+    ['PURPOSE', 30],
+    ['STATUS', 10],
+    ['AGE', 10]
+  ));
+  separator(66);
 
-    for (const s of sessions) {
-      const age = s.endedAt 
-        ? relativeTime(s.endedAt - s.startedAt)
-        : relativeTime(Date.now() - s.startedAt);
-      
-      console.log(
-        s.id.slice(0, 15).padEnd(16) +
-        s.purpose.slice(0, 29).padEnd(30) +
-        s.status.padEnd(10) +
-        String(s.fileCount).padEnd(6) +
-        String(s.noteCount).padEnd(6) +
-        age
-      );
-    }
-  } else {
-    console.log('');
-    console.log(tableHeader(
-      ['ID', 16],
-      ['PURPOSE', 30],
-      ['STATUS', 10],
-      ['FILES', 6],
-      ['NOTES', 6],
-      ['AGE', 6]
-    ));
-    separator(74);
+  for (const s of sessions) {
+    const age = relativeTime(Date.now() - s.createdAt);
 
-    for (const s of sessions) {
-      const age = s.endedAt 
-        ? relativeTime(s.endedAt - s.startedAt)
-        : relativeTime(Date.now() - s.startedAt);
-      
-      console.log(
-        s.id.slice(0, 15).padEnd(16) +
-        s.purpose.slice(0, 29).padEnd(30) +
-        s.status.padEnd(10) +
-        String(s.fileCount).padEnd(6) +
-        String(s.noteCount).padEnd(6) +
-        age
-      );
-    }
+    console.log(
+      s.id.slice(0, 15).padEnd(16) +
+      s.purpose.slice(0, 29).padEnd(30) +
+      s.status.padEnd(10) +
+      age
+    );
   }
 
   console.log('');
@@ -3549,24 +3515,27 @@ async function handleChannels(subcommand: string | undefined, args: string[], op
     return;
   }
 
-  const channels = data.channels as Array<{ name: string; messageCount: number; subscriberCount: number }>;
+  // API returns: { channel: string, count: number, lastMessage: number }
+  const channels = data.channels as Array<{ channel: string; count: number; lastMessage: number }>;
   if (!channels || channels.length === 0) {
     console.log(maritimeStatus('ready', 'No active channels'));
     return;
   }
 
   console.log('');
-  console.log(tableHeader(['CHANNEL', 40], ['MESSAGES', 12], ['SUBSCRIBERS', 12]));
-  separator(64);
+  console.log(tableHeader(['CHANNEL', 40], ['MESSAGES', 12], ['LAST ACTIVITY', 20]));
+  separator(72);
 
   for (const ch of channels) {
     // Use highlighted channel name with padding calculation based on raw name length
-    const highlighted = highlightChannel(ch.name || '-');
-    const padding = 40 - (ch.name || '-').length;
+    const name = ch.channel || '-';
+    const highlighted = highlightChannel(name);
+    const padding = 40 - name.length;
+    const lastActivity = ch.lastMessage ? relativeTime(ch.lastMessage) : '-';
     console.log(
       highlighted + ' '.repeat(Math.max(0, padding)) +
-      String(ch.messageCount ?? 0).padEnd(12) +
-      String(ch.subscriberCount ?? 0).padEnd(12)
+      String(ch.count ?? 0).padEnd(12) +
+      lastActivity.padEnd(20)
     );
   }
   console.log('');

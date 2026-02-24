@@ -295,4 +295,91 @@ describe('CLI Integration Tests', () => {
       runCli(['release', quietId]);
     });
   });
+
+  describe('Bug Regression Tests', () => {
+    // Bug #1: Channels CLI was showing "-" for all channel names
+    // because it expected { name, messageCount, subscriberCount }
+    // but API returns { channel, count, lastMessage }
+    test('channels command shows actual channel names (not dashes)', () => {
+      // First publish a message to create a channel
+      const testChannel = `test-channel-bug1-${Date.now()}`;
+      runCli(['pub', testChannel, '{"test": true}']);
+
+      const result = runCli(['channels', '--json']);
+      expect(result.success).toBe(true);
+
+      const data = JSON.parse(result.stdout);
+      expect(data.channels).toBeDefined();
+      const ourChannel = data.channels.find(c => c.channel === testChannel);
+      expect(ourChannel).toBeDefined();
+      expect(ourChannel.channel).toBe(testChannel);
+      expect(ourChannel.count).toBe(1);
+
+      // Also test non-JSON output doesn't show dashes for names
+      const textResult = runCli(['channels']);
+      expect(textResult.success).toBe(true);
+      expect(textResult.stdout).toContain(testChannel);
+      expect(textResult.stdout).not.toMatch(/^-\s+\d+/m); // No lines starting with "- " followed by numbers
+    });
+
+    // Bug #2: Session start was showing "undefined" for session ID
+    // because CLI used data.sessionId but API returns data.id
+    test('session start shows actual session ID (not undefined)', () => {
+      const result = runCli(['session', 'start', 'Bug regression test']);
+      expect(result.success).toBe(true);
+      expect(result.stdout).not.toContain('undefined');
+      expect(result.stdout).toMatch(/session-[a-f0-9]+/);
+
+      // Also test -q returns just the ID
+      const quietResult = runCli(['session', 'start', 'Quiet test', '-q']);
+      expect(quietResult.success).toBe(true);
+      expect(quietResult.stdout).toMatch(/^session-[a-f0-9]+$/);
+      expect(quietResult.stdout).not.toBe('undefined');
+    });
+
+    // Bug #3: Sessions list was showing "undefinedundefinedNaNd"
+    // because CLI expected { startedAt, fileCount, noteCount }
+    // but API returns { createdAt, updatedAt, completedAt }
+    test('sessions list shows proper values (not undefined/NaN)', () => {
+      const result = runCli(['sessions', '--json']);
+      expect(result.success).toBe(true);
+
+      const data = JSON.parse(result.stdout);
+      expect(data.sessions).toBeDefined();
+      for (const session of data.sessions) {
+        expect(session.createdAt).toBeDefined();
+        expect(typeof session.createdAt).toBe('number');
+      }
+
+      // Non-JSON output should not contain undefined or NaN
+      const textResult = runCli(['sessions']);
+      expect(textResult.success).toBe(true);
+      expect(textResult.stdout).not.toContain('undefined');
+      expect(textResult.stdout).not.toContain('NaN');
+    });
+
+    // Bug #7/8: "pd services" was accidentally claiming a service named "services"
+    // instead of listing services
+    test('"services" command lists services (does not claim)', () => {
+      // First check how many services exist
+      const beforeResult = runCli(['find', '--json']);
+      const beforeData = JSON.parse(beforeResult.stdout);
+      const beforeCount = beforeData.count;
+
+      // Run "services" command
+      const result = runCli(['services', '--json']);
+      expect(result.success).toBe(true);
+
+      // Should return a list, not a claim response
+      const data = JSON.parse(result.stdout);
+      expect(data.services).toBeDefined();
+      expect(data.count).toBeDefined();
+
+      // Count should not increase (we didn't claim anything)
+      expect(data.count).toBeLessThanOrEqual(beforeCount + 0);
+
+      // No service named "services" should exist
+      expect(data.services.some(s => s.id === 'services')).toBe(false);
+    });
+  });
 });
