@@ -319,5 +319,62 @@ describe('Deep Recursive Scanner', () => {
       expect(config.portRange[0]).toBe(3000);
       expect(config.portRange[1]).toBe(5173 + 49);
     });
+
+    // Bug #9: existingConfig.portRange was being ignored
+    // buildConfigFromScan would use calculated range instead of config's range
+    it('should preserve portRange from existingConfig (Bug #9 regression)', () => {
+      const scanResult = {
+        project: 'test-proj',
+        services: {
+          api: {
+            relativePath: '.',
+            stack: { name: 'Express', defaultPort: 3000 },
+            dev: 'npm run dev',
+            health: '/health',
+            preferredPort: 3000
+          }
+        },
+        suggestions: {},
+        existingConfig: {
+          project: 'my-project',
+          portRange: [8000, 8050],
+          services: {}
+        },
+        serviceCount: 1,
+        guidance: []
+      };
+
+      const config = buildConfigFromScan(scanResult);
+
+      // portRange should be preserved from existingConfig, NOT calculated
+      expect(config.portRange).toEqual([8000, 8050]);
+      // project name should also be preserved from existingConfig
+      expect(config.project).toBe('my-project');
+    });
+
+    it('should use calculated portRange when no existingConfig', () => {
+      const scanResult = {
+        project: 'test-proj',
+        services: {
+          api: {
+            relativePath: '.',
+            stack: { name: 'Express', defaultPort: 3000 },
+            dev: 'npm run dev',
+            health: '/health',
+            preferredPort: 5000
+          }
+        },
+        suggestions: {},
+        existingConfig: null,
+        serviceCount: 1,
+        guidance: []
+      };
+
+      const config = buildConfigFromScan(scanResult);
+
+      // Without existingConfig, should use calculated range
+      expect(config.portRange[0]).toBe(5000);
+      expect(config.portRange[1]).toBe(5049);
+    });
   });
 });

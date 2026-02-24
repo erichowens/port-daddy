@@ -371,7 +371,16 @@ export function buildConfigFromScan(scanResult: ScanResult): Record<string, unkn
 
   // Merge with existing config if present (existing config wins)
   if (scanResult.existingConfig) {
-    return mergeWithConfig(config, scanResult.existingConfig as unknown as Record<string, unknown>);
+    const merged = mergeWithConfig(config, scanResult.existingConfig as unknown as Record<string, unknown>);
+    // Preserve portRange from existing config (config wins over discovery)
+    if (scanResult.existingConfig.portRange) {
+      merged.portRange = scanResult.existingConfig.portRange;
+    }
+    // Preserve project name from existing config
+    if (scanResult.existingConfig.project) {
+      merged.project = scanResult.existingConfig.project;
+    }
+    return merged;
   }
 
   return config;
