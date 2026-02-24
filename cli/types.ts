@@ -31,6 +31,13 @@ export interface CLIOptions {
   timeout?: number;
   name?: string;
 
+  // Agent flags
+  agentType?: string;
+  maxServices?: string | number;
+  maxLocks?: string | number;
+  active?: boolean;
+  target?: string;
+
   // Service flags
   port?: number;
   expires?: string | number;
