@@ -570,4 +570,109 @@ describe('Agents Module', () => {
       expect(result.agent.type).toBe('cli');
     });
   });
+
+  describe('Input Validation - maxServices and maxLocks (Bug #26)', () => {
+    it('should reject string maxServices', () => {
+      const result = agents.register('my-agent', { maxServices: 'invalid' });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('maxServices must be a positive integer');
+      expect(result.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should reject string maxLocks', () => {
+      const result = agents.register('my-agent', { maxLocks: 'invalid' });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('maxLocks must be a positive integer');
+      expect(result.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should reject negative maxServices', () => {
+      const result = agents.register('my-agent', { maxServices: -5 });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('maxServices must be a positive integer');
+    });
+
+    it('should reject negative maxLocks', () => {
+      const result = agents.register('my-agent', { maxLocks: -10 });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('maxLocks must be a positive integer');
+    });
+
+    it('should reject zero maxServices', () => {
+      const result = agents.register('my-agent', { maxServices: 0 });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('maxServices must be a positive integer');
+    });
+
+    it('should reject zero maxLocks', () => {
+      const result = agents.register('my-agent', { maxLocks: 0 });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('maxLocks must be a positive integer');
+    });
+
+    it('should reject float maxServices', () => {
+      const result = agents.register('my-agent', { maxServices: 5.5 });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('maxServices must be a positive integer');
+    });
+
+    it('should reject float maxLocks', () => {
+      const result = agents.register('my-agent', { maxLocks: 10.5 });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('maxLocks must be a positive integer');
+    });
+
+    it('should reject object maxServices', () => {
+      const result = agents.register('my-agent', { maxServices: { value: 10 } });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('maxServices must be a positive integer');
+    });
+
+    it('should reject array maxLocks', () => {
+      const result = agents.register('my-agent', { maxLocks: [20] });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('maxLocks must be a positive integer');
+    });
+
+    it('should accept valid positive integers', () => {
+      const result = agents.register('my-agent', { maxServices: 100, maxLocks: 50 });
+
+      expect(result.success).toBe(true);
+      expect(result.agentId).toBe('my-agent');
+
+      const agent = agents.get('my-agent').agent;
+      expect(agent.maxServices).toBe(100);
+      expect(agent.maxLocks).toBe(50);
+    });
+
+    it('should accept 1 as minimum valid value', () => {
+      const result = agents.register('my-agent', { maxServices: 1, maxLocks: 1 });
+
+      expect(result.success).toBe(true);
+
+      const agent = agents.get('my-agent').agent;
+      expect(agent.maxServices).toBe(1);
+      expect(agent.maxLocks).toBe(1);
+    });
+
+    it('should use defaults when not provided', () => {
+      const result = agents.register('my-agent');
+
+      expect(result.success).toBe(true);
+
+      const agent = agents.get('my-agent').agent;
+      expect(agent.maxServices).toBe(50);  // DEFAULT_MAX_SERVICES_PER_AGENT
+      expect(agent.maxLocks).toBe(20);     // DEFAULT_MAX_LOCKS_PER_AGENT
+    });
+  });
 });

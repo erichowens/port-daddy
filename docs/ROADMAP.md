@@ -57,6 +57,11 @@ From the unified roadmap plan. These build on Sessions & Notes.
   - Need: CSS signal flag rendering (colored blocks), status badges using flag semantics
   - Need: Agent voice styling (mayday=red, pan-pan=yellow, securite=cyan, etc.)
 
+- [ ] **API Maritime Voice** — Add maritime flavor to JSON responses
+  - Error messages should use nautical metaphors
+  - Status fields could include maritime voice variants
+  - Example: "service anchored at port 3100" vs "assigned new port"
+
 - [ ] **Break Up CLI Monolith** — Split `bin/port-daddy-cli.ts` (4000+ lines) into:
   - `cli/commands/` — One file per command group
   - `cli/handlers/` — Business logic for each command
@@ -79,12 +84,12 @@ Bugs found and fixed during adversarial testing sweep:
 - [x] Bug #22: Whitespace-only note content accepted
 - [x] Bug #23: Empty string message payload accepted
 - [x] Bug #24: Whitespace-only message payload accepted
+- [x] Bug #25: Non-integer maxServices/maxLocks accepted in agent registration
+- [x] Bug #26: Non-array webhook events iterated as string characters
 
 ### Pending Testing
-- [ ] Agent registration edge cases
-- [ ] Webhook validation edge cases
-- [ ] Service claim edge cases
-- [ ] Lock concurrency edge cases
+- [x] Service claim edge cases — validated (port range, id validation)
+- [x] Lock concurrency edge cases — validated (negative TTL clamps to default, string TTL rejected)
 
 ---
 

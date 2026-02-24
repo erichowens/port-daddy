@@ -130,6 +130,20 @@ export function createAgents(db: Database.Database) {
       maxLocks = DEFAULT_MAX_LOCKS_PER_AGENT
     } = options;
 
+    // Validate maxServices if provided
+    if (options.maxServices !== undefined) {
+      if (typeof maxServices !== 'number' || !Number.isInteger(maxServices) || maxServices < 1) {
+        return { success: false, error: 'maxServices must be a positive integer', code: 'VALIDATION_ERROR' };
+      }
+    }
+
+    // Validate maxLocks if provided
+    if (options.maxLocks !== undefined) {
+      if (typeof maxLocks !== 'number' || !Number.isInteger(maxLocks) || maxLocks < 1) {
+        return { success: false, error: 'maxLocks must be a positive integer', code: 'VALIDATION_ERROR' };
+      }
+    }
+
     const existing = stmts.get.get(agentId) as AgentRow | undefined;
 
     try {

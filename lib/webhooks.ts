@@ -235,6 +235,11 @@ export function createWebhooks(db: Database.Database) {
       return { success: false, error: 'Webhook URLs cannot target private or internal addresses' };
     }
 
+    // Validate events is an array
+    if (!Array.isArray(events)) {
+      return { success: false, error: 'events must be an array', code: 'VALIDATION_ERROR' };
+    }
+
     const validEvents = Object.values(WebhookEvent) as string[];
     for (const event of events) {
       if (event !== '*' && !validEvents.includes(event)) {
@@ -264,6 +269,11 @@ export function createWebhooks(db: Database.Database) {
     if (!existing) return { success: false, error: 'Webhook not found' };
 
     const { url, events, filterPattern, active, metadata } = updates;
+
+    // Validate events if provided
+    if (events !== undefined && !Array.isArray(events)) {
+      return { success: false, error: 'events must be an array', code: 'VALIDATION_ERROR' };
+    }
 
     stmts.update.run(
       url || existing.url,
