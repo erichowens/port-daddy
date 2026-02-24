@@ -12,6 +12,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import type { ChildProcess, SpawnSyncReturns } from 'node:child_process';
 import { pdFetch, PORT_DADDY_URL } from '../utils/fetch.js';
 import type { PdFetchResponse } from '../utils/fetch.js';
+import { status as maritimeStatus } from '../../lib/maritime.js';
+import { printBanner, printCompactHeader, printFarewell, WHEEL, ANCHOR, ANSI } from '../../lib/banner.js';
 
 // __dirname equivalent for ESM
 const __dirname = new URL('.', import.meta.url).pathname.replace(/\/$/, '');
@@ -58,12 +60,15 @@ export async function handleDaemon(action: string): Promise<void> {
       try {
         const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/health`);
         if (res.ok) {
-          console.log('Port Daddy is already running');
+          const data = await res.json();
+          console.log(maritimeStatus('ready', `Port Daddy already running (PID ${data.pid})`));
           return;
         }
       } catch {}
 
-      console.log('Starting Port Daddy daemon...');
+      printBanner();
+      console.log(`  ${WHEEL} Starting daemon...`);
+
       const child: ChildProcess = spawn(tsxBin, [serverScript], {
         stdio: 'ignore',
         detached: true
@@ -76,12 +81,17 @@ export async function handleDaemon(action: string): Promise<void> {
         try {
           const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/health`);
           if (res.ok) {
-            console.log('Port Daddy daemon started');
+            const data = await res.json();
+            console.log(maritimeStatus('success', `Daemon running on port 9876 (PID ${data.pid})`));
+            console.log('');
+            console.log(`  ${ANSI.fgGray}Dashboard:${ANSI.reset} ${ANSI.fgCyan}http://localhost:9876${ANSI.reset}`);
+            console.log(`  ${ANSI.fgGray}Try:${ANSI.reset}       pd claim myapp -q`);
+            console.log('');
             return;
           }
         } catch {}
       }
-      console.error('Failed to start daemon');
+      console.error(maritimeStatus('error', 'Failed to start daemon'));
       process.exit(1);
       break;
     }
@@ -91,9 +101,10 @@ export async function handleDaemon(action: string): Promise<void> {
         const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/health`);
         const data = await res.json();
         process.kill(data.pid as number, 'SIGTERM');
-        console.log('Port Daddy daemon stopped');
+        printFarewell();
+        console.log(maritimeStatus('success', 'Daemon stopped'));
       } catch {
-        console.log('Port Daddy is not running');
+        console.log(maritimeStatus('warning', 'Port Daddy is not running'));
       }
       break;
     }
@@ -136,11 +147,9 @@ export async function handleDev(): Promise<void> {
     }
   }
 
-  console.log('');
-  console.log('Port Daddy Dev Mode');
-  console.log('\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501');
-  console.log('Watching source files for changes...');
-  console.log('Press Ctrl+C to exit');
+  printCompactHeader('DEV MODE');
+  console.log(`  ${ANCHOR} Watching source files for changes...`);
+  console.log(`  ${ANSI.fgGray}Press Ctrl+C to exit${ANSI.reset}`);
   console.log('');
 
   // Start daemon first

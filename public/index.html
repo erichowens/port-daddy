@@ -8,23 +8,29 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg-dark: #1a1a2e;
-      --bg-card: #16213e;
-      --bg-input: #0f0f1a;
-      --bg-elevated: #1e2844;
+      /* Maritime Color Palette - Deep sea at night */
+      --bg-dark: #0a1628;
+      --bg-card: #0f1f35;
+      --bg-input: #071018;
+      --bg-elevated: #142a45;
+      /* Brass/Gold for nautical instruments */
       --accent: #d4a03c;
       --accent-dim: #b8860b;
       --accent-soft: #c9985a;
       --accent-glow: rgba(212,160,60,0.15);
+      /* Sea colors */
+      --sea-cyan: #4a9d9e;
+      --sea-glow: rgba(74,157,158,0.15);
       --text: #e0ddd8;
       --text-dim: #9a9590;
       --text-muted: #6a6560;
-      --success: #6dd194;
-      --warning: #e5b655;
-      --danger: #e07070;
-      --info: #70a5e0;
-      --border: #2a2a40;
-      --border-light: #353550;
+      /* Signal flag colors */
+      --success: #6dd194;      /* Charlie flag - affirmative */
+      --warning: #e5b655;      /* Lima flag - caution */
+      --danger: #e07070;       /* November flag - negative */
+      --info: #70a5e0;         /* Kilo flag - ready */
+      --border: #1a3050;
+      --border-light: #254060;
       --radius-sm: 6px;
       --radius-md: 10px;
       --radius-lg: 14px;
@@ -67,7 +73,25 @@
     /* Header */
     .header {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 16px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px;
+      padding: 16px 0 20px; margin-bottom: 20px;
+      position: relative;
+    }
+    /* Maritime wave border */
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: repeating-linear-gradient(
+        90deg,
+        var(--sea-cyan) 0px,
+        var(--sea-cyan) 10px,
+        transparent 10px,
+        transparent 15px
+      );
+      opacity: 0.6;
     }
     .logo { display: flex; align-items: center; gap: 16px; }
     .logo-mark {
@@ -93,9 +117,16 @@
       transition: border-color var(--transition-med);
     }
     .status-pill.online { border-color: rgba(109,209,148,0.3); }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; transition: all var(--transition-med); }
-    .status-dot.online { background: var(--success); animation: pulseGlow 2s infinite; }
-    .status-dot.offline { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+    /* Signal flag style status indicators */
+    .status-dot { width: 12px; height: 8px; border-radius: 2px; transition: all var(--transition-med); }
+    .status-dot.online {
+      background: linear-gradient(90deg, #0047ab 33%, #fff 33%, #fff 66%, #e31b23 66%);
+      animation: pulseGlow 2s infinite;
+    }
+    .status-dot.offline {
+      background: repeating-linear-gradient(90deg, #0047ab 0 4px, #fff 4px 8px);
+      box-shadow: 0 0 6px var(--danger);
+    }
     .version-info { text-align: right; font-size: 0.8em; color: var(--text-muted); line-height: 1.5; }
     .version-info code { color: var(--accent); background: var(--bg-input); padding: 1px 6px; border-radius: 3px; }
     .settings-btn {
@@ -108,15 +139,27 @@
     .settings-btn:hover svg { transform: rotate(45deg); }
     .settings-btn svg { transition: transform 0.4s ease; }
 
-    /* Stats Grid */
+    /* Stats Grid - Maritime Instrument Panel */
     .stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px; }
     .stat-card {
-      background: var(--bg-card); border: 1px solid var(--border);
+      background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-dark) 100%);
+      border: 1px solid var(--border);
       border-radius: var(--radius-md); padding: 14px 16px;
       position: relative; overflow: hidden;
       transition: border-color var(--transition-med), transform var(--transition-fast);
     }
-    .stat-card:hover { border-color: var(--border-light); transform: translateY(-1px); }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--sea-cyan), transparent);
+      opacity: 0.4;
+    }
+    .stat-card:hover { border-color: var(--sea-cyan); transform: translateY(-1px); }
+    .stat-card:hover::before { opacity: 0.8; }
     .stat-card .stat-icon-bg {
       position: absolute; top: -4px; right: -4px; width: 48px; height: 48px;
       opacity: 0.06; stroke-width: 1.5;
@@ -575,10 +618,28 @@
 
     .footer {
       text-align: center; padding: 20px; color: var(--text-muted);
-      font-size: 0.8em; border-top: 1px solid var(--border); margin-top: 20px;
+      font-size: 0.8em; margin-top: 20px;
+      position: relative;
+    }
+    .footer::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: repeating-linear-gradient(
+        90deg,
+        var(--sea-cyan) 0px,
+        var(--sea-cyan) 10px,
+        transparent 10px,
+        transparent 15px
+      );
+      opacity: 0.4;
     }
     .footer a { color: var(--accent); text-decoration: none; transition: color var(--transition-fast); }
     .footer a:hover { color: #e8b84a; }
+    .footer .farewell { color: var(--sea-cyan); font-style: italic; margin-bottom: 8px; }
 
     @media (max-width: 768px) {
       .header { flex-direction: column; gap: 12px; align-items: flex-start; }
@@ -618,6 +679,11 @@
     <symbol id="icon-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
     <symbol id="icon-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></symbol>
     <symbol id="icon-clipboard" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></symbol>
+    <!-- Maritime icons -->
+    <symbol id="icon-anchor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></symbol>
+    <symbol id="icon-wheel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="4" x2="12" y2="1"/><line x1="12" y1="23" x2="12" y2="20"/><line x1="20" y1="12" x2="23" y2="12"/><line x1="1" y1="12" x2="4" y2="12"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/></symbol>
+    <symbol id="icon-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></symbol>
+    <symbol id="icon-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></symbol>
   </svg>
 
   <div class="container">
@@ -625,13 +691,22 @@
       <div class="logo">
         <div class="logo-mark">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
+            <!-- Ship's wheel icon -->
+            <circle cx="12" cy="12" r="7"/>
+            <circle cx="12" cy="12" r="2.5"/>
+            <line x1="12" y1="5" x2="12" y2="2"/>
+            <line x1="12" y1="22" x2="12" y2="19"/>
+            <line x1="19" y1="12" x2="22" y2="12"/>
+            <line x1="2" y1="12" x2="5" y2="12"/>
+            <line x1="16.95" y1="7.05" x2="19.07" y2="4.93"/>
+            <line x1="4.93" y1="19.07" x2="7.05" y2="16.95"/>
+            <line x1="16.95" y1="16.95" x2="19.07" y2="19.07"/>
+            <line x1="4.93" y1="4.93" x2="7.05" y2="7.05"/>
           </svg>
         </div>
         <div class="logo-text">
           <h1>Port Daddy</h1>
-          <div class="tagline">The Authority on Ports</div>
+          <div class="tagline">Your ports. My rules. Zero conflicts.</div>
         </div>
       </div>
       <div class="header-right">
@@ -793,7 +868,10 @@
       </div>
     </div>
 
-    <div class="footer">Auto-refreshes every 5s · <a href="https://github.com/curiositech/port-daddy">GitHub</a> · Port Daddy by <a href="https://curiositech.ai">Curiositech</a> — Because port conflicts are beneath you.</div>
+    <div class="footer">
+      <div class="farewell">⚓ Fair winds and following seas ⚓</div>
+      Auto-refreshes every 5s · <a href="https://github.com/curiositech/port-daddy">GitHub</a> · Port Daddy by <a href="https://curiositech.ai">Curiositech</a>
+    </div>
   </div>
 
   <div class="toast-container" id="toast-container"></div>
