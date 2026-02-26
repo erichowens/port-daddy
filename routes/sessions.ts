@@ -48,6 +48,8 @@ interface SessionsRouteDeps {
     list(options?: {
       status?: string;
       agentId?: string | null;
+      worktreeId?: string | null;
+      allWorktrees?: boolean;
       includeNotes?: boolean;
       limit?: number;
     }): Record<string, unknown>;
@@ -142,13 +144,16 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
     try {
       const statusParam = req.query.status;
       const agentParam = req.query.agent;
+      const worktreeParam = req.query.worktree;
       const status = typeof statusParam === 'string' ? statusParam : undefined;
       const agentId = typeof agentParam === 'string' ? agentParam : undefined;
+      const worktreeId = typeof worktreeParam === 'string' ? worktreeParam : undefined;
+      const allWorktrees = req.query.all === 'true' || req.query.allWorktrees === 'true';
       const includeNotes = req.query.notes === 'true';
       const limitParam = req.query.limit;
       const limit = typeof limitParam === 'string' ? parseInt(limitParam, 10) : 50;
 
-      const result = sessions.list({ status, agentId, includeNotes, limit });
+      const result = sessions.list({ status, agentId, worktreeId, allWorktrees, includeNotes, limit });
 
       res.json(result);
 

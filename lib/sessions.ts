@@ -9,6 +9,7 @@
 import type Database from 'better-sqlite3';
 import { randomBytes } from 'crypto';
 import { ActivityType } from './activity.js';
+import { getWorktreeId } from './worktree.js';
 
 // Optional activity logger interface — injected after creation via setActivityLog()
 interface ActivityLogger {
@@ -24,6 +25,7 @@ interface SessionRow {
   purpose: string;
   status: string;
   agent_id: string | null;
+  worktree_id: string | null;
   created_at: number;
   updated_at: number;
   completed_at: number | null;
@@ -47,6 +49,7 @@ interface SessionNoteRow {
 
 interface StartOptions {
   agentId?: string | null;
+  worktreeId?: string | null;
   files?: string[];
   metadata?: Record<string, unknown> | null;
 }
@@ -74,6 +77,8 @@ interface GetNotesOptions {
 interface ListOptions {
   status?: string;
   agentId?: string | null;
+  worktreeId?: string | null;
+  allWorktrees?: boolean;
   includeNotes?: boolean;
   limit?: number;
 }
@@ -98,13 +103,14 @@ interface FileConflict {
  * Initialize the sessions module with a database connection
  */
 export function createSessions(db: Database.Database) {
-  // Ensure tables exist
+  // Ensure tables exist (base schema without worktree_id for migration compatibility)
   const schemaStatements = [
     `CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       purpose TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'active',
       agent_id TEXT,
+      worktree_id TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
       completed_at INTEGER,
@@ -112,6 +118,7 @@ export function createSessions(db: Database.Database) {
     )`,
     `CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status)`,
     `CREATE INDEX IF NOT EXISTS idx_sessions_agent ON sessions(agent_id)`,
+    // NOTE: idx_sessions_worktree created after migration below
 
     `CREATE TABLE IF NOT EXISTS session_files (
       session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
@@ -137,6 +144,20 @@ export function createSessions(db: Database.Database) {
     db.prepare(sql).run();
   }
 
+  // Migration: add worktree_id column to existing databases that don't have it
+  try {
+    const columns = db.prepare("PRAGMA table_info(sessions)").all() as Array<{ name: string }>;
+    const hasWorktreeId = columns.some(c => c.name === 'worktree_id');
+    if (!hasWorktreeId) {
+      db.prepare("ALTER TABLE sessions ADD COLUMN worktree_id TEXT").run();
+    }
+  } catch {
+    // Column already exists or table doesn't exist yet
+  }
+
+  // Create worktree index after migration ensures column exists
+  db.prepare(`CREATE INDEX IF NOT EXISTS idx_sessions_worktree ON sessions(worktree_id)`).run();
+
   // Enable foreign key enforcement (needed for CASCADE)
   db.pragma('foreign_keys = ON');
 
@@ -145,8 +166,8 @@ export function createSessions(db: Database.Database) {
     // Sessions
     getById: db.prepare('SELECT * FROM sessions WHERE id = ?'),
     insert: db.prepare(`
-      INSERT INTO sessions (id, purpose, status, agent_id, created_at, updated_at, completed_at, metadata)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO sessions (id, purpose, status, agent_id, worktree_id, created_at, updated_at, completed_at, metadata)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `),
     updateStatus: db.prepare(`
       UPDATE sessions SET status = ?, updated_at = ?, completed_at = ? WHERE id = ?
@@ -167,11 +188,30 @@ export function createSessions(db: Database.Database) {
     listAll: db.prepare(`
       SELECT * FROM sessions ORDER BY updated_at DESC LIMIT ?
     `),
+    // Worktree-filtered queries
+    listByWorktree: db.prepare(`
+      SELECT * FROM sessions WHERE worktree_id = ? ORDER BY updated_at DESC LIMIT ?
+    `),
+    listByStatusAndWorktree: db.prepare(`
+      SELECT * FROM sessions WHERE status = ? AND worktree_id = ? ORDER BY updated_at DESC LIMIT ?
+    `),
+    listByAgentAndWorktree: db.prepare(`
+      SELECT * FROM sessions WHERE agent_id = ? AND worktree_id = ? ORDER BY updated_at DESC LIMIT ?
+    `),
+    listByStatusAgentAndWorktree: db.prepare(`
+      SELECT * FROM sessions WHERE status = ? AND agent_id = ? AND worktree_id = ? ORDER BY updated_at DESC LIMIT ?
+    `),
     mostRecentActive: db.prepare(`
       SELECT * FROM sessions WHERE status = 'active' ORDER BY updated_at DESC LIMIT 1
     `),
     mostRecentActiveByAgent: db.prepare(`
       SELECT * FROM sessions WHERE status = 'active' AND agent_id = ? ORDER BY updated_at DESC LIMIT 1
+    `),
+    mostRecentActiveByWorktree: db.prepare(`
+      SELECT * FROM sessions WHERE status = 'active' AND worktree_id = ? ORDER BY updated_at DESC LIMIT 1
+    `),
+    mostRecentActiveByAgentAndWorktree: db.prepare(`
+      SELECT * FROM sessions WHERE status = 'active' AND agent_id = ? AND worktree_id = ? ORDER BY updated_at DESC LIMIT 1
     `),
     cleanupOld: db.prepare(`
       DELETE FROM sessions WHERE status = ? AND updated_at < ?
@@ -258,6 +298,7 @@ export function createSessions(db: Database.Database) {
       purpose: row.purpose,
       status: row.status,
       agentId: row.agent_id,
+      worktreeId: row.worktree_id,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       completedAt: row.completed_at,
@@ -318,9 +359,13 @@ export function createSessions(db: Database.Database) {
     const id = generateSessionId();
     const {
       agentId = null,
+      worktreeId = null,
       files = [],
       metadata = null,
     } = options;
+
+    // Auto-detect worktree if not explicitly provided
+    const resolvedWorktreeId = worktreeId ?? getWorktreeId() ?? null;
 
     // Validate agentId if provided
     if (agentId !== null && typeof agentId !== 'string') {
@@ -343,6 +388,7 @@ export function createSessions(db: Database.Database) {
         trimmedPurpose,
         'active',
         agentId,
+        resolvedWorktreeId,
         now,
         now,
         null,
@@ -369,6 +415,7 @@ export function createSessions(db: Database.Database) {
       id,
       purpose: trimmedPurpose,
       status: 'active',
+      worktreeId: resolvedWorktreeId,
     };
 
     if (claimedFiles !== undefined) {
@@ -381,7 +428,7 @@ export function createSessions(db: Database.Database) {
     if (activityLog) {
       activityLog.log(ActivityType.SESSION_START, {
         details: `Session started: ${trimmedPurpose}`,
-        metadata: { sessionId: id, purpose: trimmedPurpose, agentId: agentId || undefined } as unknown as Record<string, unknown>,
+        metadata: { sessionId: id, purpose: trimmedPurpose, agentId: agentId || undefined, worktreeId: resolvedWorktreeId || undefined } as unknown as Record<string, unknown>,
       });
     }
 
@@ -511,9 +558,16 @@ export function createSessions(db: Database.Database) {
 
     const { agentId = null, type = 'note' } = options;
 
-    // Find most recent active session (optionally by agent)
+    // Auto-detect current worktree for session scoping
+    const currentWorktreeId = getWorktreeId();
+
+    // Find most recent active session (scoped to worktree + agent)
     let session: SessionRow | undefined;
-    if (agentId) {
+    if (agentId && currentWorktreeId) {
+      session = stmts.mostRecentActiveByAgentAndWorktree.get(agentId, currentWorktreeId) as SessionRow | undefined;
+    } else if (currentWorktreeId) {
+      session = stmts.mostRecentActiveByWorktree.get(currentWorktreeId) as SessionRow | undefined;
+    } else if (agentId) {
       session = stmts.mostRecentActiveByAgent.get(agentId) as SessionRow | undefined;
     } else {
       session = stmts.mostRecentActive.get() as SessionRow | undefined;
@@ -522,7 +576,7 @@ export function createSessions(db: Database.Database) {
     let sessionId: string;
 
     if (!session) {
-      // Create an anonymous session
+      // Create an anonymous session (worktreeId auto-detected in start())
       const startResult = start('Quick notes', { agentId });
       if (!startResult.success) {
         return { success: false, error: 'failed to create session' };
@@ -716,11 +770,23 @@ export function createSessions(db: Database.Database) {
    * List sessions
    */
   function list(options: ListOptions = {}) {
-    const { status, agentId, includeNotes = false, limit = 50 } = options;
+    const { status, agentId, worktreeId, allWorktrees = false, includeNotes = false, limit = 50 } = options;
+
+    // Auto-detect current worktree unless explicitly showing all
+    const effectiveWorktreeId = allWorktrees ? null : (worktreeId ?? getWorktreeId());
 
     let sessions: SessionRow[];
 
-    if (status && agentId) {
+    // Choose the right query based on filters
+    if (status && agentId && effectiveWorktreeId) {
+      sessions = stmts.listByStatusAgentAndWorktree.all(status, agentId, effectiveWorktreeId, limit) as SessionRow[];
+    } else if (status && effectiveWorktreeId) {
+      sessions = stmts.listByStatusAndWorktree.all(status, effectiveWorktreeId, limit) as SessionRow[];
+    } else if (agentId && effectiveWorktreeId) {
+      sessions = stmts.listByAgentAndWorktree.all(agentId, effectiveWorktreeId, limit) as SessionRow[];
+    } else if (effectiveWorktreeId) {
+      sessions = stmts.listByWorktree.all(effectiveWorktreeId, limit) as SessionRow[];
+    } else if (status && agentId) {
       sessions = stmts.listByStatusAndAgent.all(status, agentId, limit) as SessionRow[];
     } else if (status) {
       sessions = stmts.listByStatus.all(status, limit) as SessionRow[];
@@ -744,6 +810,7 @@ export function createSessions(db: Database.Database) {
       success: true,
       sessions: formatted,
       count: formatted.length,
+      worktreeId: effectiveWorktreeId,
     };
   }
 

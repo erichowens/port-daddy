@@ -333,6 +333,12 @@ export async function handleSessions(options: CLIOptions): Promise<void> {
     params.append('status', options.status as string);
   }
 
+  // Worktree filtering: by default, show current worktree only
+  // Use --all-worktrees or --aw to see sessions from all worktrees
+  if (options['all-worktrees'] || options.aw) {
+    params.append('allWorktrees', 'true');
+  }
+
   const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/sessions?${params}`);
   const data = await res.json();
 
@@ -350,6 +356,7 @@ export async function handleSessions(options: CLIOptions): Promise<void> {
     id: string;
     purpose: string;
     status: string;
+    worktreeId?: string;
     createdAt: number;
     fileCount?: number;
     noteCount?: number;
@@ -357,13 +364,19 @@ export async function handleSessions(options: CLIOptions): Promise<void> {
 
   if (sessions.length === 0) {
     if (!isQuiet(options)) {
-      console.log('No sessions found');
+      const worktreeNote = data.worktreeId ? ` (worktree: ${data.worktreeId})` : '';
+      console.log(`No sessions found${worktreeNote}`);
     }
     return;
   }
 
   // Table output
   const now = Date.now();
+  const showingAll = options['all-worktrees'] || options.aw;
+  if (!isQuiet(options) && data.worktreeId && !showingAll) {
+    console.log(`Showing sessions for worktree ${data.worktreeId} (use --all-worktrees for all)`);
+    console.log('');
+  }
   console.log('ID              PURPOSE                    STATUS    FILES  NOTES  AGE');
   console.log('─'.repeat(75));
 

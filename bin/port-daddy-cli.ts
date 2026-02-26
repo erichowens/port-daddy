@@ -1144,6 +1144,10 @@ async function executeDirectMode(
       if (options.status) {
         listOpts.status = options.status;
       }
+      // Support --all-worktrees or --aw flags
+      if (options['all-worktrees'] || options.aw) {
+        listOpts.allWorktrees = true;
+      }
 
       const result = sess.list(listOpts as Parameters<typeof sess.list>[0]);
       const data = result as Record<string, unknown>;
@@ -1154,14 +1158,21 @@ async function executeDirectMode(
       }
 
       const count = data.count as number;
+      const worktreeId = data.worktreeId as string | undefined;
       if (count === 0) {
-        console.log('No sessions found');
+        const note = worktreeId ? ` (worktree: ${worktreeId})` : '';
+        console.log(`No sessions found${note}`);
         return true;
       }
 
-      // sessions.list() returns: { id, purpose, status, agentId, createdAt, updatedAt, completedAt, metadata }
+      // Show worktree context if filtering by worktree
+      if (worktreeId && !options['all-worktrees'] && !options.aw) {
+        console.log(`Showing sessions for worktree ${worktreeId} (use --all-worktrees for all)`);
+      }
+
+      // sessions.list() returns: { id, purpose, status, agentId, worktreeId, createdAt, updatedAt, completedAt, metadata }
       const sessions = data.sessions as Array<{
-        id: string; purpose: string; status: string;
+        id: string; purpose: string; status: string; worktreeId?: string;
         createdAt: number; updatedAt: number; completedAt?: number;
       }>;
 
