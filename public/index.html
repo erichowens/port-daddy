@@ -750,6 +750,7 @@
           <button class="tab active" data-tab="terminal"><svg class="icon"><use href="#icon-terminal"/></svg>Terminal</button>
           <button class="tab" data-tab="services"><svg class="icon"><use href="#icon-server"/></svg>Services<span class="tab-badge" id="badge-services">0</span></button>
           <button class="tab" data-tab="agents"><svg class="icon"><use href="#icon-bot"/></svg>Agents<span class="tab-badge" id="badge-agents">0</span></button>
+          <button class="tab" data-tab="salvage"><svg class="icon"><use href="#icon-anchor"/></svg>Salvage<span class="tab-badge" id="badge-salvage">0</span></button>
           <button class="tab" data-tab="locks"><svg class="icon"><use href="#icon-lock"/></svg>Locks<span class="tab-badge" id="badge-locks">0</span></button>
           <button class="tab" data-tab="channels"><svg class="icon"><use href="#icon-message"/></svg>Channels<span class="tab-badge" id="badge-channels">0</span></button>
           <button class="tab" data-tab="webhooks"><svg class="icon"><use href="#icon-webhook"/></svg>Webhooks<span class="tab-badge" id="badge-webhooks">0</span></button>
@@ -793,6 +794,18 @@
         <table>
           <thead><tr><th>Agent ID</th><th>Type</th><th>PID</th><th>Status</th><th>Last Heartbeat</th><th>Limits</th><th></th></tr></thead>
           <tbody id="agents-body"><tr><td colspan="7" class="empty-state"><svg class="empty-state-icon"><use href="#icon-bot"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="tab-content" id="tab-salvage">
+        <div class="tab-toolbar">
+          <button class="refresh-btn" onclick="refreshSalvage()" id="refresh-salvage"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
+          <span style="flex:1"></span>
+          <span class="text-muted" style="font-size:0.85em">Dead agents with unfinished work</span>
+        </div>
+        <table>
+          <thead><tr><th>Agent</th><th>Status</th><th>Purpose</th><th>Stale Since</th><th>Notes</th><th></th></tr></thead>
+          <tbody id="salvage-body"><tr><td colspan="6" class="empty-state"><svg class="empty-state-icon"><use href="#icon-anchor"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
         </table>
       </div>
 
@@ -1538,6 +1551,58 @@
         }
       } catch (e) { console.error(e); }
     }
+    async function refreshSalvage() {
+      spinRefreshBtn('refresh-salvage');
+      try {
+        var data = await (await fetch(API + '/resurrection')).json();
+        var count = data.agents.length;
+        document.getElementById('badge-salvage').textContent = count;
+        var tbody = document.getElementById('salvage-body');
+        tbody.textContent = '';
+        if (count === 0) {
+          renderEmptyTd(tbody, '#icon-anchor', 'No agents to salvage', 'All clear — no dead agents with unfinished work', 6);
+        } else {
+          data.agents.forEach(function(a) {
+            var tr = document.createElement('tr');
+            var td1 = document.createElement('td'); var b = document.createElement('strong'); b.textContent = a.name || a.id; td1.appendChild(b);
+            var td2 = document.createElement('td'); var sb = document.createElement('span'); sb.className = 'badge badge-' + (a.status === 'dead' ? 'danger' : a.status === 'resurrecting' ? 'warning' : 'muted'); sb.textContent = a.status; td2.appendChild(sb);
+            var td3 = document.createElement('td'); td3.textContent = a.purpose || '-';
+            var td4 = document.createElement('td'); td4.textContent = formatAge(Date.now() - a.staleSince) + ' ago';
+            var td5 = document.createElement('td'); td5.textContent = (a.notes || []).length + ' note(s)';
+            var td6 = document.createElement('td');
+            if (a.status === 'pending' || a.status === 'dead') {
+              var btn = document.createElement('button'); btn.className = 'action-btn'; btn.textContent = 'Claim'; btn.onclick = function() { claimSalvage(a.id); }; td6.appendChild(btn);
+            }
+            var btn2 = document.createElement('button'); btn2.className = 'action-btn danger'; btn2.textContent = 'Dismiss'; btn2.onclick = function() { dismissSalvage(a.id); }; td6.appendChild(btn2);
+            tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6);
+            tbody.appendChild(tr);
+          });
+        }
+      } catch (e) { console.error(e); }
+    }
+    async function claimSalvage(agentId) {
+      try {
+        var resp = await fetch(API + '/resurrection/claim/' + encodeURIComponent(agentId), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+        var data = await resp.json();
+        if (data.success) {
+          showToast('Claimed ' + agentId + ' for resurrection', 'success');
+          var ctx = data.context || {};
+          if (ctx.notes && ctx.notes.length) {
+            addCmdEntry('info', 'Resurrection context for ' + agentId + ':\\n' + (ctx.purpose ? 'Purpose: ' + ctx.purpose + '\\n' : '') + 'Notes:\\n' + ctx.notes.map(function(n) { return '  - ' + n; }).join('\\n'));
+          }
+        } else {
+          showToast('Failed to claim: ' + (data.error || 'unknown'), 'error');
+        }
+        refreshSalvage();
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+    async function dismissSalvage(agentId) {
+      try {
+        await fetch(API + '/resurrection/' + encodeURIComponent(agentId), { method: 'DELETE' });
+        showToast('Dismissed ' + agentId, 'success');
+        refreshSalvage();
+      } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
     async function refreshLocks() {
       spinRefreshBtn('refresh-locks');
       try {
@@ -2003,7 +2068,7 @@
       } catch (e) { showToast('Failed to abandon session', 'error'); }
     }
     async function refreshAll() {
-      await Promise.all([refreshHealth(), refreshVersion(), refreshServices(), refreshAgents(), refreshLocks(), refreshChannels(), refreshWebhooks(), refreshActivity(), refreshProjects(), refreshSessions(), refreshConfig()]);
+      await Promise.all([refreshHealth(), refreshVersion(), refreshServices(), refreshAgents(), refreshSalvage(), refreshLocks(), refreshChannels(), refreshWebhooks(), refreshActivity(), refreshProjects(), refreshSessions(), refreshConfig()]);
     }
     refreshAll();
     setInterval(refreshAll, 5000);
