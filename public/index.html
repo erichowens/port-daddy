@@ -13,14 +13,15 @@
       --bg-card: #0f1f35;
       --bg-input: #071018;
       --bg-elevated: #142a45;
-      /* Brass/Gold for nautical instruments */
-      --accent: #d4a03c;
-      --accent-dim: #b8860b;
-      --accent-soft: #c9985a;
-      --accent-glow: rgba(212,160,60,0.15);
-      /* Sea colors */
-      --sea-cyan: #4a9d9e;
-      --sea-glow: rgba(74,157,158,0.15);
+      /* Semantic Token Teal - THE primary accent */
+      --accent: #4a9d9e;
+      --accent-dim: #3a7d7e;
+      --accent-soft: #5aadae;
+      --accent-glow: rgba(74,157,158,0.15);
+      /* Brass/Gold for secondary highlights */
+      --brass: #d4a03c;
+      --brass-dim: #b8860b;
+      --brass-glow: rgba(212,160,60,0.15);
       --text: #e0ddd8;
       --text-dim: #9a9590;
       --text-muted: #6a6560;
@@ -86,8 +87,8 @@
       height: 4px;
       background: repeating-linear-gradient(
         90deg,
-        var(--sea-cyan) 0px,
-        var(--sea-cyan) 10px,
+        var(--accent) 0px,
+        var(--accent) 10px,
         transparent 10px,
         transparent 15px
       );
@@ -98,16 +99,17 @@
       width: 48px; height: 48px;
       background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
       border-radius: 12px; display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 12px rgba(212,160,60,0.25);
+      box-shadow: 0 4px 12px rgba(74,157,158,0.35);
       transition: transform var(--transition-med), box-shadow var(--transition-med);
     }
-    .logo-mark:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(212,160,60,0.35); }
+    .logo-mark:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(74,157,158,0.5); }
     .logo-mark svg { width: 28px; height: 28px; stroke: var(--bg-dark); stroke-width: 2.5; }
     .logo-text h1 {
       font-size: 1.8em; font-weight: 700; letter-spacing: -0.5px;
-      background: linear-gradient(135deg, var(--accent) 0%, #f0d890 100%);
+      background: linear-gradient(135deg, var(--accent) 0%, #7fcfcf 100%);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
+    .maritime-flag { display: flex; align-items: center; }
     .logo-text .tagline { color: var(--text-dim); font-size: 0.85em; font-weight: 400; }
     .header-right { display: flex; gap: 12px; align-items: center; }
     .status-pill {
@@ -155,10 +157,10 @@
       left: 0;
       right: 0;
       height: 2px;
-      background: linear-gradient(90deg, transparent, var(--sea-cyan), transparent);
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
       opacity: 0.4;
     }
-    .stat-card:hover { border-color: var(--sea-cyan); transform: translateY(-1px); }
+    .stat-card:hover { border-color: var(--accent); transform: translateY(-1px); }
     .stat-card:hover::before { opacity: 0.8; }
     .stat-card .stat-icon-bg {
       position: absolute; top: -4px; right: -4px; width: 48px; height: 48px;
@@ -630,8 +632,8 @@
       height: 4px;
       background: repeating-linear-gradient(
         90deg,
-        var(--sea-cyan) 0px,
-        var(--sea-cyan) 10px,
+        var(--accent) 0px,
+        var(--accent) 10px,
         transparent 10px,
         transparent 15px
       );
@@ -639,7 +641,7 @@
     }
     .footer a { color: var(--accent); text-decoration: none; transition: color var(--transition-fast); }
     .footer a:hover { color: #e8b84a; }
-    .footer .farewell { color: var(--sea-cyan); font-style: italic; margin-bottom: 8px; }
+    .footer .farewell { color: var(--accent); font-style: italic; margin-bottom: 8px; }
 
     @media (max-width: 768px) {
       .header { flex-direction: column; gap: 12px; align-items: flex-start; }
@@ -710,6 +712,9 @@
         </div>
       </div>
       <div class="header-right">
+        <div class="maritime-flag" title="Signal flag: Tango (keeping clear)">
+          <div style="width:32px;height:24px;background:linear-gradient(90deg,#e31b23 0 33%,#fff 33% 66%,#0047ab 66%);border-radius:2px;box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>
+        </div>
         <div class="status-pill" id="status-pill">
           <div class="status-dot online" id="status-dot"></div>
           <span id="status-text">Online</span>
