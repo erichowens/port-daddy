@@ -45,8 +45,9 @@ import {
   handlePub, handleSub, handleChannels, handleWait,
   // Sessions
   handleSession, handleSessions, handleNote, handleNotes,
-  // Agents
+  // Agents & Resurrection
   handleAgent, handleAgents,
+  handleSalvage,
   // Activity
   handleLog,
   // Webhooks
@@ -1459,6 +1460,12 @@ async function main(): Promise<void> {
 
       case 'agents':
         await handleAgents(options);
+        break;
+
+      // Self-healing / resurrection
+      case 'salvage':
+      case 'resurrection':
+        await handleSalvage(positional[0], positional.slice(1), options);
         break;
 
       // Activity log

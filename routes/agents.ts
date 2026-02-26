@@ -10,6 +10,16 @@ import type { Request, Response } from 'express';
 import { validateAgentId } from '../shared/validators.js';
 import { WebhookEvent } from '../lib/webhooks.js';
 
+interface InboxMessage {
+  id: number;
+  agentId: string;
+  from: string | null;
+  content: string;
+  type: string;
+  read: boolean;
+  createdAt: number;
+}
+
 interface AgentsRouteDeps {
   logger: {
     info(msg: string, meta?: Record<string, unknown>): void;
@@ -23,6 +33,14 @@ interface AgentsRouteDeps {
     get(id: string): Record<string, unknown>;
     list(opts: { activeOnly: boolean }): unknown;
   };
+  agentInbox: {
+    send(agentId: string, content: string, opts?: { from?: string; type?: string }): { success: boolean; messageId?: number; error?: string };
+    list(agentId: string, opts?: { unreadOnly?: boolean; limit?: number; since?: number }): { success: boolean; messages: InboxMessage[]; count: number };
+    markRead(agentId: string, messageId: number): { success: boolean };
+    markAllRead(agentId: string): { success: boolean; marked: number };
+    clear(agentId: string): { success: boolean; deleted: number };
+    stats(agentId: string): { success: boolean; total: number; unread: number };
+  };
   activityLog: {
     logAgent: {
       register(id: string): void;
@@ -33,6 +51,9 @@ interface AgentsRouteDeps {
   webhooks: {
     trigger(event: string, payload: Record<string, unknown>, opts: { targetId: string }): void;
   };
+  messaging: {
+    publish(channel: string, message: string): { success: boolean };
+  };
 }
 
 /**
@@ -42,7 +63,7 @@ interface AgentsRouteDeps {
  * @returns Express router with agent routes
  */
 export function createAgentsRoutes(deps: AgentsRouteDeps): Router {
-  const { logger, metrics, agents, activityLog, webhooks } = deps;
+  const { logger, metrics, agents, agentInbox, activityLog, webhooks, messaging } = deps;
   const router = Router();
 
   // ==========================================================================
@@ -85,6 +106,16 @@ export function createAgentsRoutes(deps: AgentsRouteDeps): Router {
           name: name || id,
           type: type || 'cli'
         }, { targetId: id });
+
+        // Broadcast to the radio - compulsory status sharing
+        messaging.publish('agents', JSON.stringify({
+          event: 'registered',
+          agentId: id,
+          name: name || id,
+          type: type || 'cli',
+          purpose: metadata?.purpose || null,
+          timestamp: Date.now()
+        }));
       }
 
       logger.info('agent_registered', { agentId: id, registered: result.registered as boolean });
@@ -147,6 +178,13 @@ export function createAgentsRoutes(deps: AgentsRouteDeps): Router {
         webhooks.trigger(WebhookEvent.AGENT_UNREGISTER, {
           agentId: id
         }, { targetId: id });
+
+        // Broadcast to the radio
+        messaging.publish('agents', JSON.stringify({
+          event: 'unregistered',
+          agentId: id,
+          timestamp: Date.now()
+        }));
       }
 
       logger.info('agent_unregistered', { agentId: id });
@@ -184,6 +222,122 @@ export function createAgentsRoutes(deps: AgentsRouteDeps): Router {
     try {
       const { active } = req.query;
       const result = agents.list({ activeOnly: active === 'true' });
+      res.json(result);
+    } catch (error) {
+      metrics.errors++;
+      res.status(500).json({ error: 'internal server error' });
+    }
+  });
+
+  // ==========================================================================
+  // AGENT INBOX ROUTES
+  // ==========================================================================
+
+  // POST /agents/:id/inbox - Send message to agent's inbox
+  router.post('/agents/:id/inbox', (req: Request, res: Response) => {
+    try {
+      const agentId = req.params.id as string;
+      const { content, from, type } = req.body;
+
+      if (!content) {
+        return res.status(400).json({ error: 'content required' });
+      }
+
+      // Check if agent exists (optional: could allow messages to non-existent agents)
+      const agentResult = agents.get(agentId);
+      if (!agentResult.success) {
+        return res.status(404).json({ error: 'agent not found' });
+      }
+
+      const result = agentInbox.send(agentId, content, { from, type });
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      // Broadcast that a message was received
+      messaging.publish(`agent:${agentId}:inbox`, JSON.stringify({
+        event: 'message',
+        from,
+        type: type || 'message',
+        preview: content.substring(0, 100)
+      }));
+
+      logger.info('inbox_message_sent', { agentId, from, messageId: result.messageId });
+      res.json(result);
+
+    } catch (error) {
+      metrics.errors++;
+      logger.error('inbox_send_failed', { error: (error as Error).message });
+      res.status(500).json({ error: 'internal server error' });
+    }
+  });
+
+  // GET /agents/:id/inbox - Read agent's inbox
+  router.get('/agents/:id/inbox', (req: Request, res: Response) => {
+    try {
+      const agentId = req.params.id as string;
+      const { unread, limit, since } = req.query;
+
+      const result = agentInbox.list(agentId, {
+        unreadOnly: unread === 'true',
+        limit: limit ? parseInt(limit as string, 10) : undefined,
+        since: since ? parseInt(since as string, 10) : undefined
+      });
+
+      res.json(result);
+
+    } catch (error) {
+      metrics.errors++;
+      res.status(500).json({ error: 'internal server error' });
+    }
+  });
+
+  // GET /agents/:id/inbox/stats - Get inbox stats
+  router.get('/agents/:id/inbox/stats', (req: Request, res: Response) => {
+    try {
+      const agentId = req.params.id as string;
+      const result = agentInbox.stats(agentId);
+      res.json(result);
+    } catch (error) {
+      metrics.errors++;
+      res.status(500).json({ error: 'internal server error' });
+    }
+  });
+
+  // PUT /agents/:id/inbox/:messageId/read - Mark message as read
+  router.put('/agents/:id/inbox/:messageId/read', (req: Request, res: Response) => {
+    try {
+      const agentId = req.params.id as string;
+      const messageId = parseInt(req.params.messageId as string, 10);
+
+      const result = agentInbox.markRead(agentId, messageId);
+      res.json(result);
+
+    } catch (error) {
+      metrics.errors++;
+      res.status(500).json({ error: 'internal server error' });
+    }
+  });
+
+  // PUT /agents/:id/inbox/read-all - Mark all messages as read
+  router.put('/agents/:id/inbox/read-all', (req: Request, res: Response) => {
+    try {
+      const agentId = req.params.id as string;
+      const result = agentInbox.markAllRead(agentId);
+      res.json(result);
+    } catch (error) {
+      metrics.errors++;
+      res.status(500).json({ error: 'internal server error' });
+    }
+  });
+
+  // DELETE /agents/:id/inbox - Clear inbox
+  router.delete('/agents/:id/inbox', (req: Request, res: Response) => {
+    try {
+      const agentId = req.params.id as string;
+      const result = agentInbox.clear(agentId);
+      logger.info('inbox_cleared', { agentId, deleted: result.deleted });
       res.json(result);
     } catch (error) {
       metrics.errors++;

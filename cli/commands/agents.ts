@@ -20,6 +20,10 @@ export async function handleAgent(subcommand: string | undefined, args: string[]
     console.error('  register [--agent <id>] [--type <type>]   Register as an agent');
     console.error('  heartbeat [--agent <id>]                  Send heartbeat');
     console.error('  unregister [--agent <id>]                 Unregister agent');
+    console.error('  inbox                                     Read your inbox');
+    console.error('  inbox send <agent-id> <message>           Send DM to another agent');
+    console.error('  inbox stats                               Get inbox statistics');
+    console.error('  inbox clear                               Clear your inbox');
     console.error('  <agent-id>                                Get agent info');
     process.exit(1);
   }
@@ -101,6 +105,146 @@ export async function handleAgent(subcommand: string | undefined, args: string[]
         console.log(JSON.stringify(data, null, 2));
       } else {
         console.log(data.unregistered ? `Unregistered agent: ${agentId}` : `Agent not found: ${agentId}`);
+      }
+      break;
+    }
+
+    // =========================================================================
+    // INBOX COMMANDS
+    // =========================================================================
+
+    case 'inbox': {
+      const inboxAction = args[0];
+
+      if (!inboxAction || inboxAction === 'list') {
+        // Read inbox
+        const params = new URLSearchParams();
+        if (options.unread) params.append('unread', 'true');
+        if (options.limit) params.append('limit', String(options.limit));
+
+        const res: PdFetchResponse = await pdFetch(
+          `${PORT_DADDY_URL}/agents/${encodeURIComponent(agentId)}/inbox${params.toString() ? '?' + params : ''}`
+        );
+        const data = await res.json();
+
+        if (!res.ok) {
+          console.error(maritimeStatus('error', (data.error as string) || 'Failed to read inbox'));
+          process.exit(1);
+        }
+
+        if (isJson(options)) {
+          console.log(JSON.stringify(data, null, 2));
+          return;
+        }
+
+        const messages = data.messages as Array<{
+          id: number;
+          from: string | null;
+          content: string;
+          type: string;
+          read: boolean;
+          createdAt: number;
+        }>;
+
+        if (messages.length === 0) {
+          console.log('No messages in inbox');
+          return;
+        }
+
+        console.log('');
+        for (const msg of messages) {
+          const readMark = msg.read ? ' ' : '\u2709';
+          const time = new Date(msg.createdAt).toISOString().slice(11, 19);
+          const from = msg.from || 'system';
+          console.log(`${readMark} [${time}] <${from}> ${msg.content.slice(0, 60)}${msg.content.length > 60 ? '...' : ''}`);
+        }
+        console.log('');
+        console.log(`${data.count} message(s)`);
+
+      } else if (inboxAction === 'send') {
+        // Send DM: pd agent inbox send <target-agent> <message>
+        const targetAgent = args[1];
+        const message = args.slice(2).join(' ');
+
+        if (!targetAgent || !message) {
+          console.error('Usage: pd agent inbox send <agent-id> <message>');
+          process.exit(1);
+        }
+
+        const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(targetAgent)}/inbox`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: message, from: agentId })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          console.error(maritimeStatus('error', (data.error as string) || 'Failed to send message'));
+          process.exit(1);
+        }
+
+        if (isJson(options)) {
+          console.log(JSON.stringify(data, null, 2));
+        } else if (!isQuiet(options)) {
+          console.log(`Message sent to ${targetAgent}`);
+        }
+
+      } else if (inboxAction === 'stats') {
+        // Get inbox stats
+        const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(agentId)}/inbox/stats`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          console.error(maritimeStatus('error', (data.error as string) || 'Failed to get inbox stats'));
+          process.exit(1);
+        }
+
+        if (isJson(options)) {
+          console.log(JSON.stringify(data, null, 2));
+        } else {
+          console.log(`Inbox: ${data.unread} unread / ${data.total} total`);
+        }
+
+      } else if (inboxAction === 'clear') {
+        // Clear inbox
+        const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(agentId)}/inbox`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          console.error(maritimeStatus('error', (data.error as string) || 'Failed to clear inbox'));
+          process.exit(1);
+        }
+
+        if (isJson(options)) {
+          console.log(JSON.stringify(data, null, 2));
+        } else {
+          console.log(`Cleared ${data.deleted} message(s) from inbox`);
+        }
+
+      } else if (inboxAction === 'read-all') {
+        // Mark all as read
+        const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/agents/${encodeURIComponent(agentId)}/inbox/read-all`, {
+          method: 'PUT'
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          console.error(maritimeStatus('error', (data.error as string) || 'Failed to mark as read'));
+          process.exit(1);
+        }
+
+        if (isJson(options)) {
+          console.log(JSON.stringify(data, null, 2));
+        } else {
+          console.log(`Marked ${data.marked} message(s) as read`);
+        }
+
+      } else {
+        console.error(`Unknown inbox action: ${inboxAction}`);
+        console.error('Available actions: list, send, stats, clear, read-all');
+        process.exit(1);
       }
       break;
     }

@@ -16,3 +16,4 @@ export * from './orchestration.js';
 export * from './diagnostics.js';
 export * from './daemon.js';
 export * from './dns.js';
+export * from './resurrection.js';

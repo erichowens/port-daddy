@@ -32,6 +32,8 @@ import { createWebhooks, WebhookEvent } from './lib/webhooks.js';
 import { createProjects } from './lib/projects.js';
 import { createSessions } from './lib/sessions.js';
 import { createDns } from './lib/dns.js';
+import { createAgentInbox } from './lib/agent-inbox.js';
+import { createResurrection } from './lib/resurrection.js';
 import { initDatabase, resolveDbPath } from './lib/db.js';
 
 // Route aggregator
@@ -155,6 +157,58 @@ const projects = createProjects(db);
 const sessions = createSessions(db);
 sessions.setActivityLog(activityLog);
 const dns = createDns(db);
+const agentInbox = createAgentInbox(db);
+const resurrection = createResurrection(db);
+
+// Wire resurrection events to broadcast on the radio
+resurrection.on('agent:stale', (agent) => {
+  messaging.publish('resurrection', JSON.stringify({
+    event: 'stale',
+    agentId: agent.id,
+    name: agent.name,
+    purpose: agent.purpose,
+    lastHeartbeat: agent.lastHeartbeat,
+    staleSince: agent.staleSince
+  }));
+  logger.info('agent_stale', { agentId: agent.id, name: agent.name });
+});
+
+resurrection.on('agent:dead', (agent) => {
+  messaging.publish('resurrection', JSON.stringify({
+    event: 'dead',
+    agentId: agent.id,
+    name: agent.name,
+    purpose: agent.purpose,
+    lastHeartbeat: agent.lastHeartbeat,
+    staleSince: agent.staleSince
+  }));
+  // Also broadcast on general agent channel
+  messaging.publish('agents', JSON.stringify({
+    event: 'dead',
+    agentId: agent.id,
+    message: `Agent ${agent.name || agent.id} is dead and queued for resurrection`
+  }));
+  logger.warn('agent_dead', { agentId: agent.id, name: agent.name });
+  activityLog.log(ActivityType.AGENT_CLEANUP, {
+    details: `Agent ${agent.name || agent.id} detected as dead, queued for resurrection`,
+    metadata: { agentId: agent.id, staleSince: agent.staleSince }
+  });
+});
+
+resurrection.on('agent:resurrected', (oldAgentId, newAgentId) => {
+  messaging.publish('resurrection', JSON.stringify({
+    event: 'resurrected',
+    oldAgentId,
+    newAgentId
+  }));
+  messaging.publish('agents', JSON.stringify({
+    event: 'resurrected',
+    oldAgentId,
+    newAgentId,
+    message: `Agent ${oldAgentId} has been resurrected as ${newAgentId}`
+  }));
+  logger.info('agent_resurrected', { oldAgentId, newAgentId });
+});
 
 interface DaemonMetrics {
   total_assignments: number;
@@ -189,6 +243,43 @@ function cleanupStale(): ReturnType<typeof services.cleanup> {
   const serviceResult = services.cleanup();
   messaging.cleanup();
 
+  // Check agents for staleness and queue for resurrection BEFORE cleanup deletes them
+  const allAgents = agents.list();
+  interface AgentListItem {
+    id: string;
+    name: string | null;
+    isActive: boolean;
+    lastHeartbeat: number;
+    metadata?: { purpose?: string } | null;
+  }
+  interface SessionListItem { id: string }
+  interface NoteListItem { content: string }
+
+  for (const agent of (allAgents.agents || []) as AgentListItem[]) {
+    if (!agent.isActive) {
+      // Get agent's session and notes for resurrection context
+      const agentSessions = sessions.list({ agentId: agent.id, status: 'active' });
+      const notes: string[] = [];
+      const sessionsList = (agentSessions.sessions || []) as unknown as SessionListItem[];
+      for (const session of sessionsList) {
+        const sessionNotes = sessions.getNotes(session.id);
+        const notesList = (sessionNotes.notes || []) as unknown as NoteListItem[];
+        for (const note of notesList) {
+          notes.push(note.content);
+        }
+      }
+
+      resurrection.check({
+        id: agent.id,
+        name: agent.name || agent.id,
+        purpose: agent.metadata?.purpose,
+        sessionId: sessionsList[0]?.id,
+        lastHeartbeat: agent.lastHeartbeat,
+        notes
+      });
+    }
+  }
+
   const agentCleanup = agents.cleanup(locks);
   if (agentCleanup.cleaned > 0) {
     logger.info('agent_cleanup', agentCleanup);
@@ -201,6 +292,8 @@ function cleanupStale(): ReturnType<typeof services.cleanup> {
   activityLog.cleanup();
   webhooks.cleanup();
   sessions.cleanup();
+  agentInbox.cleanup();
+  resurrection.cleanup();
 
   metrics.total_cleanups++;
   return serviceResult;
@@ -255,6 +348,7 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
 app.use(createRoutes({
   db, logger, metrics, config,
   services, messaging, locks, health, agents, activityLog, webhooks, projects, sessions, dns,
+  agentInbox, resurrection,
   VERSION, CODE_HASH, STARTED_AT, __dirname,
   cleanupStale, getSystemPorts
 }));
