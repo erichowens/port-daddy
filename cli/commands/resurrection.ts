@@ -6,6 +6,7 @@
  */
 
 import { status as maritimeStatus } from '../../lib/maritime.js';
+import { JOLLY_ROGER, JOLLY_ROGER_COMPACT, ANSI } from '../../lib/banner.js';
 import { pdFetch, PORT_DADDY_URL } from '../utils/fetch.js';
 import { CLIOptions, isQuiet, isJson } from '../types.js';
 import type { PdFetchResponse } from '../utils/fetch.js';
@@ -193,13 +194,18 @@ export async function handleSalvage(subcommand: string | undefined, args: string
         return;
       }
 
-      console.log('');
-      console.log('\u2693 Salvage Report');
-      console.log('\u2500'.repeat(60));
+      // Show the jolly roger when we have dead agents to salvage
+      const deadCount = agents.filter(a => a.status === 'dead').length;
+      if (deadCount > 0) {
+        console.log(JOLLY_ROGER);
+      }
+
+      console.log(`${ANSI.fgYellow}${ANSI.bold}⚓ Salvage Report${ANSI.reset}`);
+      console.log(`${ANSI.fgGray}${'─'.repeat(60)}${ANSI.reset}`);
       console.log('');
 
       for (const agent of agents) {
-        const statusIcon = agent.status === 'dead' ? '\u2620' : agent.status === 'resurrecting' ? '\u21bb' : '\u26a0';
+        const statusIcon = agent.status === 'dead' ? JOLLY_ROGER_COMPACT : agent.status === 'resurrecting' ? '↻' : '⚠';
         const ago = formatAge(Date.now() - agent.staleSince);
 
         console.log(`${statusIcon} ${agent.name || agent.id} (${agent.status}, ${ago})`);
