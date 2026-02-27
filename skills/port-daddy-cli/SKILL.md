@@ -1,6 +1,6 @@
 ---
 name: port-daddy-cli
-description: Multi-agent coordination via Port Daddy. Use when starting dev servers, coordinating with other agents, preventing file conflicts, or leaving breadcrumbs for future sessions. Activate on "port conflict", "claim port", "coordinate agents", "start session", "leave note", "file conflict", "dev server".
+description: Multi-agent coordination via Port Daddy. Use when starting dev servers, coordinating with other agents, preventing file conflicts, salvaging dead agents' work, or tracking changes. Activate on "port conflict", "claim port", "coordinate agents", "start session", "leave note", "file conflict", "dev server", "salvage", "changelog".
 ---
 
 # Port Daddy — The Authoritative Port Manager
@@ -8,6 +8,23 @@ description: Multi-agent coordination via Port Daddy. Use when starting dev serv
 **Your ports. My rules. Zero conflicts.**
 
 Port Daddy eliminates the chaos of multi-agent development. No more port collisions. No more wondering what another agent touched. No more lost context between sessions.
+
+## The Compulsory Registration Pattern
+
+**Every agent session should start with registration.** This unlocks resurrection:
+
+```bash
+# At session start - register yourself
+pd agent register --agent claude-$(date +%s) --name "Feature Builder" --type claude-code --purpose "Implementing dark mode"
+
+# Send heartbeats every 5 minutes (agents marked stale at 10min, dead at 20min)
+pd agent heartbeat --agent <your-id>
+
+# Check if another agent died mid-task (do this BEFORE starting new work)
+pd salvage
+```
+
+Registration is the cost of entry to resurrection. If you die, another agent can pick up your work.
 
 ## Quick Reference
 
@@ -242,3 +259,65 @@ pd dns list
 ```
 
 **Requirements:** macOS (uses mDNS/Bonjour), or Linux with avahi-daemon.
+
+## Agent Resurrection (Salvage)
+
+When an agent dies mid-task, its work isn't lost. Port Daddy captures session state and notes:
+
+```bash
+# At session start, check if someone died with unfinished work
+pd salvage
+
+# Sample output:
+# Dead agent: builder-1 (died 15 minutes ago)
+#   Purpose: Building the payment API
+#   Session: session-a1b2c3 (active, 3 notes)
+#   Last note: "Finished Stripe integration, starting PayPal"
+#   Files: src/payments/stripe.ts, src/payments/paypal.ts
+
+# Claim the dead agent's session and continue their work
+pd salvage --claim builder-1
+
+# Clear salvage queue after you've reviewed it
+pd salvage --clear
+```
+
+**Always check salvage before starting new work.** Someone might have died mid-task.
+
+## Changelog (Hierarchical Change Tracking)
+
+Record meaningful changes with identity-based rollup:
+
+```bash
+# Record a change
+pd changelog add myapp:api:auth "Added JWT refresh token endpoint" --type feature
+
+# With detailed description
+pd changelog add myapp:frontend "Fixed mobile nav overlap" --type fix \
+  --description "Nav was overlapping content on iOS Safari viewport"
+
+# List recent changes
+pd changelog list
+
+# Filter by identity (includes children)
+pd changelog list --identity myapp:api
+
+# Different formats
+pd changelog list --format tree
+pd changelog list --format keep-a-changelog
+```
+
+Changes roll up hierarchically:
+- `myapp:api:auth` appears under `myapp:api` which appears under `myapp`
+- Query `myapp` to see all changes across the entire project
+
+### Change Types
+
+| Type | When to use |
+|------|-------------|
+| `feature` | New functionality |
+| `fix` | Bug fixes |
+| `refactor` | Code restructuring |
+| `docs` | Documentation updates |
+| `chore` | Maintenance tasks |
+| `breaking` | Breaking changes |
