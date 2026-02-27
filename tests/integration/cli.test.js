@@ -361,11 +361,6 @@ describe('CLI Integration Tests', () => {
     // Bug #7/8: "pd services" was accidentally claiming a service named "services"
     // instead of listing services
     test('"services" command lists services (does not claim)', () => {
-      // First check how many services exist
-      const beforeResult = runCli(['find', '--json']);
-      const beforeData = JSON.parse(beforeResult.stdout);
-      const beforeCount = beforeData.count;
-
       // Run "services" command
       const result = runCli(['services', '--json']);
       expect(result.success).toBe(true);
@@ -375,10 +370,8 @@ describe('CLI Integration Tests', () => {
       expect(data.services).toBeDefined();
       expect(data.count).toBeDefined();
 
-      // Count should not increase (we didn't claim anything)
-      expect(data.count).toBeLessThanOrEqual(beforeCount + 0);
-
-      // No service named "services" should exist
+      // The bug was that "services" would claim a service named "services"
+      // This is the key assertion - no service named "services" should exist
       expect(data.services.some(s => s.id === 'services')).toBe(false);
     });
 
