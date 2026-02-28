@@ -28,6 +28,7 @@
     "test:coverage": "npm test -- --coverage",
     "test:ci": "npm test",
     "typecheck": "tsc --noEmit",
+    "parity": "tsx scripts/check-parity.ts",
     "build": "tsc",
     "prepublishOnly": "npm run build"
   },
