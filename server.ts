@@ -31,7 +31,6 @@ import { createActivityLog, ActivityType } from './lib/activity.js';
 import { createWebhooks, WebhookEvent } from './lib/webhooks.js';
 import { createProjects } from './lib/projects.js';
 import { createSessions } from './lib/sessions.js';
-import { createDns } from './lib/dns.js';
 import { createAgentInbox } from './lib/agent-inbox.js';
 import { createResurrection } from './lib/resurrection.js';
 import { createChangelog } from './lib/changelog.js';
@@ -157,7 +156,6 @@ const webhooks = createWebhooks(db);
 const projects = createProjects(db);
 const sessions = createSessions(db);
 sessions.setActivityLog(activityLog);
-const dns = createDns(db);
 const agentInbox = createAgentInbox(db);
 const resurrection = createResurrection(db);
 const changelog = createChangelog(db);
@@ -356,7 +354,7 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
 // Mount all routes via aggregator
 app.use(createRoutes({
   db, logger, metrics, config,
-  services, messaging, locks, health, agents, activityLog, webhooks, projects, sessions, dns,
+  services, messaging, locks, health, agents, activityLog, webhooks, projects, sessions,
   agentInbox, resurrection, changelog,
   VERSION, CODE_HASH, STARTED_AT, __dirname,
   cleanupStale, getSystemPorts

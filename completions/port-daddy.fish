@@ -97,7 +97,7 @@ set -l __pd_commands \
     'agent' 'agents' 'log' 'activity' \
     'session' 'sessions' 'note' 'notes' \
     'salvage' 'resurrection' 'changelog' \
-    'dns' 'up' 'down' \
+    'up' 'down' \
     'dashboard' 'channels' 'webhook' 'webhooks' 'metrics' 'config' 'health' 'ports' \
     'scan' 's' 'projects' 'p' 'doctor' 'diagnose' \
     'start' 'stop' 'restart' 'status' 'install' 'uninstall' 'dev' 'ci-gate' \
@@ -149,9 +149,6 @@ for prog in port-daddy pd
 
     # Changelog
     complete -c $prog -n __pd_needs_command -a changelog -d 'Hierarchical changelog with identity-based rollup'
-
-    # DNS
-    complete -c $prog -n __pd_needs_command -a dns -d 'Manage local DNS registrations'
 
     # System & Monitoring
     complete -c $prog -n __pd_needs_command -a dashboard -d 'Open web dashboard'
@@ -321,18 +318,6 @@ for prog in port-daddy pd
     complete -c $prog -n "__pd_using_command resurrection" -l all -d 'Show ALL queue entries globally (use sparingly)'
     complete -c $prog -n "__pd_using_command resurrection" -l limit -d 'Max entries to return' -x
     complete -c $prog -n "__pd_using_command resurrection" -x -a '(__pd_agent_ids)'
-
-    # dns subcommands
-    complete -c $prog -n "__pd_using_command dns" -x -a 'list' -d 'List DNS registrations'
-    complete -c $prog -n "__pd_using_command dns" -x -a 'ls' -d 'List DNS registrations (alias)'
-    complete -c $prog -n "__pd_using_command dns" -x -a 'register' -d 'Register DNS for an identity'
-    complete -c $prog -n "__pd_using_command dns" -x -a 'add' -d 'Register DNS (alias)'
-    complete -c $prog -n "__pd_using_command dns" -x -a 'unregister' -d 'Unregister DNS for an identity'
-    complete -c $prog -n "__pd_using_command dns" -x -a 'rm' -d 'Unregister DNS (alias)'
-    complete -c $prog -n "__pd_using_command dns" -x -a 'remove' -d 'Unregister DNS (alias)'
-    complete -c $prog -n "__pd_using_command dns" -x -a 'cleanup' -d 'Remove all DNS registrations'
-    complete -c $prog -n "__pd_using_command dns" -x -a 'clear' -d 'Remove all DNS registrations (alias)'
-    complete -c $prog -n "__pd_using_command dns" -x -a '(__pd_service_ids)'
 
     # services (alias for list/find)
     complete -c $prog -n "__pd_using_command services" -l status -d 'Filter by status' -x -a 'active expired all'

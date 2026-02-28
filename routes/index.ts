@@ -22,7 +22,6 @@ import { createConfigRoutes } from './config.js';
 import { createProjectsRoutes } from './projects.js';
 import { createSessionsRoutes } from './sessions.js';
 import { createInfoRoutes } from './info.js';
-import { createDnsRoutes } from './dns.js';
 import { createResurrectionRoutes } from './resurrection.js';
 import { createChangelogRoutes } from './changelog.js';
 
@@ -57,7 +56,6 @@ export function createRoutes(deps: AnyDeps): Router {
   router.use(createConfigRoutes(deps as unknown as Parameters<typeof createConfigRoutes>[0]));
   router.use(createProjectsRoutes(deps as unknown as Parameters<typeof createProjectsRoutes>[0]));
   router.use(createSessionsRoutes(deps as unknown as Parameters<typeof createSessionsRoutes>[0]));
-  router.use(createDnsRoutes(deps as unknown as Parameters<typeof createDnsRoutes>[0]));
   router.use(createResurrectionRoutes(deps as unknown as Parameters<typeof createResurrectionRoutes>[0]));
   router.use(createChangelogRoutes(deps as unknown as Parameters<typeof createChangelogRoutes>[0]));
 
