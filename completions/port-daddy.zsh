@@ -271,6 +271,9 @@ _pd_cmd_agent() {
             '--agent[agent ID]:agent ID:' \
             '--type[agent type]:type:(worker orchestrator monitor generic)' \
             '--name[human-readable name]:name:' \
+            '--identity[semantic identity (project:stack:context)]:identity:_pd_complete_services' \
+            '--purpose[what the agent is working on]:purpose:' \
+            '--worktree[git worktree identifier]:worktree:' \
             '--maxServices[max services]:count:' \
             '--maxLocks[max locks]:count:' \
             '(-j --json)'{-j,--json}'[JSON output]' \
@@ -605,7 +608,9 @@ _pd_cmd_salvage() {
 
   local state subcmd
   _arguments -C \
-    '--all[show all queue entries, not just pending]' \
+    '--project[filter to agents in this project]:project name:' \
+    '--stack[filter by stack (requires --project)]:stack name:' \
+    '--all[show ALL queue entries globally (use sparingly)]' \
     '--limit[max entries to return]:count:' \
     '(-j --json)'{-j,--json}'[JSON output]' \
     '(-q --quiet)'{-q,--quiet}'[suppress output]' \

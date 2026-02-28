@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Context-aware salvage UX**: Agent identity (`--identity project:stack:context`) enables smart filtering
+  - `pd agent register --identity myapp:backend:main` — semantic identity for agents
+  - Auto-salvage notice: when registering, check for dead agents in the same project and show notice
+  - `pd salvage --project myapp` — filter resurrection queue by project (default behavior)
+  - `pd salvage --stack api` — further filter by stack
+  - `pd salvage --all` — show global queue (requires explicit opt-in, shows warning)
+  - SDK: `salvage()`, `salvageClaim()`, `salvageComplete()`, `salvageAbandon()`, `salvageDismiss()` methods
+  - Dashboard: Identity column in salvage table
+  - Shell completions: `--project`, `--stack`, `--all`, `--limit` flags for salvage; `--identity`, `--purpose`, `--worktree` flags for agent register
+
 ## [3.2.0] - 2026-02-23
 
 ### Added

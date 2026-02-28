@@ -17,7 +17,8 @@ export async function handleAgent(subcommand: string | undefined, args: string[]
     console.error('Usage: port-daddy agent <subcommand> [options]');
     console.error('');
     console.error('Subcommands:');
-    console.error('  register [--agent <id>] [--type <type>]   Register as an agent');
+    console.error('  register [--agent <id>] [--type <type>] [--identity <project:stack:context>] [--purpose <text>]');
+    console.error('                                            Register as an agent (auto-checks for dead agents in same project)');
     console.error('  heartbeat [--agent <id>]                  Send heartbeat');
     console.error('  unregister [--agent <id>]                 Unregister agent');
     console.error('  inbox                                     Read your inbox');
@@ -25,6 +26,11 @@ export async function handleAgent(subcommand: string | undefined, args: string[]
     console.error('  inbox stats                               Get inbox statistics');
     console.error('  inbox clear                               Clear your inbox');
     console.error('  <agent-id>                                Get agent info');
+    console.error('');
+    console.error('Options:');
+    console.error('  --identity <project:stack:context>        Semantic identity (enables context-aware salvage)');
+    console.error('  --purpose <text>                          What you\'re working on');
+    console.error('  --worktree <id>                           Git worktree identifier');
     process.exit(1);
   }
 
@@ -37,7 +43,11 @@ export async function handleAgent(subcommand: string | undefined, args: string[]
         name: options.name,
         type: options.agentType || 'cli',
         maxServices: options.maxServices ? parseInt(options.maxServices as string, 10) : undefined,
-        maxLocks: options.maxLocks ? parseInt(options.maxLocks as string, 10) : undefined
+        maxLocks: options.maxLocks ? parseInt(options.maxLocks as string, 10) : undefined,
+        // Context-aware salvage: semantic identity enables project-scoped resurrection
+        identity: options.identity,
+        purpose: options.purpose,
+        worktreeId: options.worktree
       };
 
       const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/agents`, {
@@ -60,6 +70,12 @@ export async function handleAgent(subcommand: string | undefined, args: string[]
         console.log(JSON.stringify(data, null, 2));
       } else {
         console.log(data.registered ? `Registered agent: ${agentId}` : `Updated agent: ${agentId}`);
+
+        // Show salvage notice if there are dead agents in the same project
+        if (data.salvageHint) {
+          console.log('');
+          console.log(maritimeStatus('warning', data.salvageHint as string));
+        }
       }
       break;
     }

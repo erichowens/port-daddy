@@ -395,11 +395,11 @@ _port_daddy() {
         return 0
       fi
 
-      local agent_opts='--agent --type --name --maxServices --maxLocks'
+      local agent_opts='--agent --type --name --identity --purpose --worktree --maxServices --maxLocks'
       case "$subcmd" in
         register)
           case "$prev" in
-            --agent|--name)
+            --agent|--name|--identity|--purpose|--worktree)
               COMPREPLY=()  # Free-form string
               ;;
             --type)
@@ -618,7 +618,7 @@ _port_daddy() {
       ;;
 
     # -----------------------------------------------------------------------
-    # salvage  [subcommand] [agent-id] [--all] [--limit N]
+    # salvage  [subcommand] [agent-id] [--project P] [--stack S] [--all] [--limit N]
     # -----------------------------------------------------------------------
     salvage)
       local salvage_subcommands='claim complete abandon dismiss'
@@ -634,12 +634,19 @@ _port_daddy() {
       done
 
       if [[ -z "$subcmd" ]]; then
-        if [[ "$cur" == -* ]]; then
-          _pd_opts '--all --limit'
-        else
-          # shellcheck disable=SC2207
-          COMPREPLY=( $(compgen -W "$salvage_subcommands" -- "$cur") )
-        fi
+        case "$prev" in
+          --project|--stack|--limit)
+            COMPREPLY=()  # Free-form
+            ;;
+          *)
+            if [[ "$cur" == -* ]]; then
+              _pd_opts '--project --stack --all --limit'
+            else
+              # shellcheck disable=SC2207
+              COMPREPLY=( $(compgen -W "$salvage_subcommands" -- "$cur") )
+            fi
+            ;;
+        esac
         return 0
       fi
 
@@ -664,7 +671,7 @@ _port_daddy() {
           fi
           ;;
         *)
-          _pd_opts '--all --limit'
+          _pd_opts '--project --stack --all --limit'
           ;;
       esac
       ;;

@@ -802,11 +802,11 @@
         <div class="tab-toolbar">
           <button class="refresh-btn" onclick="refreshSalvage()" id="refresh-salvage"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
           <span style="flex:1"></span>
-          <span class="text-muted" style="font-size:0.85em">Dead agents with unfinished work</span>
+          <span class="text-muted" style="font-size:0.85em">Dead agents with unfinished work — filter by project with <code>pd salvage --project NAME</code></span>
         </div>
         <table>
-          <thead><tr><th>Agent</th><th>Status</th><th>Purpose</th><th>Stale Since</th><th>Notes</th><th></th></tr></thead>
-          <tbody id="salvage-body"><tr><td colspan="6" class="empty-state"><svg class="empty-state-icon"><use href="#icon-anchor"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
+          <thead><tr><th>Agent</th><th>Identity</th><th>Status</th><th>Purpose</th><th>Stale Since</th><th>Notes</th><th></th></tr></thead>
+          <tbody id="salvage-body"><tr><td colspan="7" class="empty-state"><svg class="empty-state-icon"><use href="#icon-anchor"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
         </table>
       </div>
 
@@ -1577,21 +1577,29 @@
         var tbody = document.getElementById('salvage-body');
         tbody.textContent = '';
         if (count === 0) {
-          renderEmptyTd(tbody, '#icon-anchor', 'No agents to salvage', 'All clear — no dead agents with unfinished work', 6);
+          renderEmptyTd(tbody, '#icon-anchor', 'No agents to salvage', 'All clear — no dead agents with unfinished work', 7);
         } else {
           data.agents.forEach(function(a) {
             var tr = document.createElement('tr');
             var td1 = document.createElement('td'); var b = document.createElement('strong'); b.textContent = a.name || a.id; td1.appendChild(b);
-            var td2 = document.createElement('td'); var sb = document.createElement('span'); sb.className = 'badge badge-' + (a.status === 'dead' ? 'danger' : a.status === 'resurrecting' ? 'warning' : 'muted'); sb.textContent = a.status; td2.appendChild(sb);
-            var td3 = document.createElement('td'); td3.textContent = a.purpose || '-';
-            var td4 = document.createElement('td'); td4.textContent = formatAge(Date.now() - a.staleSince) + ' ago';
-            var td5 = document.createElement('td'); td5.textContent = (a.notes || []).length + ' note(s)';
-            var td6 = document.createElement('td');
-            if (a.status === 'pending' || a.status === 'dead') {
-              var btn = document.createElement('button'); btn.className = 'action-btn'; btn.textContent = 'Claim'; btn.onclick = function() { claimSalvage(a.id); }; td6.appendChild(btn);
+            // Identity column
+            var td2 = document.createElement('td');
+            var identity = a.identityProject ? (a.identityProject + (a.identityStack ? ':' + a.identityStack : '') + (a.identityContext ? ':' + a.identityContext : '')) : null;
+            if (identity) {
+              var icode = document.createElement('code'); icode.textContent = identity; td2.appendChild(icode);
+            } else {
+              td2.textContent = '-';
             }
-            var btn2 = document.createElement('button'); btn2.className = 'action-btn danger'; btn2.textContent = 'Dismiss'; btn2.onclick = function() { dismissSalvage(a.id); }; td6.appendChild(btn2);
-            tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6);
+            var td3 = document.createElement('td'); var sb = document.createElement('span'); sb.className = 'badge badge-' + (a.status === 'dead' ? 'danger' : a.status === 'resurrecting' ? 'warning' : 'muted'); sb.textContent = a.status; td3.appendChild(sb);
+            var td4 = document.createElement('td'); td4.textContent = a.purpose || '-';
+            var td5 = document.createElement('td'); td5.textContent = formatAge(Date.now() - a.staleSince) + ' ago';
+            var td6 = document.createElement('td'); td6.textContent = (a.notes || []).length + ' note(s)';
+            var td7 = document.createElement('td');
+            if (a.status === 'pending' || a.status === 'dead') {
+              var btn = document.createElement('button'); btn.className = 'action-btn'; btn.textContent = 'Claim'; btn.onclick = function() { claimSalvage(a.id); }; td7.appendChild(btn);
+            }
+            var btn2 = document.createElement('button'); btn2.className = 'action-btn danger'; btn2.textContent = 'Dismiss'; btn2.onclick = function() { dismissSalvage(a.id); }; td7.appendChild(btn2);
+            tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7);
             tbody.appendChild(tr);
           });
         }

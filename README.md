@@ -190,36 +190,57 @@ pd lock db-migrations || echo "Lock held, skipping"
 ### Agent Registry
 
 ```bash
-pd agent register --agent builder-1 --name "API Builder" --type cli --purpose "Building the payment API"
+# Register with semantic identity (project:stack:context) for smart salvage filtering
+pd agent register --agent builder-1 --name "API Builder" --type cli \
+  --identity myapp:backend:feature-payments \
+  --purpose "Building the payment API"
+
 pd agent heartbeat --agent builder-1
 pd agents                   # list all active agents
 ```
 
 Agents that stop sending heartbeats are marked stale (10min) then dead (20min).
 
+When you register, Port Daddy checks for dead agents in the same project and shows an auto-salvage notice:
+
+```
+⚓ Registered: builder-1
+⚠️  Salvage notice: 2 dead agents in myapp:*:* need recovery.
+   Run: pd salvage --project myapp
+```
+
 ### Agent Resurrection (Salvage)
 
 When an agent dies mid-task, its work isn't lost. Port Daddy captures session state and notes for salvage:
 
 ```bash
-# At session start, check if someone died with unfinished work
-pd salvage
+# See dead agents in your project (context-aware by default)
+pd salvage --project myapp
 
 # Sample output:
-# Dead agent: builder-1 (died 15 minutes ago)
+# ⚓ Salvage Report myapp:*:*
+# ────────────────────────────────────────────────────────────
+#
+# ☠ builder-1 (dead, 15m)
+#   Identity: myapp:backend:feature-payments
 #   Purpose: Building the payment API
-#   Session: session-a1b2c3 (active, 3 notes)
-#   Last note: "Finished Stripe integration, starting PayPal"
-#   Files: src/payments/stripe.ts, src/payments/paypal.ts
+#   Session: session-a1b2c3
+#   Notes:
+#     - Finished Stripe integration, starting PayPal
+#     - Need to handle webhooks for refunds
+#   Salvage: pd salvage claim builder-1
 
 # Claim the dead agent's session and continue their work
-pd salvage --claim builder-1
+pd salvage claim builder-1
 
-# Clear salvage queue after you've reviewed it
-pd salvage --clear
+# See ALL dead agents globally (use sparingly)
+pd salvage --all
+
+# Dismiss after review (nothing to recover)
+pd salvage dismiss builder-1
 ```
 
-**Pro tip:** Register with `--purpose` so the salvaging agent knows what you were doing.
+**Pro tip:** Register with `--identity` and `--purpose` so salvaging agents know what you were doing and which project you were in.
 
 ---
 
@@ -527,12 +548,14 @@ The skill teaches agents to claim ports with semantic identities, coordinate via
 
 | Command | Description |
 |---------|-------------|
-| `pd agent register` | Register as an agent (`--agent ID --type TYPE --purpose "..."`) |
+| `pd agent register` | Register as an agent (`--agent ID --type TYPE --identity project:stack:context --purpose "..."`) |
 | `pd agent heartbeat` | Send heartbeat |
 | `pd agents` | List all registered agents |
-| `pd salvage` | Check for dead agents with recoverable work |
-| `pd salvage --claim <id>` | Claim a dead agent's session |
-| `pd salvage --clear` | Clear the salvage queue |
+| `pd salvage` | Check for dead agents (`--project`, `--stack`, `--all`, `--limit`) |
+| `pd salvage claim <id>` | Claim a dead agent's session |
+| `pd salvage complete <old> <new>` | Mark resurrection complete |
+| `pd salvage abandon <id>` | Return agent to queue |
+| `pd salvage dismiss <id>` | Remove from queue (reviewed) |
 
 ### Changelog
 

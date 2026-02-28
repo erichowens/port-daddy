@@ -71,7 +71,7 @@ export function createAgentsRoutes(deps: AgentsRouteDeps): Router {
   // ==========================================================================
   router.post('/agents', (req: Request, res: Response) => {
     try {
-      const { id, name, type, metadata, maxServices, maxLocks } = req.body;
+      const { id, name, type, metadata, maxServices, maxLocks, identity, worktreeId, purpose } = req.body;
 
       if (!id) {
         return res.status(400).json({ error: 'agent id required' });
@@ -89,7 +89,11 @@ export function createAgentsRoutes(deps: AgentsRouteDeps): Router {
         type: type || 'cli',
         metadata,
         maxServices,
-        maxLocks
+        maxLocks,
+        // Context-aware salvage: semantic identity for project prefix filtering
+        identity,
+        worktreeId,
+        purpose
       });
 
       if (!result.success) {
@@ -104,7 +108,9 @@ export function createAgentsRoutes(deps: AgentsRouteDeps): Router {
         webhooks.trigger(WebhookEvent.AGENT_REGISTER, {
           agentId: id,
           name: name || id,
-          type: type || 'cli'
+          type: type || 'cli',
+          identity,
+          purpose
         }, { targetId: id });
 
         // Broadcast to the radio - compulsory status sharing
@@ -113,12 +119,13 @@ export function createAgentsRoutes(deps: AgentsRouteDeps): Router {
           agentId: id,
           name: name || id,
           type: type || 'cli',
-          purpose: metadata?.purpose || null,
+          identity,
+          purpose: purpose || metadata?.purpose || null,
           timestamp: Date.now()
         }));
       }
 
-      logger.info('agent_registered', { agentId: id, registered: result.registered as boolean });
+      logger.info('agent_registered', { agentId: id, registered: result.registered as boolean, identity, salvageHint: result.salvageHint });
       res.json(result);
 
     } catch (error) {

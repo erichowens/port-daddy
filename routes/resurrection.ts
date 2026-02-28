@@ -17,6 +17,10 @@ interface StaleAgent {
   staleSince: number;
   status: 'stale' | 'dead' | 'resurrecting';
   notes?: string[];
+  // Semantic identity components for prefix filtering
+  identityProject: string | null;
+  identityStack: string | null;
+  identityContext: string | null;
 }
 
 interface ResurrectionRouteDeps {
@@ -26,12 +30,13 @@ interface ResurrectionRouteDeps {
   };
   metrics: { errors: number };
   resurrection: {
-    pending(): { success: boolean; agents: StaleAgent[]; count: number };
-    list(limit?: number): { success: boolean; agents: StaleAgent[]; count: number };
+    pending(options?: { project?: string; stack?: string }): { success: boolean; agents: StaleAgent[]; count: number; filtered?: boolean };
+    list(options?: { limit?: number; project?: string; stack?: string }): { success: boolean; agents: StaleAgent[]; count: number; filtered?: boolean };
     claim(agentId: string): { success: boolean; agent?: StaleAgent; context?: Record<string, unknown>; error?: string };
     complete(oldAgentId: string, newAgentId: string): { success: boolean };
     abandon(agentId: string): { success: boolean };
     dismiss(agentId: string): { success: boolean };
+    countByProject(project: string): number;
   };
   messaging: {
     publish(channel: string, message: string): { success: boolean };
@@ -50,10 +55,15 @@ export function createResurrectionRoutes(deps: ResurrectionRouteDeps): Router {
 
   // ==========================================================================
   // GET /resurrection/pending - List agents pending resurrection
+  // Filter by ?project= and/or ?stack= for context-aware salvage
   // ==========================================================================
-  router.get('/resurrection/pending', (_req: Request, res: Response) => {
+  router.get('/resurrection/pending', (req: Request, res: Response) => {
     try {
-      const result = resurrection.pending();
+      const { project, stack } = req.query;
+      const result = resurrection.pending({
+        project: project as string | undefined,
+        stack: stack as string | undefined
+      });
       res.json(result);
     } catch (error) {
       metrics.errors++;
@@ -64,11 +74,16 @@ export function createResurrectionRoutes(deps: ResurrectionRouteDeps): Router {
 
   // ==========================================================================
   // GET /resurrection - List all resurrection queue entries
+  // Filter by ?project= and/or ?stack= for context-aware salvage
   // ==========================================================================
   router.get('/resurrection', (req: Request, res: Response) => {
     try {
-      const { limit } = req.query;
-      const result = resurrection.list(limit ? parseInt(limit as string, 10) : undefined);
+      const { limit, project, stack } = req.query;
+      const result = resurrection.list({
+        limit: limit ? parseInt(limit as string, 10) : undefined,
+        project: project as string | undefined,
+        stack: stack as string | undefined
+      });
       res.json(result);
     } catch (error) {
       metrics.errors++;

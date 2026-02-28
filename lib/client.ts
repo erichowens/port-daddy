@@ -275,6 +275,12 @@ interface RegisterOptions {
   maxServices?: number;
   maxLocks?: number;
   metadata?: Record<string, unknown>;
+  /** Semantic identity in project:stack:context format */
+  identity?: string;
+  /** What the agent is working on */
+  purpose?: string;
+  /** Git worktree identifier */
+  worktree?: string;
 }
 
 /** Matches the actual return shape of agents.register() */
@@ -283,6 +289,18 @@ interface RegisterAgentResponse {
   agentId: string;
   registered: boolean;
   message: string;
+  /** Parsed identity components */
+  identity?: {
+    project: string | null;
+    stack: string | null;
+    context: string | null;
+  };
+  /** Auto-salvage notice if dead agents exist in same project */
+  autoSalvageNotice?: {
+    count: number;
+    message: string;
+    command: string;
+  };
 }
 
 /** Matches the actual return shape of agents.heartbeat() */
@@ -345,6 +363,65 @@ interface ListAgentsResponse {
   success: boolean;
   agents: AgentEntry[];
   count: number;
+}
+
+
+/** Options for listing salvage queue entries */
+interface SalvageListOptions {
+  /** Filter to agents in this project */
+  project?: string;
+  /** Filter by stack (requires project) */
+  stack?: string;
+  /** Show ALL queue entries globally (use sparingly) */
+  all?: boolean;
+  /** Limit number of results */
+  limit?: number;
+}
+
+/** A single stale agent in the salvage queue */
+interface StaleAgent {
+  id: string;
+  name: string;
+  purpose: string | null;
+  sessionId: string | null;
+  lastHeartbeat: number;
+  staleSince: number;
+  status: 'stale' | 'dead' | 'resurrecting';
+  notes?: string[];
+  identityProject: string | null;
+  identityStack: string | null;
+  identityContext: string | null;
+}
+
+/** Response from listing salvage queue */
+interface SalvageListResponse {
+  success: boolean;
+  agents: StaleAgent[];
+  count: number;
+  filtered?: boolean;
+}
+
+/** Response from claiming an agent for resurrection */
+interface SalvageClaimResponse {
+  success: boolean;
+  message: string;
+  context?: {
+    sessionId?: string;
+    purpose?: string;
+    notes?: string[];
+  };
+}
+
+/** Response from completing resurrection */
+interface SalvageCompleteResponse {
+  success: boolean;
+  message: string;
+}
+
+/** Response from abandoning/dismissing resurrection */
+interface SalvageAbandonResponse {
+  success: boolean;
+  message: string;
 }
 
 interface AddWebhookOptions {
@@ -1344,6 +1421,9 @@ class PortDaddy {
       metadata: options.metadata,
       maxServices: options.maxServices,
       maxLocks: options.maxLocks,
+      identity: options.identity,
+      purpose: options.purpose,
+      worktree: options.worktree,
     }) as Promise<RegisterAgentResponse>;
   }
 
@@ -1765,6 +1845,59 @@ class PortDaddy {
     } catch {
       return false;
     }
+  }
+
+
+  // ──────────────────────────────────────────────────────────────
+  // Salvage (resurrection queue)
+  // ──────────────────────────────────────────────────────────────
+
+  /**
+   * List agents in the resurrection queue (dead/stale agents pending salvage).
+   * By default filters to agents in the same project as the current agent's identity.
+   * Use `all: true` to see the global queue (use sparingly).
+   */
+  async salvage(options: SalvageListOptions = {}): Promise<SalvageListResponse> {
+    const endpoint = options.all ? '/resurrection' : '/resurrection/pending';
+    const params = new URLSearchParams();
+    if (options.limit) params.append('limit', String(options.limit));
+    if (options.project) params.append('project', options.project);
+    if (options.stack) params.append('stack', options.stack);
+    const query = params.toString();
+    return this._request('GET', query ? `${endpoint}?${query}` : endpoint) as Promise<SalvageListResponse>;
+  }
+
+  /**
+   * Claim a dead/stale agent's work for resurrection.
+   * Returns context including session, purpose, and notes.
+   */
+  async salvageClaim(agentId: string): Promise<SalvageClaimResponse> {
+    return this._request('POST', `/resurrection/claim/${encodeURIComponent(agentId)}`, {
+      newAgentId: this.agentId || `sdk-${this.pid}`,
+    }) as Promise<SalvageClaimResponse>;
+  }
+
+  /**
+   * Mark resurrection complete (old agent's work has been taken over).
+   */
+  async salvageComplete(oldAgentId: string, newAgentId?: string): Promise<SalvageCompleteResponse> {
+    return this._request('POST', `/resurrection/complete/${encodeURIComponent(oldAgentId)}`, {
+      newAgentId: newAgentId || this.agentId || `sdk-${this.pid}`,
+    }) as Promise<SalvageCompleteResponse>;
+  }
+
+  /**
+   * Return an agent to the resurrection queue (couldn't complete salvage).
+   */
+  async salvageAbandon(agentId: string): Promise<SalvageAbandonResponse> {
+    return this._request('POST', `/resurrection/abandon/${encodeURIComponent(agentId)}`) as Promise<SalvageAbandonResponse>;
+  }
+
+  /**
+   * Dismiss an agent from the resurrection queue (reviewed, nothing to salvage).
+   */
+  async salvageDismiss(agentId: string): Promise<SalvageAbandonResponse> {
+    return this._request('DELETE', `/resurrection/${encodeURIComponent(agentId)}`) as Promise<SalvageAbandonResponse>;
   }
 }
 

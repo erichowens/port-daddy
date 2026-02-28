@@ -311,7 +311,9 @@ for prog in port-daddy pd
     complete -c $prog -n "__pd_using_command salvage" -x -a 'complete' -d 'Mark resurrection as complete'
     complete -c $prog -n "__pd_using_command salvage" -x -a 'abandon' -d 'Return agent to resurrection queue'
     complete -c $prog -n "__pd_using_command salvage" -x -a 'dismiss' -d 'Remove agent from queue (reviewed, not resurrecting)'
-    complete -c $prog -n "__pd_using_command salvage" -l all -d 'Show all queue entries, not just pending'
+    complete -c $prog -n "__pd_using_command salvage" -l project -d 'Filter to agents in this project' -x
+    complete -c $prog -n "__pd_using_command salvage" -l stack -d 'Filter by stack (requires --project)' -x
+    complete -c $prog -n "__pd_using_command salvage" -l all -d 'Show ALL queue entries globally (use sparingly)'
     complete -c $prog -n "__pd_using_command salvage" -l limit -d 'Max entries to return' -x
     complete -c $prog -n "__pd_using_command salvage" -x -a '(__pd_agent_ids)'
 
@@ -338,6 +340,9 @@ for prog in port-daddy pd
     complete -c $prog -n "__pd_using_command agent" -l agent -d 'Agent ID' -x -a '(__pd_agent_ids)'
     complete -c $prog -n "__pd_using_command agent" -l type -d 'Agent type' -x -a 'worker orchestrator monitor generic'
     complete -c $prog -n "__pd_using_command agent" -l name -d 'Human-readable name' -x
+    complete -c $prog -n "__pd_using_command agent" -l identity -d 'Semantic identity (project:stack:context)' -x
+    complete -c $prog -n "__pd_using_command agent" -l purpose -d 'What the agent is working on' -x
+    complete -c $prog -n "__pd_using_command agent" -l worktree -d 'Git worktree identifier' -x
     complete -c $prog -n "__pd_using_command agent" -l maxServices -d 'Max services' -x
     complete -c $prog -n "__pd_using_command agent" -l maxLocks -d 'Max locks' -x
 

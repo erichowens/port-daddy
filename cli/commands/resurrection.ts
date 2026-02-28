@@ -20,6 +20,9 @@ interface StaleAgent {
   staleSince: number;
   status: 'stale' | 'dead' | 'resurrecting';
   notes?: string[];
+  identityProject: string | null;
+  identityStack: string | null;
+  identityContext: string | null;
 }
 
 /**
@@ -33,15 +36,19 @@ export async function handleSalvage(subcommand: string | undefined, args: string
     console.error('Salvage work from dead/stale agents');
     console.error('');
     console.error('Subcommands:');
-    console.error('  (none)                          Show all pending resurrections');
+    console.error('  (none)                          Show pending resurrections (filtered by --project)');
     console.error('  claim <agent-id>                Claim an agent\'s work');
     console.error('  complete <old-id> <new-id>      Mark resurrection complete');
     console.error('  abandon <agent-id>              Return agent to queue');
     console.error('  dismiss <agent-id>              Remove from queue (reviewed)');
     console.error('');
     console.error('Options:');
-    console.error('  --all                           Show all queue entries (not just pending)');
+    console.error('  --project <name>                Filter to agents in this project (e.g., myapp)');
+    console.error('  --stack <name>                  Further filter by stack (requires --project)');
+    console.error('  --all                           Show ALL queue entries globally (use sparingly)');
     console.error('  --limit <n>                     Limit number of results');
+    console.error('');
+    console.error('By default, salvage shows agents in the current project. Use --all for global view.');
     process.exit(0);
   }
 
@@ -167,10 +174,18 @@ export async function handleSalvage(subcommand: string | undefined, args: string
     }
 
     default: {
-      // List pending resurrections
+      // List pending resurrections - filter by project unless --all
       const endpoint = options.all ? '/resurrection' : '/resurrection/pending';
       const params = new URLSearchParams();
       if (options.limit) params.append('limit', String(options.limit));
+      if (options.project) params.append('project', options.project as string);
+      if (options.stack) params.append('stack', options.stack as string);
+
+      // Warn about global salvage (can be noisy)
+      if (options.all && !options.project && !isQuiet(options) && !isJson(options)) {
+        console.log(maritimeStatus('warning', 'Showing ALL agents globally. Use --project to filter.'));
+        console.log('');
+      }
 
       const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}${endpoint}${params.toString() ? '?' + params : ''}`);
       const data = await res.json();
@@ -189,7 +204,8 @@ export async function handleSalvage(subcommand: string | undefined, args: string
 
       if (agents.length === 0) {
         if (!isQuiet(options)) {
-          console.log(maritimeStatus('ready', 'No agents awaiting resurrection'));
+          const scope = options.project ? `${options.project}:*` : 'any project';
+          console.log(maritimeStatus('ready', `No agents awaiting resurrection in ${scope}`));
         }
         return;
       }
@@ -200,7 +216,11 @@ export async function handleSalvage(subcommand: string | undefined, args: string
         console.log(JOLLY_ROGER);
       }
 
-      console.log(`${ANSI.fgYellow}${ANSI.bold}⚓ Salvage Report${ANSI.reset}`);
+      const scopeLabel = options.project
+        ? `${ANSI.fgCyan}${options.project}${options.stack ? ':' + options.stack : ''}:*${ANSI.reset}`
+        : `${ANSI.fgGray}(all projects)${ANSI.reset}`;
+
+      console.log(`${ANSI.fgYellow}${ANSI.bold}⚓ Salvage Report${ANSI.reset} ${scopeLabel}`);
       console.log(`${ANSI.fgGray}${'─'.repeat(60)}${ANSI.reset}`);
       console.log('');
 
@@ -208,7 +228,13 @@ export async function handleSalvage(subcommand: string | undefined, args: string
         const statusIcon = agent.status === 'dead' ? JOLLY_ROGER_COMPACT : agent.status === 'resurrecting' ? '↻' : '⚠';
         const ago = formatAge(Date.now() - agent.staleSince);
 
+        // Show identity if available
+        const identity = agent.identityProject
+          ? `${agent.identityProject}${agent.identityStack ? ':' + agent.identityStack : ''}${agent.identityContext ? ':' + agent.identityContext : ''}`
+          : null;
+
         console.log(`${statusIcon} ${agent.name || agent.id} (${agent.status}, ${ago})`);
+        if (identity) console.log(`  Identity: ${ANSI.fgCyan}${identity}${ANSI.reset}`);
         if (agent.purpose) console.log(`  Purpose: ${agent.purpose}`);
         if (agent.sessionId) console.log(`  Session: ${agent.sessionId}`);
         if (agent.notes?.length) {
@@ -224,7 +250,8 @@ export async function handleSalvage(subcommand: string | undefined, args: string
         console.log('');
       }
 
-      console.log(`${data.count} agent(s) in resurrection queue`);
+      const filterNote = data.filtered ? ' (filtered)' : '';
+      console.log(`${data.count} agent(s) in resurrection queue${filterNote}`);
     }
   }
 }

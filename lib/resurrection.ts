@@ -22,6 +22,10 @@ export interface StaleAgent {
   staleSince: number;
   status: 'stale' | 'dead' | 'resurrecting';
   notes?: string[];
+  // Semantic identity components for prefix filtering
+  identityProject: string | null;
+  identityStack: string | null;
+  identityContext: string | null;
 }
 
 interface ResurrectionQueueRow {
@@ -35,6 +39,10 @@ interface ResurrectionQueueRow {
   resurrection_attempts: number;
   last_attempt_at: number | null;
   metadata: string | null;
+  // Semantic identity components for prefix filtering
+  identity_project: string | null;
+  identity_stack: string | null;
+  identity_context: string | null;
 }
 
 export interface ResurrectionEvents {
@@ -57,28 +65,60 @@ export function createResurrection(db: Database.Database) {
       status TEXT NOT NULL DEFAULT 'pending',
       resurrection_attempts INTEGER NOT NULL DEFAULT 0,
       last_attempt_at INTEGER,
-      metadata TEXT
+      metadata TEXT,
+      identity_project TEXT,
+      identity_stack TEXT,
+      identity_context TEXT
     )
   `);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_resurrection_status ON resurrection_queue(status)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_resurrection_project ON resurrection_queue(identity_project)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_resurrection_project_stack ON resurrection_queue(identity_project, identity_stack)`);
+
+  // Migrations for existing tables
+  const migrations = [
+    'ALTER TABLE resurrection_queue ADD COLUMN identity_project TEXT',
+    'ALTER TABLE resurrection_queue ADD COLUMN identity_stack TEXT',
+    'ALTER TABLE resurrection_queue ADD COLUMN identity_context TEXT',
+  ];
+  for (const sql of migrations) {
+    try {
+      db.exec(sql);
+    } catch {
+      // Column already exists
+    }
+  }
 
   const stmts = {
     queue: db.prepare(`
       INSERT OR REPLACE INTO resurrection_queue
-      (agent_id, agent_name, session_id, purpose, detected_at, status, resurrection_attempts, last_attempt_at, metadata)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (agent_id, agent_name, session_id, purpose, detected_at, status, resurrection_attempts, last_attempt_at, metadata, identity_project, identity_stack, identity_context)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `),
     get: db.prepare(`SELECT * FROM resurrection_queue WHERE agent_id = ?`),
     listPending: db.prepare(`
       SELECT * FROM resurrection_queue WHERE status = 'pending' ORDER BY detected_at ASC
     `),
+    listPendingByProject: db.prepare(`
+      SELECT * FROM resurrection_queue WHERE status = 'pending' AND identity_project = ? ORDER BY detected_at ASC
+    `),
+    listPendingByProjectStack: db.prepare(`
+      SELECT * FROM resurrection_queue WHERE status = 'pending' AND identity_project = ? AND identity_stack = ? ORDER BY detected_at ASC
+    `),
     listAll: db.prepare(`SELECT * FROM resurrection_queue ORDER BY detected_at DESC LIMIT ?`),
+    listAllByProject: db.prepare(`
+      SELECT * FROM resurrection_queue WHERE identity_project = ? ORDER BY detected_at DESC LIMIT ?
+    `),
+    listAllByProjectStack: db.prepare(`
+      SELECT * FROM resurrection_queue WHERE identity_project = ? AND identity_stack = ? ORDER BY detected_at DESC LIMIT ?
+    `),
     updateStatus: db.prepare(`
       UPDATE resurrection_queue SET status = ?, last_attempt_at = ?, resurrection_attempts = resurrection_attempts + 1
       WHERE agent_id = ?
     `),
     remove: db.prepare(`DELETE FROM resurrection_queue WHERE agent_id = ?`),
     cleanup: db.prepare(`DELETE FROM resurrection_queue WHERE detected_at < ?`),
+    countByProject: db.prepare(`SELECT COUNT(*) as count FROM resurrection_queue WHERE status = 'pending' AND identity_project = ?`),
   };
 
   const emitter = new EventEmitter();
@@ -100,6 +140,9 @@ export function createResurrection(db: Database.Database) {
       staleSince: row.detected_at,
       status: row.status as 'stale' | 'dead' | 'resurrecting',
       notes: metadata.notes,
+      identityProject: row.identity_project,
+      identityStack: row.identity_stack,
+      identityContext: row.identity_context,
     };
   }
 
@@ -114,6 +157,10 @@ export function createResurrection(db: Database.Database) {
       sessionId?: string;
       lastHeartbeat: number;
       notes?: string[];
+      // Semantic identity components for context-aware filtering
+      identityProject?: string;
+      identityStack?: string;
+      identityContext?: string;
     }) {
       const now = Date.now();
       const sinceHeartbeat = now - agent.lastHeartbeat;
@@ -143,7 +190,10 @@ export function createResurrection(db: Database.Database) {
           status === 'dead' ? 'pending' : 'stale',
           0,
           null,
-          metadata
+          metadata,
+          agent.identityProject || null,
+          agent.identityStack || null,
+          agent.identityContext || null
         );
 
         const staleAgent = formatQueueEntry(stmts.get.get(agent.id) as ResurrectionQueueRow);
@@ -168,26 +218,58 @@ export function createResurrection(db: Database.Database) {
 
     /**
      * Get pending resurrections
+     * Filters by identity prefix if provided (project or project:stack)
      */
-    pending() {
-      const rows = stmts.listPending.all() as ResurrectionQueueRow[];
+    pending(options: { project?: string; stack?: string } = {}) {
+      let rows: ResurrectionQueueRow[];
+
+      if (options.project && options.stack) {
+        rows = stmts.listPendingByProjectStack.all(options.project, options.stack) as ResurrectionQueueRow[];
+      } else if (options.project) {
+        rows = stmts.listPendingByProject.all(options.project) as ResurrectionQueueRow[];
+      } else {
+        rows = stmts.listPending.all() as ResurrectionQueueRow[];
+      }
+
       return {
         success: true,
         agents: rows.map(formatQueueEntry),
         count: rows.length,
+        filtered: !!options.project,
       };
     },
 
     /**
      * List all queue entries
+     * Filters by identity prefix if provided (project or project:stack)
      */
-    list(limit: number = 50) {
-      const rows = stmts.listAll.all(limit) as ResurrectionQueueRow[];
+    list(options: { limit?: number; project?: string; stack?: string } = {}) {
+      const limit = options.limit ?? 50;
+      let rows: ResurrectionQueueRow[];
+
+      if (options.project && options.stack) {
+        rows = stmts.listAllByProjectStack.all(options.project, options.stack, limit) as ResurrectionQueueRow[];
+      } else if (options.project) {
+        rows = stmts.listAllByProject.all(options.project, limit) as ResurrectionQueueRow[];
+      } else {
+        rows = stmts.listAll.all(limit) as ResurrectionQueueRow[];
+      }
+
       return {
         success: true,
         agents: rows.map(formatQueueEntry),
         count: rows.length,
+        filtered: !!options.project,
       };
+    },
+
+    /**
+     * Count pending resurrections in a project
+     * Used for salvage hints during agent registration
+     */
+    countByProject(project: string) {
+      const row = stmts.countByProject.get(project) as { count: number };
+      return row.count;
     },
 
     /**
