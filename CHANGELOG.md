@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-02-27
+
 ### Added
 - **Tunnel integration**: Expose local services to the internet via ngrok, cloudflared, or localtunnel
   - `pd tunnel start <service> --provider cloudflared|ngrok|localtunnel` — start a tunnel
