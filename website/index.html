@@ -13,7 +13,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Port Daddy">
   <meta name="twitter:image" content="https://portdaddy.dev/images/og-image.png">
-  <link rel="icon" href="⚓">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%E2%9A%93</text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root { --bg-primary: #faf9f6; --bg-secondary: #f5f4f0; --navy: #1e3a5f; --navy-light: #2d4a6f; --teal: #4a7c7e; --teal-light: #6a9c9e; --text-primary: #1a1a2e; --text-secondary: #5a5a6e; --text-muted: #8a8a9e; --border: #e5e4e0; --font-serif: 'Playfair Display', Georgia, serif; --font-sans: 'Inter', system-ui, sans-serif; --font-mono: 'JetBrains Mono', monospace; }
@@ -26,6 +26,8 @@
     .nav-links { display: flex; gap: 2rem; }
     .nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: color 0.2s; }
     .nav-links a:hover { color: var(--navy); }
+    .nav-toggle { display: none; background: none; border: none; cursor: pointer; color: var(--navy); padding: 0.25rem; }
+    .nav-toggle svg { display: block; }
     .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.25rem; border-radius: 6px; font-weight: 500; font-size: 0.9rem; text-decoration: none; transition: all 0.2s; cursor: pointer; border: none; font-family: inherit; }
     .btn-primary { background: var(--navy); color: white; }
     .btn-primary:hover { background: var(--navy-light); transform: translateY(-1px); }
@@ -148,24 +150,27 @@
     .footer-bottom { padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: rgba(255,255,255,0.4); }
     @media (max-width: 1024px) { .hero-container { grid-template-columns: 1fr; text-align: center; } .hero h1 { font-size: 2.5rem; } .hero-subtitle { margin: 0 auto 2rem; } .hero-cta { justify-content: center; } .install-command { margin: 0 auto; } .hero-image { display: none; } .features-grid { grid-template-columns: repeat(2, 1fr); } .art-container { grid-template-columns: 1fr; } .frameworks-grid { grid-template-columns: repeat(4, 1fr); } .stats-grid { grid-template-columns: repeat(2, 1fr); } .footer-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 768px) { .frameworks-grid { grid-template-columns: repeat(4, 1fr); } }
-    @media (max-width: 640px) { .nav-links { display: none; } .hero h1 { font-size: 2rem; } .features-grid { grid-template-columns: 1fr; } .frameworks-grid { grid-template-columns: repeat(3, 1fr); } .stats-grid { grid-template-columns: 1fr 1fr; } .stat-item h3 { font-size: 2rem; } .footer-grid { grid-template-columns: 1fr; } .footer-bottom { flex-direction: column; gap: 1rem; text-align: center; } .cta-buttons { flex-direction: column; } .harbor-master-image { width: 200px; height: 200px; } }
+    @media (max-width: 640px) { .nav-toggle { display: block; } .nav-links { display: none; position: absolute; top: 100%; left: 0; right: 0; background: rgba(250, 249, 246, 0.98); backdrop-filter: blur(20px); flex-direction: column; padding: 1rem 2rem 1.5rem; gap: 1rem; border-bottom: 1px solid var(--border); box-shadow: 0 8px 30px rgba(0,0,0,0.06); } .nav-links.open { display: flex; } .hero h1 { font-size: 2rem; } .features-grid { grid-template-columns: 1fr; } .frameworks-grid { grid-template-columns: repeat(3, 1fr); } .stats-grid { grid-template-columns: 1fr 1fr; } .stat-item h3 { font-size: 2rem; } .footer-grid { grid-template-columns: 1fr; } .footer-bottom { flex-direction: column; gap: 1rem; text-align: center; } .cta-buttons { flex-direction: column; } .harbor-master-image { width: 200px; height: 200px; } }
   </style>
 </head>
 <body>
   <nav>
     <div class="nav-container">
       <a href="#" class="logo">
-        <span style="font-size: 1.4rem;">⚓</span>
+        <svg style="width:28px;height:28px;color:var(--teal)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg>
         <span>Port Daddy</span>
       </a>
+      <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Toggle navigation">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
       <div class="nav-links">
         <a href="#features">Features</a>
         <a href="tutorials/">Tutorials</a>
         <a href="mcp/">MCP</a>
         <a href="docs/">Docs</a>
         <a href="https://github.com/curiositech/port-daddy" target="_blank">GitHub</a>
+        <a href="#install" class="btn btn-primary" style="margin-left: 0;">Get Started</a>
       </div>
-      <a href="#install" class="btn btn-primary">Get Started</a>
     </div>
   </nav>
   
@@ -173,7 +178,7 @@
     <img src="images/hero.png" alt="" class="hero-image">
     <div class="hero-container">
       <div class="hero-content">
-        <div class="badge">v3.1.0 — 60+ frameworks supported</div>
+        <div class="badge">v3.3.0 — 60+ frameworks supported</div>
         <h1>Port management that just works</h1>
         <p class="hero-subtitle"><strong>Your ports. My rules. Zero conflicts.</strong></p><p class="hero-subtitle">Stop fighting over port 3000. Port Daddy gives every service a stable port, starts your whole stack with one command, and coordinates multiple AI agents — all backed by SQLite for zero race conditions.</p>
         <div class="install-command" onclick="copyInstall()" style="margin-bottom: 1.25rem; max-width: 100%;">
@@ -194,9 +199,9 @@
           <span class="terminal-title">~/myproject</span>
         </div>
         <div class="terminal-body">
-          <div class="terminal-line"><span class="terminal-prompt">$</span><span class="terminal-command">port-daddy scan</span></div>
+          <div class="terminal-line"><span class="terminal-prompt">$</span><span class="terminal-command">pd scan</span></div>
           <div class="terminal-output"><div>Scanning /home/dev/myproject...</div><div>Discovered 3 services:</div><div style="margin-top: 0.5rem; color: var(--teal-light);">  api</div><div style="color: #d4a017;">  web</div><div style="color: #7fb069;">  worker</div><div style="margin-top: 0.5rem;">→ Saved .portdaddyrc</div></div>
-          <div class="terminal-line"><span class="terminal-prompt">$</span><span class="terminal-command">port-daddy up</span></div>
+          <div class="terminal-line"><span class="terminal-prompt">$</span><span class="terminal-command">pd up</span></div>
           <div class="terminal-output"><div style="color: var(--teal-light);">[api]</div><div style="color: rgba(255,255,255,0.4);">  Port 3100 assigned</div><div style="color: #7fb069;">  ✓ Healthy</div><div style="margin-top: 0.5rem; color: #d4a017;">[web]</div><div style="color: rgba(255,255,255,0.4);">  Port 3101 assigned</div><div style="color: #7fb069;">  ✓ Healthy</div><div style="margin-top: 1rem; color: #7fb069; font-weight: 500;">3 services running. Press Ctrl+C to stop.</div></div>
           <div class="terminal-line"><span class="terminal-prompt">$</span><span class="terminal-command"><span class="cursor"></span></span></div>
         </div>
@@ -213,7 +218,7 @@
     <div class="features-grid">
       <div class="feature-card"><img src="images/features/atomic-port.png" alt="Atomic Port Assignment" class="feature-image"><div class="feature-content"><h3>Atomic Port Assignment</h3><p>SQLite-backed ACID transactions ensure zero race conditions. Same project always gets the same port.</p></div></div>
       <div class="feature-card"><img src="images/features/semantic-identities.png" alt="Semantic Identities" class="feature-image"><div class="feature-content"><h3>Semantic Identities</h3><p>Use <code>project:service:context</code> naming. Query with wildcards to find any service in your stack.</p></div></div>
-      <div class="feature-card"><img src="images/features/service-orchestration.png" alt="Service Orchestration" class="feature-image"><div class="feature-content"><h3>Service Orchestration</h3><p><code>port-daddy up</code> starts your entire stack. Dependency ordering, health checks, colored logs.</p></div></div>
+      <div class="feature-card"><img src="images/features/service-orchestration.png" alt="Service Orchestration" class="feature-image"><div class="feature-content"><h3>Service Orchestration</h3><p><code>pd up</code> starts your entire stack. Dependency ordering, health checks, colored logs.</p></div></div>
       <div class="feature-card"><img src="images/features/auto-detection.png" alt="Deep Auto-Detection" class="feature-image"><div class="feature-content"><h3>Deep Auto-Detection</h3><p>Scans 5 levels deep to find 60+ frameworks. Handles monorepos, workspaces, and nested services.</p></div></div>
       <div class="feature-card"><img src="images/features/pub-sub-messaging.png" alt="Pub/Sub Messaging" class="feature-image"><div class="feature-content"><h3>Pub/Sub Messaging</h3><p>Services signal each other when builds finish. Real-time SSE subscriptions for coordination.</p></div></div>
       <div class="feature-card"><img src="images/features/distributed-locks.png" alt="Distributed Locks" class="feature-image"><div class="feature-content"><h3>Distributed Locks</h3><p>Prevent conflicting operations. Take exclusive locks on databases, migrations, or shared resources.</p></div></div>
@@ -393,7 +398,7 @@
           <div class="comparison-cell"><span class="check">✓</span></div>
           <div class="comparison-cell port-daddy"><span class="check">✓</span></div>
           <div class="code-snippet">
-            <code>port-daddy claim myapp</code>
+            <code>pd claim myapp</code>
             <span class="output">→ port 3100 (deterministic)</span>
           </div>
         </div>
@@ -407,7 +412,7 @@
           <div class="comparison-cell"><span class="dash">—</span></div>
           <div class="comparison-cell port-daddy"><span class="check">✓</span></div>
           <div class="code-snippet">
-            <code>port-daddy claim myapp:api</code>
+            <code>pd claim myapp:api</code>
             <span class="output">→ Always returns 3101 (SQLite-backed)</span>
           </div>
         </div>
@@ -421,7 +426,7 @@
           <div class="comparison-cell"><span class="dash">—</span></div>
           <div class="comparison-cell port-daddy"><span class="check">✓</span></div>
           <div class="code-snippet">
-            <code>port-daddy claim myapp:api:main</code>
+            <code>pd claim myapp:api:main</code>
             <span class="output">→ Semantic identity with context</span>
           </div>
         </div>
@@ -435,7 +440,7 @@
           <div class="comparison-cell"><span class="dash">—</span></div>
           <div class="comparison-cell port-daddy"><span class="check">✓</span></div>
           <div class="code-snippet">
-            <code>port-daddy up</code>
+            <code>pd up</code>
             <span class="output">→ Starts entire stack with one command</span>
           </div>
         </div>
@@ -449,7 +454,7 @@
           <div class="comparison-cell"><span class="dash">—</span></div>
           <div class="comparison-cell port-daddy"><span class="check">✓</span></div>
           <div class="code-snippet">
-            <code>port-daddy pub build:api '{"status":"ready"}'</code>
+            <code>pd pub build:api '{"status":"ready"}'</code>
             <span class="output">→ Signal other agents via pub/sub</span>
           </div>
         </div>
@@ -463,7 +468,7 @@
           <div class="comparison-cell"><span class="dash">—</span></div>
           <div class="comparison-cell port-daddy"><span class="check">✓</span></div>
           <div class="code-snippet">
-            <code>port-daddy lock db-migrations</code>
+            <code>pd lock db-migrations</code>
             <span class="output">→ Distributed mutual exclusion</span>
           </div>
         </div>
@@ -489,7 +494,7 @@
       <div class="footer-grid">
         <div class="footer-brand">
           <a href="#" class="logo" style="color: white;">
-            <span style="font-size: 1.4rem;">⚓</span>
+            <svg style="width:28px;height:28px;color:var(--teal-light)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg>
             <span>Port Daddy</span>
           </a>
           <p>Port management, service orchestration, and agent coordination for modern development workflows.</p>
@@ -508,7 +513,7 @@
         </div>
       </div>
       <div class="footer-bottom">
-        <p>&copy; 2025 Curiositech LLC. Released under the MIT License.</p>
+        <p>&copy; 2025–2026 Curiositech LLC. Released under the MIT License.</p>
       </div>
     </div>
   </footer>
