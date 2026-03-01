@@ -31,7 +31,7 @@
       "description": "Service endpoint URLs for discovery",
       "cli": ["url"],
       "sdk": ["setEndpoint"],
-      "routes": ["PUT /services/:param/endpoints/:param", "DELETE /services/:param/endpoints/:param"],
+      "routes": ["PUT /services/:param/endpoints/:param"],
       "completions": ["url"],
       "docs": { "readme": true, "sdk": true }
     },
