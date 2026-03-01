@@ -100,7 +100,7 @@ set -l __pd_commands \
     'up' 'down' \
     'dashboard' 'channels' 'webhook' 'webhooks' 'metrics' 'config' 'health' 'ports' \
     'scan' 's' 'projects' 'p' 'doctor' 'diagnose' \
-    'start' 'stop' 'restart' 'status' 'install' 'uninstall' 'dev' 'ci-gate' \
+    'start' 'stop' 'restart' 'status' 'install' 'uninstall' 'dev' 'ci-gate' 'mcp' \
     'version' 'help'
 
 # Register each command for both `port-daddy` and `pd`
@@ -182,6 +182,7 @@ for prog in port-daddy pd
     complete -c $prog -n __pd_needs_command -a uninstall -d 'Uninstall system service'
     complete -c $prog -n __pd_needs_command -a dev -d 'Start daemon in foreground'
     complete -c $prog -n __pd_needs_command -a ci-gate -d 'Exit non-zero if daemon is stale'
+    complete -c $prog -n __pd_needs_command -a mcp -d 'Start MCP server for Claude Code'
 
     # Info
     complete -c $prog -n __pd_needs_command -a version -d 'Print version information'

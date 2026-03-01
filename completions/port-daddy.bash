@@ -104,7 +104,7 @@ _port_daddy() {
     # Project (+ alias)
     scan s projects p doctor diagnose
     # Daemon lifecycle
-    start stop restart install uninstall dev ci-gate
+    start stop restart install uninstall dev ci-gate mcp
     # Info
     version help
   )

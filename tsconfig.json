@@ -24,6 +24,7 @@
     "routes/**/*.ts",
     "shared/**/*.ts",
     "bin/**/*.ts",
+    "mcp/**/*.ts",
     "server.ts",
     "install-daemon.ts"
   ],

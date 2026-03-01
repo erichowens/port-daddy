@@ -862,6 +862,7 @@ _port_daddy() {
     'uninstall:uninstall the system service'
     'dev:start daemon in development mode (foreground)'
     'ci-gate:exit non-zero if daemon is running stale code'
+    'mcp:start MCP server for Claude Code / Claude Desktop'
     # Info
     'version:print version information'
     'help:show help'

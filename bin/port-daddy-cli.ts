@@ -454,6 +454,7 @@ Daemon Management:
   restart           Restart the daemon
   status            Check if daemon is running
   doctor            Run diagnostic checks on Port Daddy setup
+  mcp               Start MCP server (for Claude Code / Claude Desktop)
   install           Install as system service (auto-start on login)
   uninstall         Remove system service
   dev               Dev mode: watch files, auto-restart on change
@@ -545,7 +546,7 @@ const ALL_COMMANDS: string[] = [
   'session', 'sessions', 'note', 'notes',
   'dashboard', 'channels', 'webhook', 'webhooks', 'metrics', 'config', 'health', 'ports',
   'start', 'stop', 'restart', 'status', 'install', 'uninstall', 'dev', 'ci-gate',
-  'doctor', 'diagnose', 'version', 'help'
+  'doctor', 'diagnose', 'mcp', 'version', 'help'
 ];
 
 /** Simple Levenshtein distance for short strings */
@@ -1574,6 +1575,20 @@ async function main(): Promise<void> {
       case 'ports':
         await handlePorts(positional[0], options);
         break;
+
+      case 'mcp': {
+        // Launch MCP server (stdio transport for Claude Code / Desktop)
+        const { spawn } = await import('node:child_process');
+        const mcpPath = new URL('../mcp/server.ts', import.meta.url).pathname;
+        const child = spawn('npx', ['tsx', mcpPath], {
+          stdio: 'inherit',
+          env: { ...process.env, PORT_DADDY_URL: `http://localhost:${options.port || '9876'}` },
+        });
+        child.on('exit', (code) => process.exit(code ?? 0));
+        // Keep parent alive until MCP server exits
+        await new Promise(() => {});
+        break;
+      }
 
       default: {
         // Check for misspelled commands first

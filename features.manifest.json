@@ -167,10 +167,10 @@
     },
     "daemon": {
       "description": "Daemon lifecycle (CLI-only)",
-      "cli": ["start", "stop", "restart", "install", "uninstall", "dev"],
+      "cli": ["start", "stop", "restart", "install", "uninstall", "dev", "mcp"],
       "sdk": [],
       "routes": [],
-      "completions": ["start", "stop", "restart", "install", "uninstall", "dev"],
+      "completions": ["start", "stop", "restart", "install", "uninstall", "dev", "mcp"],
       "docs": { "readme": true, "sdk": false },
       "_note": "Daemon management is CLI-only"
     },
