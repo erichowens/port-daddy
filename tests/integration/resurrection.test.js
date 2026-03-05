@@ -125,7 +125,7 @@ describe('Resurrection / Salvage Route Integration', () => {
 
       // Should fail gracefully (not 500)
       expect(res.status).not.toBe(500);
-      expect(res.data.success).toBe(false);
+      expect(res.data.error).toBeDefined();
     });
   });
 
@@ -228,7 +228,7 @@ describe('Resurrection / Salvage Route Integration', () => {
 
       // Same behavior as /resurrection/claim — fails for non-existent agent
       expect(res.status).not.toBe(500);
-      expect(res.data.success).toBe(false);
+      expect(res.data.error).toBeDefined();
     });
 
     test('POST /salvage/complete/:agentId requires newAgentId', async () => {
