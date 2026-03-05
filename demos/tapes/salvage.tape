@@ -1,4 +1,4 @@
-# Port Daddy — Agent Resurrection (Salvage)
+# Port Daddy - Agent Resurrection (Salvage)
 # When an agent dies mid-task, its work isn't lost
 
 Output demos/gifs/salvage.gif
@@ -12,8 +12,11 @@ Set Padding 20
 Set TypingSpeed 40ms
 Set PlaybackSpeed 0.8
 
-# Clean slate — set up a "dead" agent scenario
+# Clean slate - set up a "dead" agent scenario
 Hide
+Type "setopt INTERACTIVE_COMMENTS"
+Enter
+Sleep 200ms
 Type "pd done 2>/dev/null"
 Enter
 Sleep 300ms
@@ -46,7 +49,7 @@ Show
 Sleep 1s
 
 # Scene: New agent starts work, checks for dead agents first
-Type "# A new agent starts — first, check if anyone died mid-task"
+Type "# A new agent starts - first, check if anyone died mid-task"
 Enter
 Sleep 1s
 Type "pd salvage"
@@ -65,11 +68,11 @@ Sleep 2s
 Type "# Now continue the work with full context"
 Enter
 Sleep 800ms
-Type `pd note "Picked up from Alice — finishing session.ts module"`
+Type `pd note "Picked up from Alice - finishing session.ts module"`
 Enter
 Sleep 1.5s
 
-Type `pd done "Auth refactor complete — login.ts, session.ts, types.ts all passing"`
+Type `pd done "Auth refactor complete - login.ts, session.ts, types.ts all passing"`
 Enter
 Sleep 2s
 

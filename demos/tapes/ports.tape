@@ -1,5 +1,5 @@
-# Port Daddy — Semantic Port Management
-# Stable ports from semantic identities — no more port conflicts
+# Port Daddy - Semantic Port Management
+# Stable ports from semantic identities - no more port conflicts
 
 Output demos/gifs/ports.gif
 
@@ -14,6 +14,9 @@ Set PlaybackSpeed 0.8
 
 # Clean slate
 Hide
+Type "setopt INTERACTIVE_COMMENTS"
+Enter
+Sleep 200ms
 Type "pd release myapp:api:main 2>/dev/null; pd release myapp:frontend:main 2>/dev/null; pd release myapp:db:test 2>/dev/null"
 Enter
 Sleep 500ms
@@ -25,7 +28,7 @@ Show
 Sleep 1s
 
 # Claim ports with semantic identities
-Type "# Claim ports — same identity always gets the same port"
+Type "# Claim ports - same identity always gets the same port"
 Enter
 Sleep 800ms
 Type "pd claim myapp:api:main"
@@ -49,7 +52,7 @@ Enter
 Sleep 2s
 
 # Quiet mode for scripts
-Type "# Quiet mode — just the port number, perfect for scripts"
+Type "# Quiet mode - just the port number, perfect for scripts"
 Enter
 Sleep 800ms
 Type `PORT=$(pd claim myapp:api:main -q) && echo "API on port $PORT"`
