@@ -884,6 +884,55 @@ interface FileReleaseResponse {
   released: string[];
 }
 
+// ──────────────────────────────────────────────────────────────
+// Sugar types (begin/done/whoami)
+// ──────────────────────────────────────────────────────────────
+
+/** Matches the actual POST /sugar/begin response */
+interface BeginResponse {
+  success: boolean;
+  agentId: string;
+  sessionId: string;
+  identity: string | null;
+  purpose: string;
+  agentRegistered: boolean;
+  sessionStarted: boolean;
+  fileClaims?: string[];
+  fileConflicts?: Array<{ filePath: string; sessionId: string; purpose: string; claimedAt: number }>;
+  salvageHint?: string | null;
+  error?: string;
+  code?: string;
+}
+
+/** Matches the actual POST /sugar/done response */
+interface DoneResponse {
+  success: boolean;
+  agentId: string | null;
+  sessionId: string;
+  sessionStatus: string;
+  agentUnregistered: boolean;
+  notesCount: number;
+  finalNote: boolean;
+  error?: string;
+  code?: string;
+}
+
+/** Matches the actual GET /sugar/whoami response */
+interface WhoamiResponse {
+  success: boolean;
+  active: boolean;
+  agentId?: string;
+  sessionId?: string;
+  purpose?: string;
+  identity?: string | null;
+  phase?: string;
+  files?: string[];
+  noteCount?: number;
+  startedAt?: number;
+  duration?: number;
+  hint?: string;
+}
+
 type SubscriptionEventType = 'message' | 'error' | 'connected';
 type SubscriptionHandler = (data: unknown) => void;
 
@@ -1901,6 +1950,56 @@ class PortDaddy {
     }
   }
 
+  // ===========================================================================
+  // Sugar -- Compound commands for common workflows
+  // ===========================================================================
+
+  /**
+   * Begin a session: register agent + start session atomically.
+   * The daemon rolls back agent registration if session creation fails.
+   */
+  async begin(opts: {
+    purpose: string;
+    identity?: string;
+    agentId?: string;
+  }): Promise<BeginResponse> {
+    return this._request('POST', '/sugar/begin', {
+      purpose: opts.purpose,
+      identity: opts.identity,
+      agentId: opts.agentId,
+    }) as Promise<BeginResponse>;
+  }
+
+  /**
+   * Done: end session + unregister agent atomically.
+   * Finds the active session by agentId if sessionId is not provided.
+   */
+  async done(opts?: {
+    agentId?: string;
+    sessionId?: string;
+    note?: string;
+    status?: string;
+  }): Promise<DoneResponse> {
+    return this._request('POST', '/sugar/done', {
+      agentId: opts?.agentId,
+      sessionId: opts?.sessionId,
+      note: opts?.note,
+      status: opts?.status,
+    }) as Promise<DoneResponse>;
+  }
+
+  /**
+   * Whoami: show current agent/session context.
+   */
+  async whoami(opts?: {
+    agentId?: string;
+  }): Promise<WhoamiResponse> {
+    const params = new URLSearchParams();
+    if (opts?.agentId) params.set('agentId', opts.agentId);
+    const qs = params.toString();
+    return this._request('GET', `/sugar/whoami${qs ? '?' + qs : ''}`) as Promise<WhoamiResponse>;
+  }
+
 
   // ──────────────────────────────────────────────────────────────
   // Salvage (resurrection queue)
@@ -2006,5 +2105,8 @@ export type {
   LockOptions,
   LockResponse,
   Subscription,
+  BeginResponse,
+  DoneResponse,
+  WhoamiResponse,
 };
 export default PortDaddy;

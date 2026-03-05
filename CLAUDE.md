@@ -280,7 +280,21 @@ When an agent dies, other agents in the same project should be notified.
 | `/sessions/:id/notes` | POST/GET | Add/get session notes |
 | `/sessions/:id/files` | POST/DELETE/GET | Claim/release/list files |
 | `/notes` | POST/GET | Quick note / recent notes |
-| `/salvage` | GET/POST | Check salvage queue / claim dead agent |
+| `/resurrection` | GET | List all resurrection queue entries |
+| `/resurrection/pending` | GET | List agents pending resurrection |
+| `/resurrection/claim/:agentId` | POST | Claim an agent for resurrection |
+| `/resurrection/complete/:agentId` | POST | Mark resurrection as complete |
+| `/resurrection/abandon/:agentId` | POST | Abandon a resurrection attempt |
+| `/resurrection/:agentId` | DELETE | Dismiss agent from queue |
+| `/salvage` | GET | Alias for `/resurrection` |
+| `/salvage/pending` | GET | Alias for `/resurrection/pending` |
+| `/salvage/claim/:agentId` | POST | Alias for `/resurrection/claim/:agentId` |
+| `/salvage/complete/:agentId` | POST | Alias for `/resurrection/complete/:agentId` |
+| `/salvage/abandon/:agentId` | POST | Alias for `/resurrection/abandon/:agentId` |
+| `/salvage/:agentId` | DELETE | Alias for `/resurrection/:agentId` |
+| `/sugar/begin` | POST | Register agent + start session atomically |
+| `/sugar/done` | POST | End session + unregister agent |
+| `/sugar/whoami` | GET | Show current agent/session context |
 | `/changelog` | POST/GET | Add entry / list changelog |
 | `/changelog/identities` | GET | List all identities with changelog entries |
 | `/tunnel/providers` | GET | Check which tunnel providers are installed |

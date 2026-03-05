@@ -25,6 +25,7 @@ import { createInfoRoutes } from './info.js';
 import { createResurrectionRoutes } from './resurrection.js';
 import { createChangelogRoutes } from './changelog.js';
 import { createTunnelRoutes } from './tunnel.js';
+import { createSugarRoutes } from './sugar.js';
 
 // Each route factory defines its own deps interface (e.g. ServicesRouteDeps,
 // InfoRouteDeps). Rather than duplicating those 10 interfaces here, we use a
@@ -60,6 +61,7 @@ export function createRoutes(deps: AnyDeps): Router {
   router.use(createResurrectionRoutes(deps as unknown as Parameters<typeof createResurrectionRoutes>[0]));
   router.use(createChangelogRoutes(deps as unknown as Parameters<typeof createChangelogRoutes>[0]));
   router.use(createTunnelRoutes(deps as unknown as Parameters<typeof createTunnelRoutes>[0]));
+  router.use(createSugarRoutes(deps as unknown as Parameters<typeof createSugarRoutes>[0]));
 
   return router;
 }
