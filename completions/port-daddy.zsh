@@ -788,6 +788,66 @@ _pd_cmd_changelog() {
   esac
 }
 
+_pd_cmd_begin() {
+  _arguments \
+    '--identity[semantic identity (project:stack:context)]:identity:_pd_complete_services' \
+    '--agent[agent ID]:agent ID:' \
+    '--purpose[purpose of work]:purpose:' \
+    '--files[files to claim]:files:_files' \
+    '--force[force begin even if session exists]' \
+    '--type[agent type]:type:(worker orchestrator monitor generic)' \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '1:purpose:'
+}
+
+_pd_cmd_done() {
+  _arguments \
+    '--status[session end status]:status:(completed abandoned)' \
+    '--agent[agent ID]:agent ID:_pd_complete_agents' \
+    '--session[session ID]:session ID:' \
+    '--note[handoff note]:note:' \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '1:note:'
+}
+
+_pd_cmd_whoami() {
+  _arguments \
+    '--agent[agent ID]:agent ID:_pd_complete_agents' \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]'
+}
+
+_pd_cmd_with_lock() {
+  _arguments \
+    '--ttl[lock TTL in ms]:milliseconds:' \
+    '--owner[lock owner]:owner:_pd_complete_agents' \
+    '--shell[run command through shell]' \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '1:lock name:_pd_complete_locks' \
+    '2:command:_command_names'
+}
+
+_pd_cmd_help() {
+  local -a topics
+  topics=(
+    'sessions:session management commands'
+    'locks:lock management commands'
+    'agents:agent registry commands'
+    'sugar:compound workflow commands (begin/done/whoami)'
+    'dns:DNS record commands'
+    'orchestration:orchestration commands (up/down/scan)'
+    'tutorial:interactive tutorial'
+  )
+  _describe 'help topic' topics
+}
+
 # ---------------------------------------------------------------------------
 # Main completion entry point
 # ---------------------------------------------------------------------------
@@ -795,6 +855,13 @@ _pd_cmd_changelog() {
 _port_daddy() {
   local -a commands
   commands=(
+    # Sugar commands (Quick Start)
+    'begin:register agent and start session'
+    'b:begin session (alias for begin)'
+    'done:end session and unregister agent'
+    'whoami:show current agent/session context'
+    'w:show current context (alias for whoami)'
+    'with-lock:run command while holding a lock'
     # Service management (+ single-letter aliases)
     'claim:claim a port for a service'
     'c:claim a port (alias for claim)'
@@ -824,10 +891,11 @@ _port_daddy() {
     # Activity
     'log:tail the activity log'
     'activity:show activity summary or stats'
-    # Sessions & Notes
+    # Sessions & Notes (n = note alias)
     'session:manage a session (start/end/abandon/rm/files)'
     'sessions:list sessions'
     'note:add a quick note'
+    'n:add a quick note (alias for note)'
     'notes:list recent notes'
     # Agent Resurrection
     'salvage:check for dead agents with recoverable work'
@@ -843,9 +911,11 @@ _port_daddy() {
     'config:show resolved configuration'
     'health:check service health'
     'ports:list active port assignments'
-    # Orchestration
+    # Orchestration (u = up, d = down aliases)
     'up:start all services (auto-detect or from .portdaddyrc)'
+    'u:start all services (alias for up)'
     'down:stop all services started by up'
+    'd:stop all services (alias for down)'
     # Project (+ aliases)
     'scan:deep-scan project for frameworks and register with daemon'
     's:deep-scan project (alias for scan)'
@@ -863,9 +933,11 @@ _port_daddy() {
     'dev:start daemon in development mode (foreground)'
     'ci-gate:exit non-zero if daemon is running stale code'
     'mcp:start MCP server for Claude Code / Claude Desktop'
+    # Interactive tutorial
+    'learn:interactive tutorial'
     # Info
     'version:print version information'
-    'help:show help'
+    'help:show help or help <topic>'
   )
 
   local -a global_opts
@@ -890,6 +962,12 @@ _port_daddy() {
     args)
       local cmd="${words[1]}"
       case "$cmd" in
+        # Sugar commands
+        b|begin)            _pd_cmd_begin ;;
+        done)               _pd_cmd_done ;;
+        w|whoami)           _pd_cmd_whoami ;;
+        with-lock)          _pd_cmd_with_lock ;;
+        # Service commands
         c|claim)            _pd_cmd_claim ;;
         r|release)          _pd_cmd_release ;;
         f|find)             _pd_cmd_find ;;
@@ -897,29 +975,38 @@ _port_daddy() {
         url)                _pd_cmd_url ;;
         env)                _pd_cmd_env ;;
         tunnel)             _pd_cmd_tunnel ;;
+        # Coordination
         pub|publish)        _pd_cmd_pub ;;
         sub|subscribe)      _pd_cmd_sub ;;
         wait)               _pd_cmd_wait ;;
         lock)               _pd_cmd_lock ;;
         unlock)             _pd_cmd_unlock ;;
         locks)              _pd_cmd_locks ;;
+        # Agent registry
         agent)              _pd_cmd_agent ;;
         agents)             _pd_cmd_agents ;;
+        # Activity
         log)                _pd_cmd_log ;;
         activity)           _pd_cmd_activity ;;
+        # Sessions (n = note alias)
         session)            _pd_cmd_session ;;
         sessions)           _pd_cmd_sessions ;;
-        note)               _pd_cmd_note ;;
+        n|note)             _pd_cmd_note ;;
         notes)              _pd_cmd_notes ;;
+        # Resurrection & changelog
         salvage|resurrection) _pd_cmd_salvage ;;
         changelog)          _pd_cmd_changelog ;;
-        up)                 _pd_cmd_up ;;
-        down)               _pd_cmd_down ;;
+        # Orchestration (u = up, d = down)
+        u|up)               _pd_cmd_up ;;
+        d|down)             _pd_cmd_down ;;
+        # Project
         s|scan)             _pd_cmd_scan ;;
         p|projects)         _pd_cmd_projects ;;
         doctor|diagnose)    _pd_cmd_doctor ;;
+        # Daemon
         start|stop|restart|status|install|uninstall|dev|ci-gate)
                             _pd_cmd_daemon ;;
+        # System
         dashboard)              _pd_cmd_dashboard ;;
         channels)               _pd_cmd_channels ;;
         webhook|webhooks)       _pd_cmd_webhook ;;
@@ -927,7 +1014,11 @@ _port_daddy() {
         config)                 _pd_cmd_config ;;
         health)                 _pd_cmd_health ;;
         ports)                  _pd_cmd_ports ;;
-        version|help)       ;;
+        # Tutorial
+        learn)              ;;
+        # Help with topic completions
+        help)               _pd_cmd_help ;;
+        version)            ;;
         *)                  ;;
       esac
       ;;

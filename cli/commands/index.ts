@@ -18,3 +18,4 @@ export * from './daemon.js';
 export * from './resurrection.js';
 export * from './changelog.js';
 export * from './tunnel.js';
+export * from './sugar.js';

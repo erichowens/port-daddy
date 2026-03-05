@@ -85,6 +85,8 @@ _port_daddy() {
   # Top-level commands
   # -------------------------------------------------------------------------
   local commands=(
+    # Sugar commands (Quick Start)
+    begin b done whoami w with-lock
     # Service management (+ single-letter aliases)
     claim c release r find f list l services ps status url env tunnel
     # Agent coordination
@@ -93,18 +95,20 @@ _port_daddy() {
     agent agents
     # Activity
     log activity
-    # Sessions & Notes
-    session sessions note notes
+    # Sessions & Notes (n = note alias)
+    session sessions note n notes
     # Agent Resurrection & Changelog
     salvage resurrection changelog
     # System & Monitoring
     dashboard channels webhook webhooks metrics config health ports
-    # Orchestration
-    up down
+    # Orchestration (u = up, d = down aliases)
+    up u down d
     # Project (+ alias)
     scan s projects p doctor diagnose
     # Daemon lifecycle
     start stop restart install uninstall dev ci-gate mcp
+    # Interactive tutorial
+    learn
     # Info
     version help
   )
@@ -1026,10 +1030,137 @@ _port_daddy() {
       ;;
 
     # -----------------------------------------------------------------------
-    # version / help — no arguments
+    # begin / b  [purpose] [--identity ID] [--agent ID] [--files ...]
     # -----------------------------------------------------------------------
-    version|help)
+    b|begin)
+      case "$prev" in
+        --identity|--agent|--purpose|--files)
+          COMPREPLY=()  # Free-form
+          ;;
+        *)
+          _pd_opts '--identity --agent --purpose --files --force'
+          ;;
+      esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # done  [note] [--status STATUS]
+    # -----------------------------------------------------------------------
+    done)
+      case "$prev" in
+        --status)
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -W "completed abandoned" -- "$cur") )
+          ;;
+        --agent|--session|--note)
+          COMPREPLY=()  # Free-form
+          ;;
+        *)
+          _pd_opts '--status --agent --session --note'
+          ;;
+      esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # whoami / w  [--agent ID]
+    # -----------------------------------------------------------------------
+    w|whoami)
+      case "$prev" in
+        --agent)
+          local aids; aids="$(_pd_agent_ids)"
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -W "$aids" -- "$cur") )
+          ;;
+        *)
+          _pd_opts '--agent'
+          ;;
+      esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # with-lock  <name> <command...> [--ttl N] [--owner ID]
+    # -----------------------------------------------------------------------
+    with-lock)
+      case "$prev" in
+        with-lock)
+          if [[ "$cur" == -* ]]; then
+            _pd_opts '--ttl --owner --shell'
+          else
+            local lnames; lnames="$(_pd_lock_names)"
+            # shellcheck disable=SC2207
+            COMPREPLY=( $(compgen -W "$lnames" -- "$cur") )
+          fi
+          ;;
+        --owner)
+          local aids; aids="$(_pd_agent_ids)"
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -W "$aids" -- "$cur") )
+          ;;
+        *) _pd_opts '--ttl --owner --shell' ;;
+      esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # learn  (interactive tutorial, no arguments)
+    # -----------------------------------------------------------------------
+    learn)
       _pd_opts ''
+      ;;
+
+    # -----------------------------------------------------------------------
+    # n (alias for note)
+    # -----------------------------------------------------------------------
+    n)
+      case "$prev" in
+        --type)
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -W "note handoff commit warning" -- "$cur") )
+          ;;
+        *)
+          _pd_opts '--type'
+          ;;
+      esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # u (alias for up)
+    # -----------------------------------------------------------------------
+    u)
+      case "$prev" in
+        --service|--timeout)
+          COMPREPLY=()  # Free-form
+          ;;
+        --dir)
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -d -- "$cur") )
+          ;;
+        *)
+          _pd_opts '--service --no-health --branch --timeout --dir'
+          ;;
+      esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # version / help — help supports topic completions
+    # -----------------------------------------------------------------------
+    version)
+      _pd_opts ''
+      ;;
+
+    help)
+      case "$prev" in
+        help)
+          if [[ "$cur" == -* ]]; then
+            _pd_opts ''
+          else
+            # shellcheck disable=SC2207
+            COMPREPLY=( $(compgen -W "sessions locks agents sugar dns orchestration tutorial" -- "$cur") )
+          fi
+          ;;
+        *)
+          _pd_opts ''
+          ;;
+      esac
       ;;
 
     # -----------------------------------------------------------------------

@@ -92,19 +92,28 @@ complete -c pd -s V -l version -d 'Print version'
 # Commands (with single-letter aliases)
 # ---------------------------------------------------------------------------
 set -l __pd_commands \
+    'begin' 'b' 'done' 'whoami' 'w' 'with-lock' \
     'claim' 'c' 'release' 'r' 'find' 'f' 'list' 'l' 'ps' 'services' 'url' 'env' \
     'pub' 'publish' 'sub' 'subscribe' 'wait' 'lock' 'unlock' 'locks' \
     'agent' 'agents' 'log' 'activity' \
-    'session' 'sessions' 'note' 'notes' \
+    'session' 'sessions' 'note' 'n' 'notes' \
     'salvage' 'resurrection' 'changelog' \
-    'up' 'down' \
+    'up' 'u' 'down' 'd' \
     'dashboard' 'channels' 'webhook' 'webhooks' 'metrics' 'config' 'health' 'ports' \
     'scan' 's' 'projects' 'p' 'doctor' 'diagnose' \
     'start' 'stop' 'restart' 'status' 'install' 'uninstall' 'dev' 'ci-gate' 'mcp' \
-    'version' 'help'
+    'learn' 'version' 'help'
 
 # Register each command for both `port-daddy` and `pd`
 for prog in port-daddy pd
+    # Sugar commands (Quick Start)
+    complete -c $prog -n __pd_needs_command -a begin -d 'Register agent and start session'
+    complete -c $prog -n __pd_needs_command -a b -d 'Begin session (alias)'
+    complete -c $prog -n __pd_needs_command -a done -d 'End session and unregister agent'
+    complete -c $prog -n __pd_needs_command -a whoami -d 'Show current agent/session context'
+    complete -c $prog -n __pd_needs_command -a w -d 'Show current context (alias)'
+    complete -c $prog -n __pd_needs_command -a with-lock -d 'Run command while holding a lock'
+
     # Service management
     complete -c $prog -n __pd_needs_command -a claim -d 'Claim a port for a service'
     complete -c $prog -n __pd_needs_command -a c -d 'Claim a port (alias)'
@@ -138,10 +147,11 @@ for prog in port-daddy pd
     complete -c $prog -n __pd_needs_command -a log -d 'Tail the activity log'
     complete -c $prog -n __pd_needs_command -a activity -d 'Activity summary or stats'
 
-    # Sessions & Notes
+    # Sessions & Notes (n = note alias)
     complete -c $prog -n __pd_needs_command -a session -d 'Manage a session'
     complete -c $prog -n __pd_needs_command -a sessions -d 'List sessions'
     complete -c $prog -n __pd_needs_command -a note -d 'Add a quick note'
+    complete -c $prog -n __pd_needs_command -a n -d 'Add a note (alias)'
     complete -c $prog -n __pd_needs_command -a notes -d 'List recent notes'
 
     # Agent Resurrection
@@ -161,9 +171,11 @@ for prog in port-daddy pd
     complete -c $prog -n __pd_needs_command -a health -d 'Check service health'
     complete -c $prog -n __pd_needs_command -a ports -d 'List active port assignments'
 
-    # Orchestration
+    # Orchestration (u = up, d = down aliases)
     complete -c $prog -n __pd_needs_command -a up -d 'Start all services'
+    complete -c $prog -n __pd_needs_command -a u -d 'Start all services (alias)'
     complete -c $prog -n __pd_needs_command -a down -d 'Stop all services started by up'
+    complete -c $prog -n __pd_needs_command -a d -d 'Stop all services (alias)'
 
     # Project
     complete -c $prog -n __pd_needs_command -a scan -d 'Deep-scan project for frameworks'
@@ -184,13 +196,54 @@ for prog in port-daddy pd
     complete -c $prog -n __pd_needs_command -a ci-gate -d 'Exit non-zero if daemon is stale'
     complete -c $prog -n __pd_needs_command -a mcp -d 'Start MCP server for Claude Code'
 
+    # Interactive tutorial
+    complete -c $prog -n __pd_needs_command -a learn -d 'Interactive tutorial'
+
     # Info
     complete -c $prog -n __pd_needs_command -a version -d 'Print version information'
-    complete -c $prog -n __pd_needs_command -a help -d 'Show help'
+    complete -c $prog -n __pd_needs_command -a help -d 'Show help or help <topic>'
 
     # -----------------------------------------------------------------------
     # Command-specific options
     # -----------------------------------------------------------------------
+
+    # begin / b
+    complete -c $prog -n "__pd_using_command begin b" -l identity -d 'Semantic identity (project:stack:context)' -x
+    complete -c $prog -n "__pd_using_command begin b" -l agent -d 'Agent ID' -x
+    complete -c $prog -n "__pd_using_command begin b" -l purpose -d 'Purpose of work' -x
+    complete -c $prog -n "__pd_using_command begin b" -l files -d 'Files to claim' -r
+    complete -c $prog -n "__pd_using_command begin b" -l force -d 'Force begin even if session exists'
+    complete -c $prog -n "__pd_using_command begin b" -l type -d 'Agent type' -x -a 'worker orchestrator monitor generic'
+
+    # done
+    complete -c $prog -n "__pd_using_command done" -l status -d 'Session end status' -x -a 'completed abandoned'
+    complete -c $prog -n "__pd_using_command done" -l agent -d 'Agent ID' -x -a '(__pd_agent_ids)'
+    complete -c $prog -n "__pd_using_command done" -l session -d 'Session ID' -x
+    complete -c $prog -n "__pd_using_command done" -l note -d 'Handoff note' -x
+
+    # whoami / w
+    complete -c $prog -n "__pd_using_command whoami w" -l agent -d 'Agent ID' -x -a '(__pd_agent_ids)'
+
+    # with-lock
+    complete -c $prog -n "__pd_using_command with-lock" -l ttl -d 'Lock TTL in ms' -x
+    complete -c $prog -n "__pd_using_command with-lock" -l owner -d 'Lock owner' -x -a '(__pd_agent_ids)'
+    complete -c $prog -n "__pd_using_command with-lock" -l shell -d 'Run command through shell'
+    complete -c $prog -n "__pd_using_command with-lock" -x -a '(__pd_lock_names)'
+
+    # n (alias for note)
+    complete -c $prog -n "__pd_using_command n" -l type -d 'Note type' -x -a 'note handoff commit warning'
+
+    # u (alias for up)
+    complete -c $prog -n "__pd_using_command u" -l service -d 'Start only this service + dependencies' -x
+    complete -c $prog -n "__pd_using_command u" -l no-health -d 'Skip health checks'
+    complete -c $prog -n "__pd_using_command u" -l branch -d 'Use git branch as context'
+    complete -c $prog -n "__pd_using_command u" -l timeout -d 'Health check timeout in ms' -x
+    complete -c $prog -n "__pd_using_command u" -l dir -d 'Target directory' -r
+
+    # d (alias for down) -- no extra options
+
+    # help <topic>
+    complete -c $prog -n "__pd_using_command help" -x -a 'sessions locks agents sugar dns orchestration tutorial'
 
     # claim / c
     complete -c $prog -n "__pd_using_command claim c" -s p -l port -d 'Port number' -x
