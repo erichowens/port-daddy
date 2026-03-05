@@ -1,308 +1,365 @@
 ---
 name: port-daddy-cli
-description: Multi-agent coordination via Port Daddy. Use when starting dev servers, coordinating with other agents, preventing file conflicts, salvaging dead agents' work, or tracking changes. Activate on "port conflict", "claim port", "coordinate agents", "start session", "leave note", "file conflict", "dev server", "salvage", "briefing", "dns".
+description: Multi-agent coordination via Port Daddy. Use when starting dev servers, coordinating with other agents, preventing file conflicts, salvaging dead agents' work, or tracking changes. Activate on "port conflict", "claim port", "coordinate agents", "start session", "leave note", "file conflict", "dev server", "salvage", "changelog".
 ---
 
-# Port Daddy v3.6 — Multi-Agent Coordination
+## Quick Start
+
+1. `pd begin "what I'm working on"` — registers you + starts session
+2. `pd note "progress update"` — log notes as you work
+3. `pd done` — wraps up session + unregisters
+
+## CLI to MCP Tool Mapping
+
+When using Port Daddy via MCP (e.g. Claude Code with the port-daddy MCP server), use the MCP tool names below instead of CLI commands. The behavior is identical.
+
+| CLI Command | MCP Tool | Tier |
+|-------------|----------|------|
+| `pd begin` | `begin_session` | Essential |
+| `pd done` | `end_session_full` | Essential |
+| `pd whoami` | `whoami` | Essential |
+| `pd note` | `add_note` | Essential |
+| `pd claim` | `claim_port` | Essential |
+| `pd release` | `release_port` | Essential |
+| `pd salvage` | `check_salvage` | Essential |
+| `pd session start` | `start_session` | Standard |
+| `pd session end` / `pd session done` | `end_session` | Standard |
+| `pd sessions` | `list_sessions` | Standard |
+| `pd notes` | `list_notes` | Standard |
+| `pd session files add` | `claim_files` | Standard |
+| `pd agent register` | `register_agent` | Standard |
+| `pd agent heartbeat` | `agent_heartbeat` | Standard |
+| `pd agents` | `list_agents` | Standard |
+| `pd salvage claim` | `claim_salvage` | Standard |
+| `pd lock` | `acquire_lock` | Standard |
+| `pd unlock` | `release_lock` | Standard |
+| `pd locks` | `list_locks` | Standard |
+| `pd find` | `list_services` | Standard |
+| `pd health` | `health_check` | Standard |
+| `pd status` | `daemon_status` | Standard |
+| `pd pub` | `publish_message` | Advanced |
+| `pd sub` (polling) | `get_messages` | Advanced |
+| `pd tunnel start` | `start_tunnel` | Advanced |
+| `pd tunnel stop` | `stop_tunnel` | Advanced |
+| `pd tunnel list` | `list_tunnels` | Advanced |
+| `pd scan` | `scan_project` | Advanced |
+| `pd log` | `activity_log` | Advanced |
+
+# Port Daddy — The Authoritative Port Manager
 
 **Your ports. My rules. Zero conflicts.**
 
-Port Daddy is the authoritative port manager for multi-agent development. Daemon on `localhost:9876`, SQLite-backed, with CLI (`pd`), SDK, and MCP interfaces.
+Port Daddy eliminates the chaos of multi-agent development. No more port collisions. No more wondering what another agent touched. No more lost context between sessions.
 
-## Quick Start: Sugar Commands
+## The Compulsory Registration Pattern
 
-**Use `pd begin` / `pd done` for every session.** These replace the old 3-command ceremony. All commands support positional args, named flags (`--purpose`), short flags (`-P`), and interactive mode (no args in TTY).
+**Every agent session should start with registration.** This unlocks resurrection:
 
 ```bash
-# Interactive mode — just run with no args, get prompted
-pd begin
+# At session start - register yourself
+pd agent register --agent claude-$(date +%s) --name "Feature Builder" --type claude-code --purpose "Implementing dark mode"
 
-# Positional (backward compatible)
-pd begin "Implementing dark mode" --files src/theme.ts src/components/ThemeProvider.tsx
+# Send heartbeats every 5 minutes (agents marked stale at 10min, dead at 20min)
+pd agent heartbeat --agent <your-id>
 
-# Named flags (equivalent)
-pd begin --purpose "Implementing dark mode" --identity myapp:ui:darkmode
-
-# Short flags
-pd begin -P "Implementing dark mode" -i myapp:ui:darkmode
-
-# Add notes as you work
-pd note "Created ThemeProvider skeleton"
-pd n -c "CSS variables approach chosen" -t decision
-
-# Check your current context
-pd whoami
-
-# Finish (ends session + unregisters agent atomically)
-pd done "Theme system complete"
-pd done --note "Theme system complete" --status completed
+# Check if another agent died mid-task (do this BEFORE starting new work)
+pd salvage
 ```
 
-New to Port Daddy? Run `pd learn` for an interactive tutorial.
+Registration is the cost of entry to resurrection. If you die, another agent can pick up your work.
 
-If `pd begin` fails, the agent registration is rolled back. If you don't provide `--agent`, an ID is auto-generated. Identity is auto-detected from `package.json` if available.
-
-### Sugar Command Reference
-
-| Command | What it does | Replaces |
-|---------|-------------|----------|
-| `pd begin [purpose]` | Register agent + start session (`-P`, `-i`, `-t`, `--files`) | `pd agent register` + `pd session start` |
-| `pd done [note]` | End session + unregister agent (`-n`, `-s`) | `pd session end` + `pd agent unregister` |
-| `pd whoami` | Show current agent/session context | Manual ID tracking |
-| `pd with-lock <name> <cmd...>` | Lock + exec + unlock | `pd lock` + run + `pd unlock` |
-| `pd n [text]` | Quick note (`-c`, `-t`) | `pd note "text"` |
-| `pd u` | Start all services | `pd up` |
-| `pd d` | Stop all services | `pd down` |
-| `pd learn` | Interactive tutorial | — |
-
-## Before Starting Any Dev Server
+## Quick Reference
 
 ```bash
-PORT=$(pd claim myproject:frontend -q)
+# Ports
+pd claim myapp:api:main          # Get a stable port (always same for this identity)
+pd claim myapp -q                # Quiet mode — just the port number
+pd find "myapp:*"                # Find all myapp services
+pd release myapp:api:main        # Release when done
+
+# Sessions (multi-agent coordination)
+pd session start "Implementing dark mode" --files src/theme.ts src/components/ThemeProvider.tsx
+pd note "Created ThemeProvider skeleton, CSS variables approach"
+pd note "Blocked on design tokens — need @design-agent input" --type handoff
+pd session done "Dark mode complete, tested in Chrome/Safari"
+
+# File conflicts
+pd session files add src/api/auth.ts    # Claim a file mid-session
+pd sessions --files                      # See who has what files
+
+# Locks (critical sections)
+pd lock deployment --owner agent-1 --ttl 300
+pd unlock deployment --owner agent-1
+```
+
+## Core Philosophy
+
+### 1. Identity Convention: `project:stack:context`
+
+Every service gets a semantic identity. Port Daddy hashes this to a stable port.
+
+| Identity | Port | Use Case |
+|----------|------|----------|
+| `myapp:api:main` | 9234 | Main API server |
+| `myapp:api:feature-auth` | 9847 | Feature branch API |
+| `myapp:frontend` | 9156 | Frontend dev server |
+| `myapp:db:test` | 9523 | Test database |
+
+**Same identity = same port, every time.** No more "what port was that on?"
+
+### 2. Sessions Are Mutable, Notes Are Immutable
+
+Sessions have a lifecycle:
+```
+active → completed
+active → abandoned
+```
+
+Notes are append-only. You can never edit or delete a note. They form the permanent record of what happened. If you wrote it, it happened.
+
+**Why?** When debugging "what went wrong?", you need the full timeline. Edited notes lie.
+
+### 3. File Claims Are Advisory
+
+`pd session files add src/auth.ts` doesn't lock the file. It announces your intent. Other agents see the conflict and can coordinate.
+
+**Why?** Hard locks cause deadlocks. Advisory claims cause conversations.
+
+## Workflows
+
+### Starting a Dev Server
+
+```bash
+# 1. Claim your port
+PORT=$(pd claim myproject:api -q)
+
+# 2. Start with that port
 npm run dev -- --port $PORT
+
+# Or export for the whole shell
+eval $(pd claim myproject:api --export)
+npm run dev  # Uses $PORT automatically
 ```
 
-## Core Workflow
+### Multi-Agent Coordination
 
-### 1. Check for Dead Agents First
+**Agent A** (starting work):
+```bash
+pd session start "Refactoring auth system" --files src/auth/*.ts
+pd note "Splitting monolithic auth.ts into separate modules"
+```
+
+**Agent B** (checking before touching auth):
+```bash
+pd sessions --files
+# Output:
+# session-a1b2 (active, 12m) - Refactoring auth system
+#   Files: src/auth/*.ts
+#   Notes: 1
+
+# Sees conflict, coordinates:
+pd note "Need to touch src/auth/types.ts — coordinating with @agent-a"
+```
+
+**Agent A** (completing):
+```bash
+pd note "Auth refactor done: auth.ts → login.ts, session.ts, types.ts"
+pd session done "Refactored auth into 3 modules, all tests passing"
+```
+
+### Leaving Breadcrumbs
+
+Notes support inline markup for cross-referencing:
 
 ```bash
-pd salvage                              # Check for dead agents
-pd salvage claim <dead-agent-id>        # Claim dead agent's work
+pd note "Fixed CORS bug in #file:server.ts:142"
+pd note "Handing off to @agent-frontend for UI integration" --type handoff
+pd note "Committed: abc123 - CORS headers for API gateway" --type commit
+pd note "WARNING: Don't touch auth until tests stabilized" --type warning
 ```
 
-Always check salvage at session start — another agent may have died mid-task.
-
-### 2. Check File Ownership Before Editing
+### Critical Sections with Locks
 
 ```bash
-pd who-owns src/auth.ts                # Check who has a file
-pd files                               # List all active file claims
+# Only one agent can deploy at a time
+pd lock deployment --owner $(hostname) --ttl 300
+
+# Do the deployment...
+npm run deploy
+
+# Release
+pd unlock deployment --owner agent-1
 ```
 
-### 3. Leave Notes as You Work
+Locks auto-expire after TTL (default 60s). Use `--wait` to block until available:
 
 ```bash
-pd note "Finished auth module refactor"
-pd note "Blocked on design tokens" --type blocker
-pd note "Handing off to frontend agent" --type handoff
+pd lock deployment --owner agent-1 --wait --timeout 30000
 ```
 
-Note types: `progress`, `decision`, `blocker`, `question`, `handoff`, `general`
+## Direct Mode (No Daemon)
 
-## Port Management
+Core operations work without the daemon running:
 
 ```bash
-pd claim myapp:api              # Claim a port
-pd claim myapp -q               # Quiet mode (port number only)
-pd find                         # List all services
-pd find 'myapp:*'               # Find by pattern
-pd release myapp:api            # Release a service
+# These work even if daemon is down (direct SQLite)
+pd claim myapp -q
+pd session start "Quick fix"
+pd note "Fixed the thing"
+pd session done
 ```
 
-## Locks
+**Tier 1 (no daemon):** claim, release, find, lock, unlock, session, note, notes, status
+**Tier 2 (daemon required):** pub/sub, SSE, webhooks, orchestration (up/down)
 
-```bash
-pd lock db-migrations           # Acquire lock
-pd lock my-lock --ttl 60000     # Lock with 1 minute TTL
-pd locks                        # List all locks
-pd unlock my-lock               # Release lock
+## Dashboard
 
-# Run command under lock (auto-releases even on failure/signal)
-pd with-lock db-migrations npm run migrate
-```
+Open `http://localhost:9876` for a visual overview of:
+- Active services and their ports
+- Running sessions and file claims
+- Recent notes timeline
+- Lock status
 
-## Integration Signals
+## When to Use Port Daddy
 
-Coordinate between agents working on different parts:
-
-```bash
-pd integration ready myapp:api "Auth endpoints ready for frontend"
-pd integration needs myapp:frontend "Needs API auth endpoints"
-pd integration list --project myapp
-```
-
-## DNS Records
-
-Map services to friendly `.local` hostnames:
-
-```bash
-pd dns register myapp:api --port 3100   # Creates myapp-api.local
-pd dns lookup myapp:api                 # Resolve hostname
-pd dns list                             # List all records
-```
-
-## Briefing
-
-Generate a project intelligence snapshot for new agents:
-
-```bash
-pd briefing                    # Write .portdaddy/briefing.md
-pd briefing --full             # Include archives + activity.log
-pd briefing --json             # JSON output (no disk write)
-```
-
-## Semantic Identity Format
-
-`project:stack:context` naming:
-- `myapp` — just the project
-- `myapp:api` — project + stack
-- `myapp:api:feature-auth` — full identity
-
-Wildcards: `myapp:*`, `*:api:*`, `myapp:*:feature-*`
-
-Same identity = same port, every time.
-
-## MCP Tool Mapping
-
-Every CLI command that communicates with the daemon has an MCP equivalent. The table below maps CLI commands to their MCP tool names and calls out differences in naming, parameters, or capability.
-
-### Sugar (Compound Workflows)
-
-| CLI Command | MCP Tool | Notes |
-|-------------|----------|-------|
-| `pd begin [purpose]` | `begin_session` | Preferred entry point — register + start session atomically |
-| `pd done [note]` | `end_session_full` | Preferred exit point — end session + unregister agent atomically |
-| `pd whoami` | `whoami` | MCP requires `agent_id` param; CLI reads from `.portdaddy/current.json` |
-
-### Port Management
-
-| CLI Command | MCP Tool | Notes |
-|-------------|----------|-------|
-| `pd claim <id>` | `claim_port` | CLI param is positional; MCP uses `identity` field |
-| `pd release <id>` | `release_port` | MCP adds `expired_only` flag not exposed in CLI |
-| `pd find [pattern]` | `list_services` | Same filter semantics; MCP field is `pattern` |
-| `pd find <id>` | `get_service` | MCP `get_service` is a distinct tool; CLI uses same `find` command |
-| `pd services health` | `health_check` | MCP unifies single-service and all-services into one tool via optional `identity` |
-
-### Sessions and Notes
-
-| CLI Command | MCP Tool | Notes |
-|-------------|----------|-------|
-| `pd session start` | `start_session` | Low-level; prefer `begin_session` / `pd begin` |
-| `pd session end` | `end_session` | Low-level; prefer `end_session_full` / `pd done` |
-| `pd session list` | `list_sessions` | MCP `all` boolean maps to CLI `--all` flag |
-| `pd session files claim` | `claim_files` | MCP requires explicit `session_id`; CLI infers from context |
-| `pd note "text"` | `add_note` | Both support `--type`; MCP `session_id` is optional (quick note) |
-| `pd n "text"` | `add_note` | `pd n` is an alias for `pd note` |
-| `pd notes` | `list_notes` | MCP `session_id` optional for cross-session view |
-
-### Locks
-
-| CLI Command | MCP Tool | Notes |
-|-------------|----------|-------|
-| `pd lock <name>` | `acquire_lock` | MCP `name` field maps to CLI positional arg |
-| `pd unlock <name>` | `release_lock` | MCP adds `force` flag |
-| `pd locks` | `list_locks` | MCP adds `owner` filter |
-| `pd with-lock <name> <cmd>` | **No MCP equivalent** | Shell exec under lock; inherently a CLI operation |
-
-### Agents
-
-| CLI Command | MCP Tool | Notes |
-|-------------|----------|-------|
-| `pd agent register` | `register_agent` | Low-level; prefer `begin_session` |
-| `pd agent heartbeat` | `agent_heartbeat` | MCP agents must heartbeat manually; CLI sugar handles this |
-| `pd agent list` | `list_agents` | MCP adds `active_only` filter |
-| `pd agent unregister` | **No dedicated MCP tool** | Use `end_session_full` which unregisters atomically |
-
-### Salvage (Agent Resurrection)
-
-| CLI Command | MCP Tool | Notes |
-|-------------|----------|-------|
-| `pd salvage` | `check_salvage` | MCP adds `project` filter; CLI shows all |
-| `pd salvage claim <id>` | `claim_salvage` | MCP requires both `dead_agent_id` and `new_agent_id` |
-
-### File Ownership
-
-| CLI Command | MCP Tool | Notes |
-|-------------|----------|-------|
-| `pd who-owns <path>` | `who_owns_file` | Exact equivalents |
-| `pd files` | `list_file_claims` | Global view across all sessions |
-
-### DNS
-
-| CLI Command | MCP Tool | Notes |
-|-------------|----------|-------|
-| `pd dns register <id> --port N` | `dns_register` | MCP adds optional `hostname` override |
-| `pd dns unregister <id>` | `dns_unregister` | Exact equivalents |
-| `pd dns list` | `dns_list` | MCP adds `pattern` and `limit` params |
-| `pd dns lookup <id>` | `dns_lookup` | Exact equivalents |
-| `pd dns cleanup` | `dns_cleanup` | Exact equivalents |
-| `pd dns status` | `dns_status` | Exact equivalents |
-
-### Integration Signals
-
-| CLI Command | MCP Tool | Notes |
-|-------------|----------|-------|
-| `pd integration ready <id> "msg"` | `integration_ready` | MCP field is `description`; CLI uses positional arg |
-| `pd integration needs <id> "msg"` | `integration_needs` | Same as above |
-| `pd integration list` | `integration_list` | MCP adds `project` filter |
-
-### Messaging
-
-| CLI Command | MCP Tool | Notes |
-|-------------|----------|-------|
-| `pd pub <channel> <payload>` | `publish_message` | MCP `payload` is a JSON object; CLI accepts a string |
-| `pd sub <channel>` | **No MCP equivalent** | SSE subscription is inherently a streaming CLI operation |
-| `pd messages <channel>` | `get_messages` | Exact equivalents |
-
-### Briefing
-
-| CLI Command | MCP Tool | Notes |
-|-------------|----------|-------|
-| `pd briefing` | `briefing_generate` | MCP requires `project_root`; CLI defaults to cwd |
-| `pd briefing --json` | `briefing_read` | MCP returns data in-band; CLI writes files to disk |
-
-### Tunnels
-
-| CLI Command | MCP Tool | Notes |
-|-------------|----------|-------|
-| `pd tunnel start <id>` | `start_tunnel` | MCP adds optional `provider` param |
-| `pd tunnel stop <id>` | `stop_tunnel` | Exact equivalents |
-| `pd tunnel list` | `list_tunnels` | Exact equivalents |
-
-### Project Scanning
-
-| CLI Command | MCP Tool | Notes |
-|-------------|----------|-------|
-| `pd scan [dir]` | `scan_project` | MCP adds `dry_run` flag |
-
-### System and Observability
-
-| CLI Command | MCP Tool | Notes |
-|-------------|----------|-------|
-| `pd status` | `daemon_status` | MCP aggregates health + version + metrics into one call |
-| `pd activity` | `activity_log` | MCP adds `type` filter |
-| `pd session phase <id> <phase>` | `set_session_phase` | Direct equivalents |
-
-### CLI-Only Commands (No MCP Equivalent)
-
-These commands have no MCP tool because they depend on the local shell environment, TTY interaction, or produce output only meaningful in a terminal:
-
-| CLI Command | Why No MCP Tool |
-|-------------|-----------------|
-| `pd with-lock <name> <cmd>` | Executes a shell command as a subprocess — inherently a CLI/shell operation |
-| `pd sub <channel>` | SSE streaming subscription — requires a persistent terminal connection |
-| `pd up` / `pd u` | Orchestrates service start-up using local process management |
-| `pd down` / `pd d` | Orchestrates service shutdown using local process management |
-| `pd learn` | Interactive TTY tutorial — requires readline input |
-| `pd start` | Starts the daemon itself — only meaningful before MCP is available |
-| `pd stop` | Stops the daemon — would terminate the MCP server connection |
-| `pd completion` | Shell tab-completion install — shell-specific, no daemon involvement |
+| Situation | Action |
+|-----------|--------|
+| Starting any dev server | `pd claim <identity> -q` |
+| Multi-file refactoring | `pd session start` + claim files |
+| Handing off to another agent | `pd note --type handoff` |
+| Critical section (deploy, migrate) | `pd lock` |
+| Debugging "what happened?" | `pd notes` or `pd sessions` |
+| Port conflict | `pd find "*"` to see what's claimed |
 
 ## Anti-Patterns
 
 **Don't:**
 - Use raw port numbers (`--port 3000`) — they collide
-- Edit files without running `pd who-owns <path>` first
+- Edit files without checking `pd sessions --files`
 - Forget to end sessions — stale sessions confuse future agents
 - Skip notes — your future self (or another agent) needs context
-- Start work without checking `pd salvage` first
 
 **Do:**
 - Always claim ports through Port Daddy
-- Check `pd salvage` at session start
-- Check `pd who-owns <file>` before editing
+- Start sessions for non-trivial work
 - Leave notes liberally — they're cheap
-- Use integration signals when your work is ready for another agent
 - End sessions when done (even if abandoning)
+
+## Worktree-Aware Development
+
+Port Daddy tracks which git worktree you're in. Sessions automatically scope to the worktree:
+
+```bash
+# Main worktree
+cd ~/coding/myproject
+pd session start "Feature A"  # session-a1b2 in main worktree
+
+# Chaos testing worktree
+cd ~/coding/myproject-chaos
+pd session start "Breaking things"  # session-c3d4 in chaos worktree
+
+# See all sessions across worktrees
+pd sessions --all-worktrees
+```
+
+### Multi-Daemon Development
+
+For developing Port Daddy itself:
+
+```bash
+# Production daemon (your daily driver)
+pd claim port-daddy:daemon:prod      # → 9876
+
+# Development daemon (testing changes)  
+cd ~/coding/port-daddy
+PORT=$(pd claim port-daddy:daemon:dev -q)  # → 9877
+npm run dev -- --port $PORT
+
+# Chaos daemon (adversarial testing)
+cd ~/coding/port-daddy-chaos  
+PORT=$(pd claim port-daddy:daemon:chaos -q)  # → 9878
+npm run dev -- --port $PORT
+```
+
+## Local DNS for Ports (Experimental)
+
+Instead of remembering `localhost:9234`, use semantic names:
+
+```bash
+# Register a DNS name for your service
+pd claim myapp:api --dns
+# Now accessible at: http://myapp-api.local
+
+# Works with any claimed service
+pd claim frontend:react --dns
+# → http://frontend-react.local
+
+# List DNS registrations
+pd dns list
+# myapp-api.local      → 127.0.0.1:9234
+# frontend-react.local → 127.0.0.1:9156
+```
+
+**Requirements:** macOS (uses mDNS/Bonjour), or Linux with avahi-daemon.
+
+## Agent Resurrection (Salvage)
+
+When an agent dies mid-task, its work isn't lost. Port Daddy captures session state and notes:
+
+```bash
+# At session start, check if someone died with unfinished work
+pd salvage
+
+# Sample output:
+# Dead agent: builder-1 (died 15 minutes ago)
+#   Purpose: Building the payment API
+#   Session: session-a1b2c3 (active, 3 notes)
+#   Last note: "Finished Stripe integration, starting PayPal"
+#   Files: src/payments/stripe.ts, src/payments/paypal.ts
+
+# Claim the dead agent's session and continue their work
+pd salvage --claim builder-1
+
+# Clear salvage queue after you've reviewed it
+pd salvage --clear
+```
+
+**Always check salvage before starting new work.** Someone might have died mid-task.
+
+## Changelog (Hierarchical Change Tracking)
+
+Record meaningful changes with identity-based rollup:
+
+```bash
+# Record a change
+pd changelog add myapp:api:auth "Added JWT refresh token endpoint" --type feature
+
+# With detailed description
+pd changelog add myapp:frontend "Fixed mobile nav overlap" --type fix \
+  --description "Nav was overlapping content on iOS Safari viewport"
+
+# List recent changes
+pd changelog list
+
+# Filter by identity (includes children)
+pd changelog list --identity myapp:api
+
+# Different formats
+pd changelog list --format tree
+pd changelog list --format keep-a-changelog
+```
+
+Changes roll up hierarchically:
+- `myapp:api:auth` appears under `myapp:api` which appears under `myapp`
+- Query `myapp` to see all changes across the entire project
+
+### Change Types
+
+| Type | When to use |
+|------|-------------|
+| `feature` | New functionality |
+| `fix` | Bug fixes |
+| `refactor` | Code restructuring |
+| `docs` | Documentation updates |
+| `chore` | Maintenance tasks |
+| `breaking` | Breaking changes |
