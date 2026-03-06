@@ -452,6 +452,17 @@ app.use(cors({
   credentials: true
 }));
 
+app.use((req: Request, res: Response, next: NextFunction): void => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:* http://localhost:*; img-src 'self' data:; frame-ancestors 'none';"
+  );
+  next();
+});
+
 app.use(express.json({ limit: '10kb' }));
 app.use(express.static(join(__dirname, 'public')));
 
@@ -496,6 +507,10 @@ app.use(createRoutes({
 const dashboardClients = new Set<Response>();
 
 app.get('/dashboard/events', (req: Request, res: Response): void => {
+  if (dashboardClients.size >= 20) {
+    res.status(429).json({ error: 'too many dashboard connections' });
+    return;
+  }
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',

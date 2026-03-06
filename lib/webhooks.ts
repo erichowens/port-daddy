@@ -17,6 +17,7 @@
 
 import { createHmac, randomUUID } from 'crypto';
 import type Database from 'better-sqlite3';
+import dns from 'node:dns/promises';
 import { isPrivateHost } from './utils.js';
 
 // =============================================================================
@@ -238,6 +239,23 @@ export function createWebhooks(db: Database.Database) {
       return { success: false, error: 'events must be an array', code: 'VALIDATION_ERROR' };
     }
 
+    // Validate URL if provided, using same checks as register()
+    if (url !== undefined) {
+      let parsed: URL;
+      try {
+        parsed = new URL(url);
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          return { success: false, error: 'URL must use http or https protocol' };
+        }
+      } catch {
+        return { success: false, error: 'Invalid URL' };
+      }
+
+      if (isPrivateHost(parsed.hostname)) {
+        return { success: false, error: 'Webhook URLs cannot target private or internal addresses' };
+      }
+    }
+
     stmts.update.run(
       url || existing.url,
       events ? JSON.stringify(events) : existing.events,
@@ -291,6 +309,32 @@ export function createWebhooks(db: Database.Database) {
     const hmac = createHmac('sha256', secret);
     hmac.update(JSON.stringify(payload));
     return hmac.digest('hex');
+  }
+
+  /**
+   * Validate that a webhook URL does not resolve to private/internal IPs.
+   * This prevents DNS rebinding attacks where a hostname initially appears
+   * public but resolves to private IPs at delivery time.
+   *
+   * @throws {Error} if hostname resolves to a private address
+   */
+  async function validateWebhookUrlDns(url: string): Promise<void> {
+    const parsed = new URL(url);
+    try {
+      const results = await dns.lookup(parsed.hostname, { all: true });
+      for (const { address } of results) {
+        if (isPrivateHost(address)) {
+          throw new Error(`Webhook URL resolves to private address: ${address}`);
+        }
+      }
+    } catch (error) {
+      // If dns.lookup fails, let it propagate as it indicates a real DNS problem
+      if (error instanceof Error && error.message.includes('private address')) {
+        throw error;
+      }
+      // For other DNS errors (ENOTFOUND, etc), treat as network error and let retry logic handle it
+      // This prevents blocking legitimate webhooks due to transient DNS issues
+    }
   }
 
   function safeGlobMatch(pattern: string, str: string): boolean {
@@ -384,6 +428,9 @@ export function createWebhooks(db: Database.Database) {
     const { deliveryId, webhookId, url, secret, payload } = delivery;
 
     try {
+      // Validate DNS before delivery to prevent DNS rebinding attacks
+      await validateWebhookUrlDns(url);
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'X-PortDaddy-Event': payload.event,
@@ -399,7 +446,8 @@ export function createWebhooks(db: Database.Database) {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS)
+        signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS),
+        redirect: 'error'
       });
 
       const responseBody = await response.text().catch(() => '');
@@ -497,6 +545,9 @@ export function createWebhooks(db: Database.Database) {
     };
 
     try {
+      // Validate DNS before test delivery to prevent DNS rebinding attacks
+      await validateWebhookUrlDns(webhook.url);
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'X-PortDaddy-Event': 'webhook.test',
@@ -512,7 +563,8 @@ export function createWebhooks(db: Database.Database) {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS)
+        signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS),
+        redirect: 'error'
       });
 
       const responseBody = await response.text().catch(() => '');

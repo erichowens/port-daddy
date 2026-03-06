@@ -621,3 +621,86 @@ describe('Webhook Advanced Features', () => {
     expect(result.error).toContain('not found');
   });
 });
+
+// =============================================================================
+// DNS REBINDING AND REDIRECT SECURITY TESTS (5 tests)
+// =============================================================================
+
+describe('Webhook Advanced Security - DNS & Redirects', () => {
+  let db;
+  let webhooks;
+  let mockFetch;
+
+  beforeEach(() => {
+    db = createTestDb();
+    webhooks = createWebhooks(db);
+    mockFetch = createMockFetch();
+    global.fetch = mockFetch;
+  });
+
+  afterEach(() => {
+    delete global.fetch;
+  });
+
+  it('should reject update to private IP URL', () => {
+    const result = webhooks.register('https://example.com/webhook');
+    expect(result.success).toBe(true);
+
+    // Try to update to private IP
+    const updateResult = webhooks.update(result.id, {
+      url: 'http://192.168.1.1/webhook'
+    });
+    expect(updateResult.success).toBe(false);
+    expect(updateResult.error).toContain('private or internal');
+
+    // Verify URL wasn't actually changed
+    const webhook = webhooks.get(result.id);
+    expect(webhook.webhook.url).toBe('https://example.com/webhook');
+  });
+
+  it('should reject update with invalid URL format', () => {
+    const result = webhooks.register('https://example.com/webhook');
+    expect(result.success).toBe(true);
+
+    const updateResult = webhooks.update(result.id, {
+      url: 'not-a-valid-url'
+    });
+    expect(updateResult.success).toBe(false);
+    expect(updateResult.error).toContain('Invalid URL');
+  });
+
+  it('should reject update with non-http/https protocol', () => {
+    const result = webhooks.register('https://example.com/webhook');
+    expect(result.success).toBe(true);
+
+    const updateResult = webhooks.update(result.id, {
+      url: 'ftp://example.com/webhook'
+    });
+    expect(updateResult.success).toBe(false);
+    expect(updateResult.error).toContain('http or https');
+  });
+
+  it('should include redirect: error in fetch options', async () => {
+    mockFetch = createMockFetch({ status: 200 });
+    global.fetch = mockFetch;
+
+    webhooks.register('https://example.com/webhook');
+    webhooks.trigger(WebhookEvent.SERVICE_CLAIM, {});
+
+    await waitFor(() => mockFetch.calls.length > 0, 2000);
+    const call = mockFetch.calls[0];
+    expect(call.opts.redirect).toBe('error');
+  });
+
+  it('should include redirect: error in test webhook call', async () => {
+    mockFetch = createMockFetch({ status: 200 });
+    global.fetch = mockFetch;
+
+    const webhookId = webhooks.register('https://example.com/webhook').id;
+    await webhooks.test(webhookId);
+
+    await sleep(100);
+    const call = mockFetch.calls[0];
+    expect(call.opts.redirect).toBe('error');
+  });
+});

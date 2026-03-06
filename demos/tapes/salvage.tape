@@ -17,27 +17,9 @@ Hide
 Type "setopt INTERACTIVE_COMMENTS"
 Enter
 Sleep 200ms
-Type "pd done 2>/dev/null"
+Type "bash demos/tapes/setup-salvage.sh >/dev/null 2>&1"
 Enter
-Sleep 300ms
-Type "curl -sX DELETE http://localhost:9876/agents/agent-alice 2>/dev/null"
-Enter
-Sleep 300ms
-Type `curl -sX POST http://localhost:9876/agents -H 'Content-Type: application/json' -d '{"id":"agent-alice","name":"Alice","type":"claude-code","purpose":"Refactoring auth system","identity":"myapp:auth:refactor"}' 2>/dev/null`
-Enter
-Sleep 300ms
-Type `curl -sX POST http://localhost:9876/sessions -H 'Content-Type: application/json' -d '{"purpose":"Splitting monolithic auth.ts into modules","agentId":"agent-alice","files":["src/auth/login.ts","src/auth/session.ts","src/auth/types.ts"]}' 2>/dev/null`
-Enter
-Sleep 300ms
-Type `curl -sX POST http://localhost:9876/notes -H 'Content-Type: application/json' -d '{"content":"Split auth.ts into 3 modules, login.ts done, session.ts in progress","type":"progress"}' 2>/dev/null`
-Enter
-Sleep 300ms
-Type `sqlite3 /Users/erichowens/coding/port-daddy/port-registry.db "UPDATE agents SET lastHeartbeat = datetime('now', '-30 minutes') WHERE id = 'agent-alice'"`
-Enter
-Sleep 300ms
-Type "curl -sX POST http://localhost:9876/resurrection/reap 2>/dev/null"
-Enter
-Sleep 500ms
+Sleep 3s
 Ctrl+L
 Sleep 300ms
 Show
@@ -55,7 +37,7 @@ Sleep 3s
 Type "# Claim their work and continue where they left off"
 Enter
 Sleep 800ms
-Type "pd salvage --claim agent-alice"
+Type "pd salvage claim agent-alice"
 Enter
 Sleep 2s
 
@@ -67,7 +49,7 @@ Type `pd note "Picked up from Alice - finishing session.ts module"`
 Enter
 Sleep 1.5s
 
-Type `pd done "Auth refactor complete - login.ts, session.ts, types.ts all passing"`
+Type `pd done "Auth refactor complete - all modules passing"`
 Enter
 Sleep 2s
 

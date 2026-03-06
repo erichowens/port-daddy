@@ -591,7 +591,7 @@ const HELP: string = getCompactHelp();
 // =============================================================================
 
 const ALL_COMMANDS: string[] = [
-  'claim', 'c', 'release', 'r', 'find', 'f', 'list', 'l', 'ps', 'url', 'env',
+  'claim', 'c', 'release', 'r', 'find', 'f', 'list', 'l', 'ps', 'services', 'url', 'env',
   'pub', 'publish', 'sub', 'subscribe', 'wait', 'lock', 'unlock', 'locks',
   'up', 'down', 'scan', 's', 'projects', 'p',
   'agent', 'agents', 'log', 'activity',
@@ -601,7 +601,8 @@ const ALL_COMMANDS: string[] = [
   'dashboard', 'channels', 'webhook', 'webhooks', 'metrics', 'config', 'health', 'ports',
   'start', 'stop', 'restart', 'status', 'install', 'uninstall', 'dev', 'ci-gate',
   'doctor', 'diagnose', 'mcp', 'version', 'help',
-  'begin', 'done', 'whoami', 'with-lock', 'n', 'u', 'd',
+  'begin', 'b', 'done', 'whoami', 'w', 'with-lock', 'n', 'u', 'd',
+  'salvage', 'resurrection', 'changelog', 'tunnel',
   'learn', 'tutorial'
 ];
 
