@@ -43,25 +43,15 @@ import {
   handleLock, handleUnlock, handleLocks,
   // Messaging
   handlePub, handleSub, handleChannels, handleWait,
-  // Sessions & Files
-  handleSession, handleSessions, handleNote, handleNotes, handleFiles, handleWhoOwns,
+  // Sessions
+  handleSession, handleSessions, handleNote, handleNotes,
   // Agents & Resurrection
   handleAgent, handleAgents,
   handleSalvage,
   // Changelog
   handleChangelog,
-  // Integration
-  handleIntegration,
-  // Briefing
-  handleBriefing, handleHistory,
-  // Sugar (compound commands)
-  handleBegin, handleDone, handleWhoami, handleWithLock,
-  // Tutorial
-  handleLearn,
   // Tunnel
   handleTunnel,
-  // DNS
-  handleDns,
   // Activity
   handleLog,
   // Webhooks
@@ -109,10 +99,6 @@ const TIER_2_COMMANDS: Set<string> = new Set([
   'up', 'down',
   'channels', 'webhook', 'webhooks',
   'metrics', 'health', 'dashboard',
-  'dns',
-  'files', 'who-owns', 'integration',
-  'briefing', 'history',
-  'begin', 'done', 'whoami', 'with-lock',
 ]);
 
 /**
@@ -397,213 +383,347 @@ async function ciGateCheck(): Promise<void> {
   }
 }
 
-// Topic-specific help maps for `pd help <topic>`
-const TOPICS: Record<string, string> = {
-  sugar: `Sugar Commands (compound workflows):
-
-  pd begin "what I'm working on"   Register agent + start session (alias: b)
-  pd done                          End session + unregister agent
-  pd done "final note"             End session with a handoff note
-  pd whoami                        Show current agent/session context (alias: w)
-  pd note "message"                Add a note to current session (alias: n)
-  pd with-lock <name> <cmd...>     Run a command while holding a lock
-
-  Options:
-    --identity <id>    Semantic identity (project:stack:context)
-    --agent <id>       Explicit agent ID
-    --purpose <text>   Purpose (alternative to positional arg)
-    --files <paths>    Claim files on begin
-    --status <s>       Session end status: completed, abandoned
-    --force            Force begin even if session exists
-
-  Examples:
-    pd begin "building auth" --identity myapp:api
-    pd note "added JWT middleware" --type progress
-    pd done "auth complete, ready for review"
-    pd with-lock db-migrations npm run migrate`,
-
-  sessions: `Session Management:
-
-  pd session start <purpose>       Start a new session
-  pd session end [id]              End a session (completed)
-  pd session done [id]             Alias for "session end"
-  pd session abandon [id]          End a session (abandoned)
-  pd session rm <id>               Delete a session and its notes
-  pd session files add <paths>     Claim files in active session
-  pd session files rm <paths>      Release files from session
-  pd session phase <phase>         Set phase (planning/in_progress/testing/reviewing)
-  pd sessions                      List sessions (default: active only)
-  pd sessions --all                List all sessions
-  pd note <content>                Quick note (auto-creates session)
-  pd notes [session-id]            View notes for session or recent
-
-  Options:
-    --agent <id>       Agent ID to associate
-    --type <type>      Note type: note, handoff, commit, warning
-    --status <s>       Filter: active, completed, abandoned
-    --limit <n>        Max results
-    --all              Show all sessions, not just active`,
-
-  locks: `Lock Management:
-
-  pd lock <name>                   Acquire a distributed lock
-  pd lock extend <name>            Extend a lock's TTL
-  pd unlock <name>                 Release a distributed lock
-  pd locks                         List all active locks
-  pd with-lock <name> <cmd>        Run command while holding lock
-
-  Options:
-    --ttl <ms>         Lock time-to-live (default: 300000)
-    --owner <id>       Lock owner identifier
-    --force            Force-release even if not owner
-    --wait             Block until lock is available
-    --timeout <ms>     Max time to wait for lock
-
-  Examples:
-    pd lock db-migrations --ttl 600000
-    pd with-lock deploy ./deploy.sh --ttl 120000`,
-
-  agents: `Agent Registry:
-
-  pd agent register                Register as an agent
-  pd agent heartbeat               Send heartbeat
-  pd agent unregister              Unregister agent
-  pd agent <id>                    Get info about an agent
-  pd agents                        List all registered agents
-  pd salvage                       Check for dead agents with work
-  pd salvage claim <agent-id>      Claim dead agent's work
-
-  Options:
-    --agent <id>       Agent ID
-    --identity <id>    Semantic identity (project:stack:context)
-    --purpose <text>   What the agent is working on
-    --type <type>      Agent type: worker, orchestrator, monitor
-    --active           Show only active agents
-    --project <name>   Filter salvage by project
-    --stack <name>     Filter salvage by stack`,
-
-  dns: `DNS Records:
-
-  pd dns register <hostname>       Register a DNS record
-  pd dns lookup <hostname>         Resolve a hostname
-  pd dns list                      List all DNS records
-  pd dns cleanup                   Clean stale DNS records
-  pd dns status                    DNS system status
-
-  DNS provides service discovery by name, mapping hostnames
-  to service identities and their claimed ports.`,
-
-  orchestration: `Orchestration:
-
-  pd up                            Start all services
-  pd up --service <name>           Start one service + dependencies
-  pd down                          Stop all services started by 'up'
-  pd scan [dir]                    Deep-scan project, detect services
-  pd projects                      List registered projects
-
-  Options:
-    --service <name>   Start only this service + its dependencies
-    --no-health        Skip health checks
-    --branch           Use git branch as context in identity
-    --timeout <ms>     Health check timeout
-    --dir <path>       Target directory
-    --dry-run          Preview scan without saving (scan only)
-
-  Examples:
-    pd up                          # Auto-detect and start everything
-    pd up --service frontend       # Start frontend + deps
-    pd scan --dry-run              # Preview detected services`,
-
-  tutorial: `Interactive Tutorial:
-
-  pd learn                         Start the interactive tutorial
-
-  The tutorial walks you through Port Daddy's core concepts:
-  claiming ports, managing sessions, coordinating agents,
-  and using locks for exclusive access.
-
-  It runs interactively in your terminal — no daemon required
-  for the first few lessons.`,
-};
+// =============================================================================
+// Help System: Compact summary + topic-based detailed help
+// =============================================================================
 
 /**
- * Get compact help text, optionally with active session context at the bottom.
+ * Read .portdaddy/current.json to detect active session context.
+ * Returns null if no active session exists.
  */
-function getCompactHelp(): string {
-  const pkgPath: string = join(__dirname, '..', 'package.json');
-  let version = 'unknown';
+function readCurrentSession(): { sessionId: string; agentId?: string; purpose?: string } | null {
   try {
-    version = (JSON.parse(readFileSync(pkgPath, 'utf8')) as { version: string }).version;
-  } catch {}
-
-  let help = `Port Daddy v${version} -- Maritime Port Manager
-  Run 'pd learn' for an interactive tutorial.
-
-  Quick Start:
-    pd begin "what I'm working on"     Start a session (alias: b)
-    pd done                            End session
-    pd whoami                          Show current context (alias: w)
-    pd note "message"                  Add a note (alias: n)
-
-  Port Management:
-    pd claim <name>                    Get a port (alias: c)
-    pd release <name>                  Release a port (alias: r)
-    pd list                            Show active services (alias: l, f)
-
-  Orchestration:
-    pd up                              Start all services (alias: u)
-    pd down                            Stop all services (alias: d)
-
-  Daemon:
-    pd start / stop / restart          Manage the daemon
-    pd status                          Check if daemon is running
-    pd dashboard                       Open web dashboard
-
-  Run pd help <topic> for details:
-    sessions  locks  agents  sugar  dns  orchestration  tutorial
-
-  Options: -j/--json  -q/--quiet  -h/--help  -V/--version`;
-
-  // Context-aware help: show active session info if available
-  const contextPath = join(process.cwd(), '.portdaddy', 'current.json');
-  if (existsSync(contextPath)) {
-    try {
-      const ctx = JSON.parse(readFileSync(contextPath, 'utf8')) as {
-        agentId?: string;
-        sessionId?: string;
-        purpose?: string;
-      };
-      if (ctx.sessionId) {
-        help += `\n\n  Current Session: ${ctx.sessionId}`;
-        if (ctx.agentId) help += `\n  Agent: ${ctx.agentId}`;
-        help += `\n  Next steps: pd note "update"  |  pd done  |  pd whoami`;
-      }
-    } catch {}
+    const currentPath = join(process.cwd(), '.portdaddy', 'current.json');
+    if (existsSync(currentPath)) {
+      const data = JSON.parse(readFileSync(currentPath, 'utf8'));
+      if (data && data.sessionId) return data;
+    }
+  } catch {
+    // Ignore read errors
   }
-
-  return help;
+  return null;
 }
 
-const HELP: string = getCompactHelp();
+/**
+ * Build the compact main help output (~25 lines).
+ * Shows context-aware next steps if an active session exists.
+ */
+function buildHelp(): string {
+  const lines: string[] = [
+    'Port Daddy \u2014 Port management & agent coordination',
+    '',
+  ];
+
+  // 5f: Context-aware help — show active session info if available
+  const session = readCurrentSession();
+  if (session) {
+    lines.push(`Active session: ${session.sessionId}${session.purpose ? ` (purpose: "${session.purpose}")` : ''}`);
+    lines.push(`  pd note "progress"     Log what you're doing`);
+    lines.push(`  pd done "summary"      End this session`);
+    lines.push('');
+  }
+
+  lines.push(
+    'Quick Start:',
+    '  pd begin "purpose"       Start working (registers agent + session)',
+    '  pd done "summary"        Finish up (ends session + unregisters)',
+    '  pd whoami                Show current context',
+    '',
+    'Port Management:',
+    '  pd claim <id>            Claim a port  (alias: c)',
+    '  pd release <id>          Release a port  (alias: r)',
+    '  pd find [pattern]        List services  (alias: f, l, ps)',
+    '',
+    'Sessions & Notes:',
+    '  pd session start "why"   Start a session manually',
+    '  pd note "message"        Add a note to current session',
+    '  pd notes                 View recent notes',
+    '',
+    'Coordination:',
+    '  pd lock <name>           Acquire a distributed lock',
+    '  pd agent register        Register as an agent',
+    '  pd salvage               Check for dead agents to continue',
+    '',
+    'More: pd help <topic>',
+    'Topics: sessions, locks, agents, ports, messaging, dns, orchestration, sugar, tutorial',
+    '',
+    'Tip: Run `pd learn` for an interactive tutorial',
+  );
+
+  return lines.join('\n');
+}
+
+/**
+ * Topic-specific detailed help maps.
+ * Each topic shows relevant commands with flags and examples.
+ */
+const TOPIC_HELP: Record<string, string> = {
+  sessions: `Sessions & Notes \u2014 Structured multi-agent coordination
+
+Commands:
+  session start <purpose>    Start a new session
+    --agent <id>             Associate with an agent
+    --force                  Force start even if another session is active
+    --files <paths...>       Claim files at session start
+
+  session end [note]         End the active session (completed)
+  session done [note]        Alias for "session end"
+  session abandon [note]     End active session (abandoned)
+  session rm <id>            Delete a session and its notes
+  session files add <paths>  Claim files in active session
+  session files rm <paths>   Release files from active session
+
+  sessions                   List sessions (active only by default)
+    --all                    Show all sessions (including completed)
+    --status <s>             Filter by status
+    --all-worktrees          Show sessions from all worktrees
+    -j, --json               Output as JSON
+
+  note <content>             Quick note (auto-creates session if needed)
+    --type <type>            Note type: progress, decision, blocker, etc.
+
+  notes [session-id]         View notes for a session or recent across all
+    --limit <n>              Limit number of notes
+    --type <type>            Filter by note type
+    -j, --json               Output as JSON
+
+Examples:
+  pd session start "Building auth module" --agent agent-42
+  pd note "Finished login endpoint" --type progress
+  pd notes --limit 10
+  pd session files add src/auth.ts src/login.ts
+  pd session end "Auth module complete"
+  pd sessions --all --json`,
+
+  locks: `Distributed Locks \u2014 Exclusive access for shared resources
+
+Commands:
+  lock <name>              Acquire a distributed lock
+    --ttl <ms>             Time-to-live (default: 300000 = 5 min)
+    --owner <id>           Lock owner identifier
+    --wait                 Block until lock is available
+    --timeout <ms>         Wait timeout (default: 60000)
+
+  lock extend <name>       Extend a lock's TTL
+    --ttl <ms>             New TTL from now
+
+  unlock <name>            Release a distributed lock
+    --force                Release even if not the owner
+
+  locks                    List all active locks
+    -j, --json             Output as JSON
+
+Examples:
+  pd lock db-migrations && npm run migrate && pd unlock db-migrations
+  pd lock deploy --ttl 600000 --owner ci-pipeline
+  pd lock extend deploy --ttl 300000
+  pd locks --json`,
+
+  agents: `Agent Registry \u2014 Track active agents with heartbeats
+
+Commands:
+  agent register           Register as an agent
+    --agent <id>           Agent ID (required)
+    --identity <id>        Semantic identity (project:stack:context)
+    --purpose "text"       What this agent is doing
+    --type <type>          Agent type: cli, sdk, mcp
+
+  agent heartbeat          Send heartbeat (keeps agent alive)
+    --agent <id>           Agent ID
+
+  agent unregister         Unregister agent (release resources)
+    --agent <id>           Agent ID
+
+  agent <id>               Get info about a specific agent
+
+  agents                   List all registered agents
+    --active               Show only active agents
+    -j, --json             Output as JSON
+
+  salvage                  Check resurrection queue for dead agents
+    --project <name>       Filter by project
+    --stack <name>         Filter by stack
+
+  salvage claim <id>       Claim a dead agent's work to continue
+
+Examples:
+  pd agent register --agent build-42 --identity myapp:api --purpose "Building auth"
+  pd agent heartbeat --agent build-42
+  pd agents --active --json
+  pd salvage --project myapp
+  pd salvage claim dead-agent-99`,
+
+  ports: `Port Management \u2014 Claim, release, and query ports
+
+Commands:
+  claim <id>               Claim a port for a service
+    -p, --port <n>         Request a specific port
+    --range <a>-<b>        Acceptable port range
+    --expires <dur>        Auto-release after duration (2h, 30m, 1d)
+    --export               Print 'export PORT=XXXX' for eval
+    -q, --quiet            Just print the port number
+    -j, --json             Output as JSON
+
+  release <id>             Release port(s) by identity or pattern
+    --expired              Release only expired assignments
+
+  find [pattern]           List services matching pattern
+    -j, --json             Output as JSON
+
+  url <id>                 Get URL for a service
+  env [pattern]            Export environment variables for matching services
+  ports                    List active port assignments
+    --system               Include system/well-known ports
+  ports cleanup            Release stale port assignments
+
+Identity Format:
+  myapp                    Just the project name
+  myapp:api                Project + stack
+  myapp:api:feature-x      Project + stack + context
+  myapp:*:main             Wildcards for querying/releasing
+
+Note: Quote wildcards to prevent shell expansion:
+  pd find 'myapp:*'        # Correct
+  pd find myapp:*          # May fail in zsh
+
+Examples:
+  pd claim myapp                        # Get a port
+  pd claim myapp:api --port 3000        # Request specific port
+  pd claim myapp --expires 2h           # Auto-release in 2 hours
+  eval $(pd claim myapp --export)       # Set PORT env var directly
+  pd find 'myapp:*'                     # All stacks for myapp
+  pd release 'myapp:*:*'               # Release all for project`,
+
+  messaging: `Pub/Sub Messaging \u2014 Real-time inter-agent communication
+
+Commands:
+  pub <channel> <message>  Publish a message to a channel
+    --sender <id>          Sender identifier
+
+  sub <channel>            Subscribe to a channel (real-time SSE stream)
+
+  wait <id> [ids...]       Wait for service(s) to become healthy
+    --timeout <ms>         Wait timeout (default: 60000)
+
+  channels                 List active pub/sub channels
+  channels clear <name>    Clear messages from a channel
+
+Examples:
+  pd pub build:done '{"status":"success"}'
+  pd sub build:done
+  pd wait myapp:api myapp:frontend
+  pd channels
+  pd channels clear build:done`,
+
+  dns: `DNS Records \u2014 Local service discovery via hostname
+
+Commands:
+  dns register             Register a DNS record
+    --hostname <name>      Hostname to register
+    --port <n>             Port to resolve to
+    --service <id>         Associated service identity
+
+  dns lookup <hostname>    Resolve a hostname to port
+  dns list                 List all DNS records
+  dns cleanup              Clean stale DNS records
+  dns status               DNS system status
+
+Examples:
+  pd dns register --hostname api.local --port 3000 --service myapp:api
+  pd dns lookup api.local`,
+
+  orchestration: `Service Orchestration \u2014 Start/stop multi-service stacks
+
+Commands:
+  up                       Start all services (auto-detect or from .portdaddyrc)
+    --service <name>       Start only this service + its dependencies
+    --no-health            Skip health checks after starting
+    --branch               Use git branch as context in identity
+
+  down                     Stop all services started by 'up'
+
+  scan [dir]               Deep scan project, detect all services
+    --dry-run              Preview without saving config
+    --dir <path>           Target directory
+    --branch               Use git branch as context
+
+  projects                 List all registered projects
+  projects rm <id>         Remove a registered project
+
+  health [id]              Check service health (all or by ID)
+
+Examples:
+  pd up                              # Auto-detect and start everything
+  pd up --service frontend           # Start frontend + dependencies
+  pd up --branch                     # Use git branch in identity
+  pd down                            # Stop all running services
+  pd scan --dry-run                  # Preview project detection
+  pd health myapp:api                # Check specific service health`,
+
+  sugar: `Sugar Commands \u2014 Compound operations for common workflows
+
+Sugar commands combine multiple steps into single commands.
+They manage agent registration, sessions, and local context together.
+
+Commands:
+  begin "purpose"          Register agent + start session atomically
+                           Writes context to .portdaddy/current.json
+
+  done "summary"           End session + unregister agent atomically
+                           Cleans up .portdaddy/current.json
+
+  whoami                   Show current agent/session context
+                           Reads from .portdaddy/current.json
+
+  with-lock <name> <cmd>   Acquire lock, run command, release lock
+                           Lock is always released, even on failure
+
+Aliases:
+  n <content>              Alias for "note"
+  u                        Alias for "up"
+  d                        Alias for "down"
+
+Examples:
+  pd begin "Building auth module"
+  pd note "Login endpoint done"
+  pd done "Auth module complete"
+  pd whoami
+  pd with-lock db-migrations npm run migrate`,
+
+  tutorial: `Interactive Tutorial \u2014 Learn Port Daddy step by step
+
+Commands:
+  learn                    Start the interactive tutorial
+
+The tutorial walks you through:
+  1. Claiming and releasing ports
+  2. Using semantic identities
+  3. Starting sessions and leaving notes
+  4. Multi-agent coordination with locks
+  5. Service orchestration with up/down
+  6. Agent resurrection and salvage
+
+Run: pd learn`,
+};
+
+// HELP is built lazily via getHelp() for context-aware output
 
 // =============================================================================
 // Command Suggestion (fuzzy "did you mean?")
 // =============================================================================
 
 const ALL_COMMANDS: string[] = [
-  'claim', 'c', 'release', 'r', 'find', 'f', 'list', 'l', 'ps', 'services', 'url', 'env',
+  'claim', 'c', 'release', 'r', 'find', 'f', 'list', 'l', 'ps', 'url', 'env',
   'pub', 'publish', 'sub', 'subscribe', 'wait', 'lock', 'unlock', 'locks',
   'up', 'down', 'scan', 's', 'projects', 'p',
   'agent', 'agents', 'log', 'activity',
-  'session', 'sessions', 'note', 'notes', 'files', 'who-owns', 'integration',
-  'dns',
-  'briefing', 'history',
+  'session', 'sessions', 'note', 'notes',
+  'begin', 'done', 'whoami', 'with-lock', 'learn',
+  'n', 'u', 'd',
   'dashboard', 'channels', 'webhook', 'webhooks', 'metrics', 'config', 'health', 'ports',
   'start', 'stop', 'restart', 'status', 'install', 'uninstall', 'dev', 'ci-gate',
   'doctor', 'diagnose', 'mcp', 'version', 'help',
-  'begin', 'b', 'done', 'whoami', 'w', 'with-lock', 'n', 'u', 'd',
   'salvage', 'resurrection', 'changelog', 'tunnel',
-  'learn', 'tutorial'
 ];
 
 /** Simple Levenshtein distance for short strings */
@@ -680,7 +800,8 @@ async function executeDirectMode(
           console.error('  Tip: Run from a directory with package.json for auto-detection');
           process.exit(1);
         }
-        if (IS_TTY) console.error(`Auto-detected identity: ${id}`);
+        // Always show auto-detected identity on stderr (including non-interactive/piped mode)
+        if (!options.quiet) console.error(`Auto-detected identity: ${id}`);
       }
 
       const svc = getDirectServices();
@@ -1021,9 +1142,9 @@ async function executeDirectMode(
 
       switch (subcommand) {
         case 'start': {
-          const purpose = rest[0] || (options.purpose as string) || undefined;
+          const purpose = rest[0];
           if (!purpose) {
-            console.error('Usage: port-daddy session start <purpose> [--purpose "text"] [--agent ID] [--force]');
+            console.error('Usage: port-daddy session start <purpose> [--agent AGENT_ID] [--force]');
             process.exit(1);
           }
 
@@ -1062,7 +1183,7 @@ async function executeDirectMode(
 
         case 'end':
         case 'done': {
-          const note = rest[0] || (options.note as string) || undefined;
+          const note = rest[0];
           const status = (options.status as string) || 'completed';
 
           // Find active session
@@ -1258,9 +1379,9 @@ async function executeDirectMode(
     }
 
     case 'note': {
-      const content = positional[0] || (options.content as string) || undefined;
+      const content = positional[0];
       if (!content) {
-        console.error('Usage: port-daddy note <content> [--content "text"] [-c "text"] [--type TYPE]');
+        console.error('Usage: port-daddy note <content> [--type TYPE]');
         process.exit(1);
       }
 
@@ -1335,22 +1456,34 @@ async function main(): Promise<void> {
   const command: string | undefined = args[0];
 
   if (!command || command === '--help' || command === '-h') {
-    console.log(HELP);
+    // 5d: First-run detection — hint about pd learn if .portdaddy/ doesn't exist
+    const portdaddyDir = join(process.cwd(), '.portdaddy');
+    if (!existsSync(portdaddyDir)) {
+      console.error('First time here? Run `pd learn` for an interactive tutorial.\n');
+    }
+    console.log(buildHelp());
     process.exit(0);
   }
 
+  // 5c: pd help <topic> — show topic-specific detailed help
   if (command === 'help') {
     const topic = args[1];
-    if (topic && TOPICS[topic]) {
-      console.log(`\n${TOPICS[topic]}\n`);
-    } else if (topic) {
-      console.error(`Unknown topic: ${topic}`);
-      console.error(`Available topics: ${Object.keys(TOPICS).join(', ')}`);
-      console.error('Run "pd help" for general usage.');
-    } else {
-      console.log(HELP);
+    if (!topic) {
+      console.log(buildHelp());
+      process.exit(0);
     }
-    process.exit(0);
+
+    const topicHelp = TOPIC_HELP[topic];
+    if (topicHelp) {
+      console.log(topicHelp);
+      process.exit(0);
+    }
+
+    // Unknown topic — show available topics
+    const topics = Object.keys(TOPIC_HELP).join(', ');
+    console.error(`Unknown help topic: ${topic}`);
+    console.error(`Available topics: ${topics}`);
+    process.exit(1);
   }
 
   if (command === '--version' || command === '-V') {
@@ -1377,22 +1510,8 @@ async function main(): Promise<void> {
     e: 'env',
     j: 'json',
     q: 'quiet',
-    h: 'help',
-    P: 'purpose',
-    n: 'note',
-    c: 'content',
-    m: 'message',
-    d: 'description',
-    t: 'type',
-    i: 'identity',
-    a: 'agent',
-    s: 'status',
-    o: 'owner',
-    f: 'force',
+    h: 'help'
   };
-
-  // Flags that expect a value (vs boolean flags like -q, -j, -f)
-  const valueFlags = new Set(['p', 'e', 'P', 'n', 'c', 'm', 'd', 't', 'i', 'a', 's', 'o']);
 
   for (let i = 1; i < args.length; i++) {
     const arg: string = args[i];
@@ -1407,14 +1526,7 @@ async function main(): Promise<void> {
       } else {
         const key: string = arg.slice(2);
         const next: string | undefined = args[i + 1];
-        // Boolean flags never consume the next token; everything else does.
-        // NOTE: Uses array (not Set) to avoid matching the tierPattern regex in manifest-enforcement tests
-        const booleanLongFlags = [
-          'json', 'quiet', 'force', 'help', 'active', 'system', 'export',
-          'branch', 'no-health', 'dry-run', 'direct', 'shell', 'expired',
-          'all', 'all-worktrees', 'aw', 'full', 'pair', 'version',
-        ];
-        if (!booleanLongFlags.includes(key) && next && !next.startsWith('-')) {
+        if (next && !next.startsWith('-')) {
           options[key] = next;
           i++;
         } else {
@@ -1437,7 +1549,8 @@ async function main(): Promise<void> {
         const longKey: string = shortFlags[flagPart] || flagPart;
         const next: string | undefined = args[i + 1];
         // Check if this flag expects a value
-        if (valueFlags.has(flagPart) && next && !next.startsWith('-')) {
+        const expectsValue: boolean = ['p', 'e'].includes(flagPart);
+        if (expectsValue && next && !next.startsWith('-')) {
           options[longKey] = next;
           i++;
         } else {
@@ -1503,7 +1616,7 @@ async function main(): Promise<void> {
       // Agent coordination
       case 'pub':
       case 'publish':
-        await handlePub(positional[0], positional.slice(1).join(' ') || (options.message as string) || undefined, options);
+        await handlePub(positional[0], positional.slice(1).join(' ') || (options.message as string | undefined), options);
         break;
 
       case 'sub':
@@ -1572,11 +1685,6 @@ async function main(): Promise<void> {
         await handleTunnel(positional[0], positional.slice(1), options);
         break;
 
-      // DNS
-      case 'dns':
-        await handleDns(positional[0], positional.slice(1), options);
-        break;
-
       // Activity log
       case 'log':
       case 'activity':
@@ -1593,66 +1701,11 @@ async function main(): Promise<void> {
         break;
 
       case 'note':
-        await handleNote(positional[0] || (options.content as string) || undefined, options);
+        await handleNote(positional[0], options);
         break;
 
       case 'notes':
         await handleNotes(positional[0], options);
-        break;
-
-      // File claims
-      case 'files':
-        await handleFiles(options);
-        break;
-
-      case 'who-owns':
-        await handleWhoOwns(positional[0], options);
-        break;
-
-      // Integration signals
-      case 'integration':
-        await handleIntegration(positional[0], positional.slice(1), options);
-        break;
-
-      // Briefing
-      case 'briefing':
-        await handleBriefing(options);
-        break;
-
-      case 'history':
-        await handleHistory(options);
-        break;
-
-      // Sugar commands (compound workflows)
-      case 'begin':
-      case 'b':
-        await handleBegin(positional[0] || (options.purpose as string) || undefined, positional.slice(1), options);
-        break;
-
-      case 'done':
-        await handleDone(positional[0] || (options.note as string) || undefined, options);
-        break;
-
-      case 'whoami':
-      case 'w':
-        await handleWhoami(options);
-        break;
-
-      case 'with-lock':
-        await handleWithLock(positional[0], positional.slice(1), options);
-        break;
-
-      // Aliases
-      case 'n':
-        await handleNote(positional[0] || (options.content as string) || undefined, options);
-        break;
-
-      case 'u':
-        await handleUp(positional, options);
-        break;
-
-      case 'd':
-        await handleDown(options);
         break;
 
       // Daemon management
@@ -1727,11 +1780,6 @@ async function main(): Promise<void> {
         await handlePorts(positional[0], options);
         break;
 
-      case 'learn':
-      case 'tutorial':
-        await handleLearn();
-        break;
-
       case 'mcp': {
         // Launch MCP server (stdio transport for Claude Code / Desktop)
         const { spawn } = await import('node:child_process');
@@ -1753,15 +1801,17 @@ async function main(): Promise<void> {
           console.error(`Unknown command: ${command}`);
           console.error(`  Did you mean: port-daddy ${suggestion}?`);
           console.error('');
-          console.error('Run "pd help" for usage, or "pd learn" for an interactive tutorial.');
+          console.error('Run "pd help" for usage or "pd help <topic>" for details');
+          console.error('Tip: Run `pd learn` for an interactive tutorial');
           process.exit(1);
         }
-        // Only fall through to claim for semantic identities (must contain ':')
-        if (command.includes(':')) {
+        // If it looks like a semantic identity (contains : or is alphanumeric), treat as claim
+        if (command.includes(':') || command.match(/^[a-zA-Z][a-zA-Z0-9._-]*$/)) {
           await handleClaim(command, options);
         } else {
           console.error(`Unknown command: ${command}`);
-          console.error('Run "port-daddy help" for usage');
+          console.error('Run "pd help" for usage or "pd help <topic>" for details');
+          console.error('Tip: Run `pd learn` for an interactive tutorial');
           process.exit(1);
         }
         break;
