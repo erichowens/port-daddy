@@ -150,18 +150,7 @@
       position: relative; overflow: hidden;
       transition: border-color var(--transition-med), transform var(--transition-fast);
     }
-    .stat-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--accent), transparent);
-      opacity: 0.4;
-    }
     .stat-card:hover { border-color: var(--accent); transform: translateY(-1px); }
-    .stat-card:hover::before { opacity: 0.8; }
     .stat-card .stat-icon-bg {
       position: absolute; top: -4px; right: -4px; width: 48px; height: 48px;
       opacity: 0.06; stroke-width: 1.5;
@@ -649,9 +638,221 @@
       .quick-actions { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
       .container { padding: 12px 16px; }
     }
+
+    /* ── Phase 1: Accessibility ── */
+
+    /* 1b. Skip-nav link */
+    .skip-link {
+      position: absolute; left: -9999px; top: auto; width: 1px; height: 1px;
+      overflow: hidden; z-index: 9999;
+      background: var(--accent); color: var(--bg-dark); padding: 12px 24px;
+      font-weight: 700; font-size: 1em; text-decoration: none;
+      border-radius: 0 0 var(--radius-md) var(--radius-md);
+    }
+    .skip-link:focus {
+      position: fixed; left: 50%; top: 0; transform: translateX(-50%);
+      width: auto; height: auto; overflow: visible;
+      z-index: 9999;
+    }
+
+    /* 1g. Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* ── Phase 2: UX ── */
+
+    /* 2b. Mobile sidebar / hamburger */
+    .hamburger-btn {
+      display: none;
+      background: none; border: 1px solid var(--border); color: var(--text-dim);
+      width: 38px; height: 38px; border-radius: var(--radius-sm); cursor: pointer;
+      align-items: center; justify-content: center;
+      transition: all var(--transition-med); position: relative;
+    }
+    .hamburger-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .hamburger-line {
+      display: block; width: 18px; height: 2px; background: currentColor;
+      border-radius: 1px; transition: all 0.25s ease;
+    }
+    .hamburger-line + .hamburger-line { margin-top: 4px; }
+    .mobile-drawer-backdrop {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6); z-index: 1500; opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .mobile-drawer-backdrop.open { display: block; opacity: 1; }
+    .mobile-drawer {
+      position: fixed; top: 0; left: -280px; width: 280px; height: 100vh;
+      background: var(--bg-card); border-right: 1px solid var(--border);
+      z-index: 1600; overflow-y: auto; transition: left 0.3s ease;
+      padding: 20px 0;
+    }
+    .mobile-drawer.open { left: 0; }
+    .mobile-drawer .mobile-nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 20px; color: var(--text-dim); cursor: pointer;
+      transition: all var(--transition-fast); font-size: 0.9em;
+      border: none; background: none; width: 100%; text-align: left;
+      font-family: inherit;
+    }
+    .mobile-drawer .mobile-nav-item:hover,
+    .mobile-drawer .mobile-nav-item:focus { color: var(--accent); background: var(--accent-glow); outline: none; }
+    .mobile-drawer .mobile-nav-item.active { color: var(--accent); border-left: 3px solid var(--accent); }
+    .mobile-drawer .mobile-nav-section {
+      padding: 8px 20px 4px; font-size: 0.7em; text-transform: uppercase;
+      letter-spacing: 1.5px; color: var(--text-muted); margin-top: 8px;
+    }
+    @media (max-width: 768px) {
+      .hamburger-btn { display: flex; }
+      .tabs-wrapper { display: none; }
+    }
+
+    /* 2c. Daemon-down banner */
+    .daemon-banner {
+      display: none; background: rgba(229,182,85,0.15); border: 1px solid rgba(229,182,85,0.3);
+      color: var(--warning); padding: 10px 16px; border-radius: var(--radius-sm);
+      font-size: 0.85em; margin-bottom: 12px;
+      align-items: center; gap: 8px;
+    }
+    .daemon-banner.visible { display: flex; }
+    .daemon-banner svg { flex-shrink: 0; }
+    .content-dimmed .tabs-container { opacity: 0.5; pointer-events: auto; transition: opacity 0.3s ease; }
+
+    /* 2d. Scroll indicator on tables */
+    .table-wrap {
+      position: relative; overflow-x: auto;
+    }
+    .table-wrap::before, .table-wrap::after {
+      content: ''; position: absolute; top: 0; bottom: 0; width: 24px;
+      pointer-events: none; z-index: 10; opacity: 0; transition: opacity 0.2s ease;
+    }
+    .table-wrap::before {
+      left: 0;
+      background: linear-gradient(90deg, var(--bg-card), transparent);
+    }
+    .table-wrap::after {
+      right: 0;
+      background: linear-gradient(270deg, var(--bg-card), transparent);
+    }
+    .table-wrap.scroll-left::before { opacity: 1; }
+    .table-wrap.scroll-right::after { opacity: 1; }
+
+    /* ── Phase 3: Nautical Theme ── */
+
+    /* 3c. Wave-pattern card top borders */
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 6'%3E%3Cpath d='M0 3 Q5 0 10 3 Q15 6 20 3 Q25 0 30 3 Q35 6 40 3' fill='none' stroke='%234a9d9e' stroke-width='1.5' opacity='0.5'/%3E%3C/svg%3E") repeat-x;
+      background-size: 40px 6px;
+      opacity: 0.6;
+    }
+    .stat-card:hover::before { opacity: 1; }
+
+    /* 3e. Welcome aboard panel */
+    .welcome-panel {
+      background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-dark) 100%);
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 48px 40px; text-align: center; margin-bottom: 20px;
+      position: relative; overflow: hidden;
+    }
+    .welcome-panel::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 6'%3E%3Cpath d='M0 3 Q5 0 10 3 Q15 6 20 3 Q25 0 30 3 Q35 6 40 3' fill='none' stroke='%234a9d9e' stroke-width='1.5' opacity='0.5'/%3E%3C/svg%3E") repeat-x;
+      background-size: 40px 6px;
+    }
+    .welcome-panel .welcome-icon {
+      width: 64px; height: 64px; margin: 0 auto 20px;
+      stroke: var(--accent); fill: none; stroke-width: 1.5; opacity: 0.6;
+    }
+    .welcome-panel h2 {
+      font-size: 1.6em; color: var(--accent); margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--accent) 0%, #7fcfcf 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .welcome-panel .welcome-sub {
+      color: var(--text-dim); font-size: 0.95em; margin-bottom: 28px; max-width: 500px; margin-left: auto; margin-right: auto;
+    }
+    .welcome-cmd-box {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 16px; margin-bottom: 20px;
+    }
+    .welcome-cmd-box code { background: none; padding: 0; font-size: 0.95em; }
+    .welcome-cmd-box .copy-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-dim);
+      width: 28px; height: 28px; border-radius: 4px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: all var(--transition-med);
+    }
+    .welcome-cmd-box .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .welcome-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .welcome-actions button {
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text); padding: 10px 20px; border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 0.9em; cursor: pointer;
+      transition: all var(--transition-med); display: flex; align-items: center; gap: 8px;
+    }
+    .welcome-actions button:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+    .welcome-actions button.primary { background: var(--accent); color: var(--bg-dark); border-color: var(--accent); }
+    .welcome-actions button.primary:hover { background: var(--accent-soft); }
+
+    /* 3f. Empty-state with copyable commands */
+    .empty-state-cmd {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 4px 10px; margin-top: 8px;
+      font-size: 0.85em; cursor: pointer; transition: border-color var(--transition-med);
+    }
+    .empty-state-cmd:hover { border-color: var(--accent); }
+    .empty-state-cmd code { background: none; padding: 0; font-size: 0.9em; }
+
+    /* 3g. Progressive disclosure sidebar nav */
+    .nav-more-toggle {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; color: var(--text-muted); cursor: pointer;
+      font-size: 0.75em; text-transform: uppercase; letter-spacing: 1px;
+      border: none; background: none; font-family: inherit;
+      transition: color var(--transition-fast); width: 100%;
+    }
+    .nav-more-toggle:hover, .nav-more-toggle:focus { color: var(--text); outline: none; }
+    .nav-more-toggle svg {
+      width: 12px; height: 12px; transition: transform 0.2s ease;
+    }
+    .nav-more-toggle.expanded svg { transform: rotate(90deg); }
+    .nav-more-section { overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+    .nav-more-section.expanded { max-height: 600px; }
+
+    /* 3h. Connection status indicator */
+    .conn-status {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.8em; color: var(--text-muted); padding: 4px 10px;
+      border-radius: 12px; background: var(--bg-input); border: 1px solid var(--border);
+    }
+    .conn-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      transition: background 0.3s ease;
+    }
+    .conn-dot.live { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .conn-dot.polling { background: var(--warning); box-shadow: 0 0 6px var(--warning); }
+    .conn-dot.disconnected { background: var(--danger); }
+
+    /* 3d. Maritime section labels on tabs */
+    .tab-section-label {
+      display: none; /* hidden in tab bar, shown in mobile drawer */
+    }
   </style>
 </head>
 <body>
+  <!-- Phase 1b: Skip-nav link -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
   <svg style="display:none">
     <symbol id="icon-server" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></symbol>
     <symbol id="icon-bot" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></symbol>
@@ -692,23 +893,16 @@
     <div class="header">
       <div class="logo">
         <div class="logo-mark">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <!-- Ship's wheel icon -->
-            <circle cx="12" cy="12" r="7"/>
-            <circle cx="12" cy="12" r="2.5"/>
-            <line x1="12" y1="5" x2="12" y2="2"/>
-            <line x1="12" y1="22" x2="12" y2="19"/>
-            <line x1="19" y1="12" x2="22" y2="12"/>
-            <line x1="2" y1="12" x2="5" y2="12"/>
-            <line x1="16.95" y1="7.05" x2="19.07" y2="4.93"/>
-            <line x1="4.93" y1="19.07" x2="7.05" y2="16.95"/>
-            <line x1="16.95" y1="16.95" x2="19.07" y2="19.07"/>
-            <line x1="4.93" y1="4.93" x2="7.05" y2="7.05"/>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <!-- Anchor icon -->
+            <circle cx="12" cy="5" r="3"/>
+            <line x1="12" y1="22" x2="12" y2="8"/>
+            <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
           </svg>
         </div>
         <div class="logo-text">
-          <h1>Port Daddy</h1>
-          <div class="tagline">Your ports. My rules. Zero conflicts.</div>
+          <h1 style="letter-spacing: 0.5px;">Port Daddy</h1>
+          <div class="tagline">Harbor Control</div>
         </div>
       </div>
       <div class="header-right">
@@ -719,46 +913,98 @@
           <div class="status-dot online" id="status-dot"></div>
           <span id="status-text">Online</span>
         </div>
+        <!-- 3h. Connection status indicator -->
+        <div class="conn-status" id="conn-status" title="Data refresh mode">
+          <div class="conn-dot polling" id="conn-dot"></div>
+          <span id="conn-label">Polling</span>
+        </div>
         <div class="version-info">
           <div>v<code id="version">-</code></div>
           <div>PID <code id="pid">-</code></div>
         </div>
+        <!-- 2b. Hamburger for mobile -->
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileDrawer()" aria-label="Open navigation menu">
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+        </button>
         <button class="settings-btn" onclick="openSettings()" title="Settings">
-          <svg class="icon-lg"><use href="#icon-settings"/></svg>
+          <svg class="icon-lg" aria-hidden="true"><use href="#icon-settings"/></svg>
         </button>
       </div>
     </div>
 
-    <div class="stats">
-      <div class="stat-card"><svg class="stat-icon-bg icon-xl"><use href="#icon-server"/></svg><div class="value" id="stat-services">-</div><div class="label"><svg class="icon"><use href="#icon-server"/></svg>Services</div></div>
-      <div class="stat-card"><svg class="stat-icon-bg icon-xl"><use href="#icon-bot"/></svg><div class="value" id="stat-agents">-</div><div class="label"><svg class="icon"><use href="#icon-bot"/></svg>Agents</div></div>
-      <div class="stat-card"><svg class="stat-icon-bg icon-xl"><use href="#icon-lock"/></svg><div class="value" id="stat-locks">-</div><div class="label"><svg class="icon"><use href="#icon-lock"/></svg>Locks</div></div>
-      <div class="stat-card"><svg class="stat-icon-bg icon-xl"><use href="#icon-message"/></svg><div class="value" id="stat-channels">-</div><div class="label"><svg class="icon"><use href="#icon-message"/></svg>Channels</div></div>
-      <div class="stat-card"><svg class="stat-icon-bg icon-xl"><use href="#icon-webhook"/></svg><div class="value" id="stat-webhooks">-</div><div class="label"><svg class="icon"><use href="#icon-webhook"/></svg>Webhooks</div></div>
-      <div class="stat-card"><svg class="stat-icon-bg icon-xl"><use href="#icon-clock"/></svg><div class="value" id="stat-uptime">-</div><div class="label"><svg class="icon"><use href="#icon-clock"/></svg>Uptime</div></div>
+    <div class="stats" id="stats-grid">
+      <div class="stat-card"><svg class="stat-icon-bg icon-xl" aria-hidden="true"><use href="#icon-server"/></svg><div class="value" id="stat-services">-</div><div class="label"><svg class="icon" aria-hidden="true"><use href="#icon-server"/></svg>Services</div></div>
+      <div class="stat-card"><svg class="stat-icon-bg icon-xl" aria-hidden="true"><use href="#icon-bot"/></svg><div class="value" id="stat-agents">-</div><div class="label"><svg class="icon" aria-hidden="true"><use href="#icon-bot"/></svg>Agents</div></div>
+      <div class="stat-card"><svg class="stat-icon-bg icon-xl" aria-hidden="true"><use href="#icon-lock"/></svg><div class="value" id="stat-locks">-</div><div class="label"><svg class="icon" aria-hidden="true"><use href="#icon-lock"/></svg>Locks</div></div>
+      <div class="stat-card"><svg class="stat-icon-bg icon-xl" aria-hidden="true"><use href="#icon-message"/></svg><div class="value" id="stat-channels">-</div><div class="label"><svg class="icon" aria-hidden="true"><use href="#icon-message"/></svg>Channels</div></div>
+      <div class="stat-card"><svg class="stat-icon-bg icon-xl" aria-hidden="true"><use href="#icon-webhook"/></svg><div class="value" id="stat-webhooks">-</div><div class="label"><svg class="icon" aria-hidden="true"><use href="#icon-webhook"/></svg>Webhooks</div></div>
+      <div class="stat-card"><svg class="stat-icon-bg icon-xl" aria-hidden="true"><use href="#icon-clock"/></svg><div class="value" id="stat-uptime">-</div><div class="label"><svg class="icon" aria-hidden="true"><use href="#icon-clock"/></svg>Uptime</div></div>
     </div>
 
     <div class="quick-actions">
-      <button class="quick-btn accent-btn" onclick="showIntegrateModal()"><svg class="icon"><use href="#icon-code"/></svg>Integrate Into Your Stack</button>
-      <button class="quick-btn danger-btn" onclick="releaseAllServices()" title="Remove all services from Port Daddy's database (does NOT kill processes)"><svg class="icon"><use href="#icon-trash"/></svg>Release All</button>
-      <button class="quick-btn" onclick="showShortcuts()"><svg class="icon"><use href="#icon-zap"/></svg>Shortcuts</button>
+      <button class="quick-btn accent-btn" onclick="showIntegrateModal()"><svg class="icon" aria-hidden="true"><use href="#icon-code"/></svg>Integrate Into Your Stack</button>
+      <button class="quick-btn danger-btn" onclick="releaseAllServices()" title="Remove all services from Port Daddy's database (does NOT kill processes)"><svg class="icon" aria-hidden="true"><use href="#icon-trash"/></svg>Release All</button>
+      <button class="quick-btn" onclick="showShortcuts()"><svg class="icon" aria-hidden="true"><use href="#icon-zap"/></svg>Shortcuts</button>
+    </div>
+
+    <!-- 3e. Welcome aboard panel (shown when all stats are 0) -->
+    <div class="welcome-panel" id="welcome-panel" style="display:none">
+      <svg class="welcome-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="5" r="3"/>
+        <line x1="12" y1="22" x2="12" y2="8"/>
+        <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
+      </svg>
+      <h2>Welcome aboard, Captain</h2>
+      <p class="welcome-sub">Port Daddy manages ports and coordinates agents for multi-agent development.</p>
+      <div class="welcome-cmd-box">
+        <code>pd begin "your purpose here"</code>
+        <button class="copy-btn" onclick="copyCmd('pd begin &quot;your purpose here&quot;')" title="Copy command">
+          <svg class="icon" aria-hidden="true" style="width:14px;height:14px"><use href="#icon-copy"/></svg>
+        </button>
+      </div>
+      <div class="welcome-actions">
+        <button class="primary" onclick="quickCommand('scan')">
+          <svg class="icon" aria-hidden="true"><use href="#icon-compass"/></svg>Scan a Project
+        </button>
+        <button onclick="quickCommand('tutorial')">
+          <svg class="icon" aria-hidden="true"><use href="#icon-book"/></svg>Learn more: pd learn
+        </button>
+      </div>
+    </div>
+
+    <div id="main-content" role="main">
+    <!-- 2c. Daemon-down banner -->
+    <div class="daemon-banner" id="daemon-banner" role="alert">
+      <svg class="icon" aria-hidden="true" style="stroke:var(--warning)"><use href="#icon-flag"/></svg>
+      <span>Daemon offline -- data may be stale</span>
     </div>
 
     <div class="tabs-container">
-      <div class="tabs-wrapper">
+      <div class="tabs-wrapper" role="navigation" aria-label="Main navigation">
         <div class="tabs">
-          <button class="tab active" data-tab="terminal"><svg class="icon"><use href="#icon-terminal"/></svg>Terminal</button>
-          <button class="tab" data-tab="services"><svg class="icon"><use href="#icon-server"/></svg>Services<span class="tab-badge" id="badge-services">0</span></button>
-          <button class="tab" data-tab="agents"><svg class="icon"><use href="#icon-bot"/></svg>Agents<span class="tab-badge" id="badge-agents">0</span></button>
-          <button class="tab" data-tab="salvage"><svg class="icon"><use href="#icon-anchor"/></svg>Salvage<span class="tab-badge" id="badge-salvage">0</span></button>
-          <button class="tab" data-tab="locks"><svg class="icon"><use href="#icon-lock"/></svg>Locks<span class="tab-badge" id="badge-locks">0</span></button>
-          <button class="tab" data-tab="channels"><svg class="icon"><use href="#icon-message"/></svg>Channels<span class="tab-badge" id="badge-channels">0</span></button>
-          <button class="tab" data-tab="webhooks"><svg class="icon"><use href="#icon-webhook"/></svg>Webhooks<span class="tab-badge" id="badge-webhooks">0</span></button>
-          <button class="tab" data-tab="projects"><svg class="icon"><use href="#icon-folder"/></svg>Projects<span class="tab-badge" id="badge-projects">0</span></button>
-          <button class="tab" data-tab="sessions"><svg class="icon"><use href="#icon-clipboard"/></svg>Sessions<span class="tab-badge" id="badge-sessions">0</span></button>
-          <button class="tab" data-tab="changelog"><svg class="icon"><use href="#icon-book"/></svg>Changelog<span class="tab-badge" id="badge-changelog">0</span></button>
-          <button class="tab" data-tab="activity"><svg class="icon"><use href="#icon-activity"/></svg>Activity</button>
-          <button class="tab" data-tab="config"><svg class="icon"><use href="#icon-settings"/></svg>Config</button>
+          <!-- Primary panels (always visible) -->
+          <button class="tab active" data-tab="terminal" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-terminal"/></svg>Terminal</button>
+          <button class="tab" data-tab="services" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-server"/></svg><span class="tab-section-label">Fleet</span>Services<span class="tab-badge" id="badge-services">0</span></button>
+          <button class="tab" data-tab="agents" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-bot"/></svg><span class="tab-section-label">Crew</span>Agents<span class="tab-badge" id="badge-agents">0</span></button>
+          <button class="tab" data-tab="sessions" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-clipboard"/></svg>Sessions<span class="tab-badge" id="badge-sessions">0</span></button>
+          <button class="tab" data-tab="activity" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-activity"/></svg>Activity</button>
+          <!-- More toggle -->
+          <button class="nav-more-toggle" id="nav-more-toggle" onclick="toggleMoreTabs()" aria-expanded="false" aria-controls="more-tabs">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            More
+          </button>
+          <!-- Secondary panels (collapsible) -->
+          <span class="nav-more-section" id="more-tabs" style="display:contents">
+            <button class="tab" data-tab="locks" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-lock"/></svg>Locks<span class="tab-badge" id="badge-locks">0</span></button>
+            <button class="tab" data-tab="channels" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-message"/></svg>Channels<span class="tab-badge" id="badge-channels">0</span></button>
+            <button class="tab" data-tab="salvage" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-anchor"/></svg>Salvage<span class="tab-badge" id="badge-salvage">0</span></button>
+            <button class="tab" data-tab="webhooks" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-webhook"/></svg>Webhooks<span class="tab-badge" id="badge-webhooks">0</span></button>
+            <button class="tab" data-tab="projects" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-folder"/></svg>Projects<span class="tab-badge" id="badge-projects">0</span></button>
+            <button class="tab" data-tab="changelog" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-book"/></svg>Changelog<span class="tab-badge" id="badge-changelog">0</span></button>
+            <button class="tab" data-tab="config" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-settings"/></svg>Config</button>
+          </span>
         </div>
       </div>
 
@@ -778,72 +1024,84 @@
 
       <div class="tab-content" id="tab-services">
         <div class="tab-toolbar">
-          <button class="refresh-btn" onclick="refreshServices()" id="refresh-services"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
+          <button class="refresh-btn" onclick="refreshServices()" id="refresh-services"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button>
           <div class="view-toggle">
-            <button class="active" onclick="setServicesView('detail', this)" title="Detailed"><svg class="icon"><use href="#icon-list"/></svg></button>
-            <button onclick="setServicesView('compact', this)" title="Compact"><svg class="icon"><use href="#icon-grid"/></svg></button>
+            <button class="active" onclick="setServicesView('detail', this)" title="Detailed"><svg class="icon" aria-hidden="true"><use href="#icon-list"/></svg></button>
+            <button onclick="setServicesView('compact', this)" title="Compact"><svg class="icon" aria-hidden="true"><use href="#icon-grid"/></svg></button>
           </div>
         </div>
+        <div class="table-wrap">
         <table id="services-table">
           <thead><tr><th>Identity</th><th>Port</th><th>Status</th><th>PID</th><th>URL</th><th>Age</th><th></th></tr></thead>
           <tbody id="services-body"><tr><td colspan="7" class="empty-state"><svg class="empty-state-icon"><use href="#icon-server"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
         </table>
+        </div>
       </div>
 
       <div class="tab-content" id="tab-agents">
-        <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshAgents()" id="refresh-agents"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button></div>
+        <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshAgents()" id="refresh-agents"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button></div>
+        <div class="table-wrap">
         <table>
           <thead><tr><th>Agent ID</th><th>Type</th><th>PID</th><th>Status</th><th>Last Heartbeat</th><th>Limits</th><th></th></tr></thead>
           <tbody id="agents-body"><tr><td colspan="7" class="empty-state"><svg class="empty-state-icon"><use href="#icon-bot"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
         </table>
+        </div>
       </div>
 
       <div class="tab-content" id="tab-salvage">
         <div class="tab-toolbar">
-          <button class="refresh-btn" onclick="refreshSalvage()" id="refresh-salvage"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
+          <button class="refresh-btn" onclick="refreshSalvage()" id="refresh-salvage"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button>
           <span style="flex:1"></span>
           <span class="text-muted" style="font-size:0.85em">Dead agents with unfinished work — filter by project with <code>pd salvage --project NAME</code></span>
         </div>
+        <div class="table-wrap">
         <table>
           <thead><tr><th>Agent</th><th>Identity</th><th>Status</th><th>Purpose</th><th>Stale Since</th><th>Notes</th><th></th></tr></thead>
           <tbody id="salvage-body"><tr><td colspan="7" class="empty-state"><svg class="empty-state-icon"><use href="#icon-anchor"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
         </table>
+        </div>
       </div>
 
       <div class="tab-content" id="tab-locks">
-        <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshLocks()" id="refresh-locks"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button></div>
+        <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshLocks()" id="refresh-locks"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button></div>
+        <div class="table-wrap">
         <table>
           <thead><tr><th>Lock Name</th><th>Owner</th><th>PID</th><th>Acquired</th><th>Expires</th><th></th></tr></thead>
           <tbody id="locks-body"><tr><td colspan="6" class="empty-state"><svg class="empty-state-icon"><use href="#icon-lock"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
         </table>
+        </div>
       </div>
 
       <div class="tab-content" id="tab-channels">
-        <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshChannels()" id="refresh-channels"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button></div>
+        <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshChannels()" id="refresh-channels"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button></div>
         <div id="channels-list"><div class="empty-state"><svg class="empty-state-icon"><use href="#icon-message"/></svg><div class="empty-state-text">Loading...</div></div></div>
       </div>
 
       <div class="tab-content" id="tab-webhooks">
-        <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshWebhooks()" id="refresh-webhooks"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button></div>
+        <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshWebhooks()" id="refresh-webhooks"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button></div>
+        <div class="table-wrap">
         <table>
           <thead><tr><th>Endpoint</th><th>Events</th><th>Status</th><th>Deliveries</th><th>Last Triggered</th></tr></thead>
           <tbody id="webhooks-body"><tr><td colspan="5" class="empty-state"><svg class="empty-state-icon"><use href="#icon-webhook"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
         </table>
+        </div>
       </div>
 
       <div class="tab-content" id="tab-projects">
         <div class="tab-toolbar">
-          <button class="refresh-btn" onclick="refreshProjects()" id="refresh-projects"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
+          <button class="refresh-btn" onclick="refreshProjects()" id="refresh-projects"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button>
         </div>
+        <div class="table-wrap">
         <table>
           <thead><tr><th>Project</th><th>Type</th><th>Services</th><th>Last Scanned</th><th>Frameworks</th><th></th></tr></thead>
           <tbody id="projects-body"><tr><td colspan="6" class="empty-state"><svg class="empty-state-icon"><use href="#icon-folder"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
         </table>
+        </div>
       </div>
 
       <div class="tab-content" id="tab-sessions">
         <div class="tab-toolbar">
-          <button class="refresh-btn" onclick="refreshSessions()" id="refresh-sessions"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
+          <button class="refresh-btn" onclick="refreshSessions()" id="refresh-sessions"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button>
           <select class="filter-select" id="sessions-filter" onchange="refreshSessions()">
             <option value="">Active Sessions</option>
             <option value="all">All Sessions</option>
@@ -851,17 +1109,19 @@
             <option value="abandoned">Abandoned</option>
           </select>
         </div>
+        <div class="table-wrap">
         <table>
           <thead><tr><th>ID</th><th>Purpose</th><th>Status</th><th>Agent</th><th>Files</th><th>Age</th><th></th></tr></thead>
           <tbody id="sessions-body"><tr><td colspan="7" class="empty-state"><svg class="empty-state-icon"><use href="#icon-clipboard"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
         </table>
+        </div>
         <h3 style="color:var(--accent);margin:24px 0 12px;font-size:1.05em">Recent Notes</h3>
         <div class="activity-feed" id="notes-feed"><div class="empty-state"><svg class="empty-state-icon"><use href="#icon-message"/></svg><div class="empty-state-text">No notes yet</div></div></div>
       </div>
 
       <div class="tab-content" id="tab-changelog">
         <div class="tab-toolbar">
-          <button class="refresh-btn" onclick="refreshChangelog()" id="refresh-changelog"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
+          <button class="refresh-btn" onclick="refreshChangelog()" id="refresh-changelog"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button>
           <select class="filter-select" id="changelog-identity" onchange="refreshChangelog()">
             <option value="">All Identities</option>
           </select>
@@ -877,7 +1137,7 @@
 
       <div class="tab-content" id="tab-activity">
         <div class="tab-toolbar">
-          <button class="refresh-btn" onclick="refreshActivity()" id="refresh-activity"><svg class="icon"><use href="#icon-refresh"/></svg>Refresh</button>
+          <button class="refresh-btn" onclick="refreshActivity()" id="refresh-activity"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button>
           <select class="filter-select" id="activity-filter" onchange="refreshActivity()">
             <option value="">All Activity</option>
             <option value="service.claim">Claims</option>
@@ -893,27 +1153,32 @@
       <div class="tab-content" id="tab-config">
         <h3 style="color:var(--accent);margin-bottom:16px;font-size:1.05em">Configuration Locations</h3>
         <div class="config-grid" id="config-grid">
-          <div class="config-item"><div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>Database</div><code class="config-path" id="config-db">Loading...</code><div class="config-desc">SQLite database storing all services, locks, agents, and messages</div></div>
-          <div class="config-item"><div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>Daemon PID</div><code class="config-path" id="config-pid">Loading...</code><div class="config-desc">Process ID file for the running daemon</div></div>
-          <div class="config-item"><div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>Logs</div><code class="config-path" id="config-log">Loading...</code><div class="config-desc">Daemon log output (when running as service)</div></div>
-          <div class="config-item"><div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>Installation</div><code class="config-path" id="config-install">Loading...</code><div class="config-desc">Port Daddy installation directory</div></div>
-          <div class="config-item"><div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>CLI Skill</div><code class="config-path">~/.claude/commands/port-daddy.md</code><div class="config-desc">Agentic skill file teaching Claude how to use Port Daddy</div></div>
-          <div class="config-item"><div class="config-label"><svg class="icon"><use href="#icon-settings"/></svg>Environment</div><code class="config-path">PORT_DADDY_PORT, PORT_DADDY_RANGE_START, PORT_DADDY_RANGE_END</code><div class="config-desc">Optional env vars to customize port and range</div></div>
+          <div class="config-item"><div class="config-label"><svg class="icon" aria-hidden="true"><use href="#icon-folder"/></svg>Database</div><code class="config-path" id="config-db">Loading...</code><div class="config-desc">SQLite database storing all services, locks, agents, and messages</div></div>
+          <div class="config-item"><div class="config-label"><svg class="icon" aria-hidden="true"><use href="#icon-folder"/></svg>Daemon PID</div><code class="config-path" id="config-pid">Loading...</code><div class="config-desc">Process ID file for the running daemon</div></div>
+          <div class="config-item"><div class="config-label"><svg class="icon" aria-hidden="true"><use href="#icon-folder"/></svg>Logs</div><code class="config-path" id="config-log">Loading...</code><div class="config-desc">Daemon log output (when running as service)</div></div>
+          <div class="config-item"><div class="config-label"><svg class="icon" aria-hidden="true"><use href="#icon-folder"/></svg>Installation</div><code class="config-path" id="config-install">Loading...</code><div class="config-desc">Port Daddy installation directory</div></div>
+          <div class="config-item"><div class="config-label"><svg class="icon" aria-hidden="true"><use href="#icon-folder"/></svg>CLI Skill</div><code class="config-path">~/.claude/commands/port-daddy.md</code><div class="config-desc">Agentic skill file teaching Claude how to use Port Daddy</div></div>
+          <div class="config-item"><div class="config-label"><svg class="icon" aria-hidden="true"><use href="#icon-settings"/></svg>Environment</div><code class="config-path">PORT_DADDY_PORT, PORT_DADDY_RANGE_START, PORT_DADDY_RANGE_END</code><div class="config-desc">Optional env vars to customize port and range</div></div>
         </div>
       </div>
     </div>
 
+    </div><!-- /main-content -->
     <div class="footer">
-      <div class="farewell">⚓ Fair winds and following seas ⚓</div>
+      <div class="farewell">Fair winds and following seas</div>
       Auto-refreshes every 5s · <a href="https://github.com/curiositech/port-daddy">GitHub</a> · Port Daddy by <a href="https://curiositech.ai">Curiositech</a>
     </div>
   </div>
 
-  <div class="toast-container" id="toast-container"></div>
+  <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
 
   <div class="modal-overlay" id="modal-overlay" onclick="closeModal()">
-    <div class="modal" id="modal-content" onclick="event.stopPropagation()"></div>
+    <div class="modal" id="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title" onclick="event.stopPropagation()"></div>
   </div>
+
+  <!-- 2b. Mobile drawer -->
+  <div class="mobile-drawer-backdrop" id="mobile-drawer-backdrop" onclick="closeMobileDrawer()"></div>
+  <nav class="mobile-drawer" id="mobile-drawer" role="navigation" aria-label="Mobile navigation"></nav>
 
   <div class="settings-overlay" id="settings-overlay" onclick="closeSettings()"></div>
   <div class="settings-panel" id="settings-panel">
@@ -943,6 +1208,161 @@
   <script>
     var API = '';
     var servicesViewMode = 'detail';
+    var daemonOnline = true;
+    var moreTabsExpanded = localStorage.getItem('portdaddy-more-tabs') === 'true';
+
+    /* ── Phase 2a: Hash Routing ── */
+    function getHashPanel() {
+      var h = location.hash.replace('#', '');
+      return h || null;
+    }
+    window.addEventListener('hashchange', function() {
+      var panel = getHashPanel();
+      if (panel) switchToTab(panel);
+    });
+
+    /* ── Phase 2b: Mobile Drawer ── */
+    function toggleMobileDrawer() {
+      var drawer = document.getElementById('mobile-drawer');
+      var backdrop = document.getElementById('mobile-drawer-backdrop');
+      var isOpen = drawer.classList.contains('open');
+      if (isOpen) { closeMobileDrawer(); } else { openMobileDrawer(); }
+    }
+    function openMobileDrawer() {
+      var drawer = document.getElementById('mobile-drawer');
+      var backdrop = document.getElementById('mobile-drawer-backdrop');
+      drawer.classList.add('open');
+      backdrop.classList.add('open');
+      buildMobileNav();
+    }
+    function closeMobileDrawer() {
+      document.getElementById('mobile-drawer').classList.remove('open');
+      document.getElementById('mobile-drawer-backdrop').classList.remove('open');
+    }
+    function buildMobileNav() {
+      var drawer = document.getElementById('mobile-drawer');
+      drawer.textContent = '';
+      var primaryTabs = [
+        { tab: 'terminal', icon: '#icon-terminal', label: 'Terminal' },
+        { tab: 'services', icon: '#icon-server', label: 'Services', section: 'Fleet' },
+        { tab: 'agents', icon: '#icon-bot', label: 'Agents', section: 'Crew' },
+        { tab: 'sessions', icon: '#icon-clipboard', label: 'Sessions' },
+        { tab: 'activity', icon: '#icon-activity', label: 'Activity' }
+      ];
+      var secondaryTabs = [
+        { tab: 'locks', icon: '#icon-lock', label: 'Locks' },
+        { tab: 'channels', icon: '#icon-message', label: 'Channels' },
+        { tab: 'salvage', icon: '#icon-anchor', label: 'Salvage' },
+        { tab: 'webhooks', icon: '#icon-webhook', label: 'Webhooks' },
+        { tab: 'projects', icon: '#icon-folder', label: 'Projects' },
+        { tab: 'changelog', icon: '#icon-book', label: 'Changelog' },
+        { tab: 'config', icon: '#icon-settings', label: 'Config' }
+      ];
+      var activeTab = document.querySelector('.tab.active');
+      var activeTabName = activeTab ? activeTab.dataset.tab : 'terminal';
+      function makeNavItem(t) {
+        var btn = document.createElement('button');
+        btn.className = 'mobile-nav-item' + (t.tab === activeTabName ? ' active' : '');
+        btn.setAttribute('role', 'button');
+        btn.setAttribute('tabindex', '0');
+        var svgNs = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(svgNs, 'svg');
+        svg.setAttribute('class', 'icon');
+        svg.setAttribute('aria-hidden', 'true');
+        var use = document.createElementNS(svgNs, 'use');
+        use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', t.icon);
+        svg.appendChild(use);
+        btn.appendChild(svg);
+        btn.appendChild(document.createTextNode(t.label));
+        btn.addEventListener('click', function() { switchToTab(t.tab); closeMobileDrawer(); });
+        return btn;
+      }
+      primaryTabs.forEach(function(t) {
+        if (t.section) {
+          var sec = document.createElement('div');
+          sec.className = 'mobile-nav-section';
+          sec.textContent = t.section;
+          drawer.appendChild(sec);
+        }
+        drawer.appendChild(makeNavItem(t));
+      });
+      var moreSec = document.createElement('div');
+      moreSec.className = 'mobile-nav-section';
+      moreSec.textContent = 'More';
+      drawer.appendChild(moreSec);
+      secondaryTabs.forEach(function(t) {
+        drawer.appendChild(makeNavItem(t));
+      });
+    }
+
+    /* ── Phase 3g: Progressive Disclosure (More tabs toggle) ── */
+    function toggleMoreTabs() {
+      moreTabsExpanded = !moreTabsExpanded;
+      localStorage.setItem('portdaddy-more-tabs', moreTabsExpanded ? 'true' : 'false');
+      applyMoreTabsState();
+    }
+    function applyMoreTabsState() {
+      var moreTabs = document.getElementById('more-tabs');
+      var toggle = document.getElementById('nav-more-toggle');
+      if (!moreTabs || !toggle) return;
+      if (moreTabsExpanded) {
+        moreTabs.style.display = 'contents';
+        toggle.classList.add('expanded');
+        toggle.setAttribute('aria-expanded', 'true');
+      } else {
+        moreTabs.style.display = 'none';
+        toggle.classList.remove('expanded');
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+    }
+
+    /* ── Phase 3e: Welcome Panel Logic ── */
+    function checkWelcomeState() {
+      var services = parseInt(document.getElementById('stat-services').textContent) || 0;
+      var agents = parseInt(document.getElementById('stat-agents').textContent) || 0;
+      var locks = parseInt(document.getElementById('stat-locks').textContent) || 0;
+      var channels = parseInt(document.getElementById('stat-channels').textContent) || 0;
+      var webhooks = parseInt(document.getElementById('stat-webhooks').textContent) || 0;
+      var panel = document.getElementById('welcome-panel');
+      var stats = document.getElementById('stats-grid');
+      if (services === 0 && agents === 0 && locks === 0 && channels === 0 && webhooks === 0 && daemonOnline) {
+        panel.style.display = '';
+        stats.style.display = 'none';
+      } else {
+        panel.style.display = 'none';
+        stats.style.display = '';
+      }
+    }
+
+    /* ── Phase 2c: Daemon Down Banner ── */
+    function showDaemonBanner(show) {
+      var banner = document.getElementById('daemon-banner');
+      var main = document.getElementById('main-content');
+      if (show) {
+        banner.classList.add('visible');
+        main.classList.add('content-dimmed');
+        daemonOnline = false;
+      } else {
+        banner.classList.remove('visible');
+        main.classList.remove('content-dimmed');
+        daemonOnline = true;
+      }
+    }
+
+    /* ── Phase 2d: Table scroll indicators ── */
+    function initScrollIndicators() {
+      document.querySelectorAll('.table-wrap').forEach(function(wrap) {
+        function updateIndicators() {
+          var sl = wrap.scrollLeft;
+          var sw = wrap.scrollWidth;
+          var cw = wrap.clientWidth;
+          wrap.classList.toggle('scroll-left', sl > 4);
+          wrap.classList.toggle('scroll-right', sl + cw < sw - 4);
+        }
+        wrap.addEventListener('scroll', updateIndicators);
+        updateIndicators();
+      });
+    }
 
     /* ── XSS Protection ── */
     function escapeHtml(str) {
@@ -956,6 +1376,8 @@
     function showToast(message, type) {
       type = type || 'info';
       var container = document.getElementById('toast-container');
+      /* 1e: Use assertive for errors so screen readers announce immediately */
+      container.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
       var toast = document.createElement('div');
       toast.className = 'toast ' + type;
       var iconMap = { success: '#icon-check', error: '#icon-x', info: '#icon-zap' };
@@ -1077,6 +1499,17 @@
       var tabContent = document.getElementById('tab-' + tabName);
       if (tabBtn) tabBtn.classList.add('active');
       if (tabContent) tabContent.classList.add('active');
+      /* 2a: Hash routing */
+      if (location.hash !== '#' + tabName) {
+        history.pushState(null, '', '#' + tabName);
+      }
+      /* 3g: If switching to a tab in the "more" section, expand it */
+      var moreTabs = document.getElementById('more-tabs');
+      if (moreTabs && tabBtn && moreTabs.contains(tabBtn) && !moreTabsExpanded) {
+        moreTabsExpanded = true;
+        localStorage.setItem('portdaddy-more-tabs', 'true');
+        applyMoreTabsState();
+      }
     }
     document.querySelectorAll('.tab').forEach(function(tab) {
       tab.addEventListener('click', function() { switchToTab(tab.dataset.tab); });
@@ -1218,6 +1651,45 @@
         hintDiv.textContent = hint;
         td.appendChild(hintDiv);
       }
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+    }
+
+    /* ── Empty State with Copyable Command (Phase 3f) ── */
+    function renderEmptyTdWithCmd(tbody, iconId, text, cmd, cols) {
+      tbody.textContent = '';
+      var tr = document.createElement('tr');
+      var td = document.createElement('td');
+      td.colSpan = cols;
+      td.className = 'empty-state';
+      var svgNs = 'http://www.w3.org/2000/svg';
+      var svg = document.createElementNS(svgNs, 'svg');
+      svg.setAttribute('class', 'empty-state-icon');
+      var use = document.createElementNS(svgNs, 'use');
+      use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', iconId);
+      svg.appendChild(use);
+      td.appendChild(svg);
+      var textDiv = document.createElement('div');
+      textDiv.className = 'empty-state-text';
+      textDiv.textContent = text;
+      td.appendChild(textDiv);
+      var cmdBox = document.createElement('div');
+      cmdBox.className = 'empty-state-cmd';
+      cmdBox.title = 'Click to copy';
+      cmdBox.onclick = function() { copyCmd(cmd); };
+      var codeEl = document.createElement('code');
+      codeEl.textContent = cmd;
+      cmdBox.appendChild(codeEl);
+      var copySvg = document.createElementNS(svgNs, 'svg');
+      copySvg.setAttribute('class', 'icon');
+      copySvg.setAttribute('aria-hidden', 'true');
+      copySvg.style.width = '12px';
+      copySvg.style.height = '12px';
+      var copyUse = document.createElementNS(svgNs, 'use');
+      copyUse.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#icon-copy');
+      copySvg.appendChild(copyUse);
+      cmdBox.appendChild(copySvg);
+      td.appendChild(cmdBox);
       tr.appendChild(td);
       tbody.appendChild(tr);
     }
@@ -1484,10 +1956,12 @@
         document.getElementById('status-text').textContent = 'Online';
         document.getElementById('status-dot').className = 'status-dot online';
         document.getElementById('status-pill').classList.add('online');
+        showDaemonBanner(false);
       } catch(e) {
         document.getElementById('status-text').textContent = 'Offline';
         document.getElementById('status-dot').className = 'status-dot offline';
         document.getElementById('status-pill').classList.remove('online');
+        showDaemonBanner(true);
       }
     }
     async function refreshVersion() {
@@ -1502,7 +1976,7 @@
         var tbody = document.getElementById('services-body');
         tbody.textContent = '';
         if (data.services.length === 0) {
-          renderEmptyTd(tbody, '#icon-server', 'No services claimed', 'Use "claim myapp:api" to get started', 7);
+          renderEmptyTdWithCmd(tbody, '#icon-server', 'No fleet assigned', 'pd claim myapp:api', 7);
         } else {
           data.services.forEach(function(s) { tbody.appendChild(buildServiceRow(s)); });
         }
@@ -1551,7 +2025,7 @@
         var tbody = document.getElementById('agents-body');
         tbody.textContent = '';
         if (data.agents.length === 0) {
-          renderEmptyTd(tbody, '#icon-bot', 'No agents registered', 'Agents register via the CLI or API', 7);
+          renderEmptyTdWithCmd(tbody, '#icon-bot', 'No crew aboard', 'pd begin "your purpose"', 7);
         } else {
           data.agents.forEach(function(a) {
             var tr = document.createElement('tr');
@@ -1577,7 +2051,7 @@
         var tbody = document.getElementById('salvage-body');
         tbody.textContent = '';
         if (count === 0) {
-          renderEmptyTd(tbody, '#icon-anchor', 'No agents to salvage', 'All clear — no dead agents with unfinished work', 7);
+          renderEmptyTd(tbody, '#icon-anchor', 'All hands accounted for', 'No dead agents with unfinished work', 7);
         } else {
           data.agents.forEach(function(a) {
             var tr = document.createElement('tr');
@@ -1637,7 +2111,7 @@
         var tbody = document.getElementById('locks-body');
         tbody.textContent = '';
         if (data.locks.length === 0) {
-          renderEmptyTd(tbody, '#icon-lock', 'No active locks', 'Use "lock my-resource" to acquire one', 6);
+          renderEmptyTdWithCmd(tbody, '#icon-lock', 'No active locks', 'pd lock my-resource', 6);
         } else {
           data.locks.forEach(function(l) {
             var tr = document.createElement('tr');
@@ -2119,7 +2593,7 @@
         var tbody = document.getElementById('sessions-body');
         tbody.textContent = '';
         if (ct === 0) {
-          renderEmptyTd(tbody, '#icon-clipboard', 'No sessions', 'Start a session with "port-daddy session start"', 7);
+          renderEmptyTdWithCmd(tbody, '#icon-clipboard', 'No voyages logged', 'pd begin "your purpose"', 7);
         } else {
           data.sessions.forEach(function(s) {
             var tr = document.createElement('tr');
@@ -2192,9 +2666,75 @@
     }
     async function refreshAll() {
       await Promise.all([refreshHealth(), refreshVersion(), refreshServices(), refreshAgents(), refreshSalvage(), refreshLocks(), refreshChannels(), refreshWebhooks(), refreshActivity(), refreshProjects(), refreshSessions(), refreshConfig(), refreshChangelog()]);
+      checkWelcomeState();
     }
+
+    /* ── Phase 1c: Nav keyboard access (Enter/Space on tabs) ── */
+    document.addEventListener('keydown', function(e) {
+      var el = document.activeElement;
+      if (el && el.classList.contains('tab') && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        el.click();
+      }
+      if (el && el.classList.contains('mobile-nav-item') && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        el.click();
+      }
+    });
+
+    /* ── Phase 1d: Modal focus trap ── */
+    function trapFocusInModal(e) {
+      var overlay = document.getElementById('modal-overlay');
+      if (!overlay.classList.contains('open')) return;
+      if (e.key !== 'Tab') return;
+      var modal = document.getElementById('modal-content');
+      var focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (focusable.length === 0) return;
+      var first = focusable[0];
+      var last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+    document.addEventListener('keydown', trapFocusInModal);
+
+    /* Store previously focused element before modal opens for focus restoration */
+    var _priorFocusBeforeModal = null;
+    var _origShowModal = showModal;
+    showModal = function(contentEl) {
+      _priorFocusBeforeModal = document.activeElement;
+      _origShowModal(contentEl);
+      /* Set modal title id for aria-labelledby */
+      var modalH3 = document.querySelector('#modal-content h3');
+      if (modalH3) modalH3.id = 'modal-title';
+      /* Focus first focusable element in modal */
+      setTimeout(function() {
+        var mc = document.getElementById('modal-content');
+        var first = mc.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (first) first.focus();
+      }, 50);
+    };
+    var _origCloseModal = closeModal;
+    closeModal = function() {
+      _origCloseModal();
+      if (_priorFocusBeforeModal) { _priorFocusBeforeModal.focus(); _priorFocusBeforeModal = null; }
+    };
+
+    /* ── Init ── */
+    /* 3g: Apply more tabs state */
+    applyMoreTabsState();
+
+    /* 2a: Restore panel from hash on load */
+    var initPanel = getHashPanel();
+    if (initPanel) { switchToTab(initPanel); }
+
     refreshAll();
     setInterval(refreshAll, 5000);
+
+    /* 2d: Init scroll indicators after first paint */
+    setTimeout(initScrollIndicators, 500);
   </script>
 </body>
 </html>
