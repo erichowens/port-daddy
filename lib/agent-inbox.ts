@@ -110,6 +110,16 @@ export function createAgentInbox(db: Database.Database) {
         return { success: false, error: 'agentId and content required' };
       }
 
+      // Enforce inbox size limit
+      const currentCount = (stmts.count.get(agentId) as { count: number }).count;
+      if (currentCount >= MAX_INBOX_MESSAGES) {
+        return {
+          success: false,
+          error: `Inbox full (${MAX_INBOX_MESSAGES} messages). Clear old messages first.`,
+          code: 'RESOURCE_LIMIT',
+        };
+      }
+
       const { from = null, type = 'message' } = options;
       const now = Date.now();
 
@@ -196,5 +206,7 @@ export function createAgentInbox(db: Database.Database) {
       const result = stmts.deleteOld.run(cutoff);
       return { cleaned: result.changes };
     },
+
+    MAX_INBOX_MESSAGES,
   };
 }

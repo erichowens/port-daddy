@@ -1,19 +1,20 @@
 # =============================================================================
-# Port Daddy CI Example: GitHub Actions
+# GitHub Actions: Parallel Test Shards with Port Daddy
+# =============================================================================
 #
-# Demonstrates how Port Daddy coordinates parallel test runners in CI
-# to prevent port collisions between concurrent jobs.
+# Uses Port Daddy to coordinate parallel test runners, ensuring each shard
+# gets a unique port for its test server. This prevents port conflicts that
+# commonly occur when running integration tests in parallel.
 #
-# Problem solved:
-#   Without coordination, parallel test jobs often collide on default ports
-#   (3000, 8080, etc.), causing flaky test failures.
+# Key concepts:
+#   - Each shard registers as an agent with a unique identity
+#   - Port Daddy assigns unique ports atomically (no race conditions)
+#   - Session notes record test results for debugging failed runs
+#   - Cleanup runs even if tests fail
 #
-# Solution:
-#   Port Daddy daemon runs as a service, each job claims a unique port,
-#   runs tests against it, and releases on completion.
 # =============================================================================
 
-name: CI with Port Daddy
+name: Tests (Parallel Shards)
 
 on:
   push:
@@ -21,167 +22,150 @@ on:
   pull_request:
     branches: [main]
 
+# Prevent parallel CI runs from colliding
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  # ─────────────────────────────────────────────────────────────────────────
-  # Step 1: Start daemon (runs once, shared by all jobs via artifacts)
-  # ─────────────────────────────────────────────────────────────────────────
-  setup:
+  test:
     runs-on: ubuntu-latest
+    strategy:
+      # Run all shards even if one fails (collect full results)
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+        total-shards: [3]
+
     steps:
-      - uses: actions/checkout@v4
+      # -----------------------------------------------------------------------
+      # Setup
+      # -----------------------------------------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
+          cache: npm
 
+      - name: Install dependencies
+        run: npm ci
+
+      # -----------------------------------------------------------------------
+      # Install and start Port Daddy
+      # -----------------------------------------------------------------------
       - name: Install Port Daddy
         run: npm install -g port-daddy
 
       - name: Start Port Daddy daemon
         run: |
-          port-daddy start &
-          sleep 2
-          port-daddy health
+          # Start the daemon in the background
+          pd start &
 
-  # ─────────────────────────────────────────────────────────────────────────
-  # Step 2: Parallel test jobs, each with its own port
-  # ─────────────────────────────────────────────────────────────────────────
+          # Wait for the daemon to be ready
+          for i in $(seq 1 10); do
+            if pd status >/dev/null 2>&1; then
+              echo "Port Daddy is ready"
+              break
+            fi
+            echo "Waiting for Port Daddy... ($i/10)"
+            sleep 1
+          done
 
-  test-api:
-    runs-on: ubuntu-latest
-    needs: setup
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install dependencies
+      # -----------------------------------------------------------------------
+      # Register this shard as an agent
+      # -----------------------------------------------------------------------
+      - name: Register test shard
         run: |
-          npm ci
-          npm install -g port-daddy
+          # Each shard registers with a unique identity
+          # Identity format: project:stack:context
+          #   project = repo name
+          #   stack = "test"
+          #   context = shard number + run ID for uniqueness
+          AGENT_ID="shard-${{ matrix.shard }}-${{ github.run_id }}"
+          IDENTITY="${{ github.event.repository.name }}:test:shard-${{ matrix.shard }}"
+          PURPOSE="Test shard ${{ matrix.shard }}/${{ matrix.total-shards }} for ${{ github.sha }}"
 
-      - name: Start daemon and claim port
+          pd begin \
+            --agent "$AGENT_ID" \
+            --identity "$IDENTITY" \
+            --purpose "$PURPOSE" \
+            --quiet
+
+          # Store the agent ID for later steps
+          echo "AGENT_ID=$AGENT_ID" >> "$GITHUB_ENV"
+          echo "IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+
+      # -----------------------------------------------------------------------
+      # Claim a port for this shard's test server
+      # -----------------------------------------------------------------------
+      - name: Claim test port
         run: |
-          port-daddy start &
-          sleep 2
-          # Claim a unique port for this job
-          export TEST_PORT=$(port-daddy claim ci:api:test -q)
-          echo "TEST_PORT=$TEST_PORT" >> $GITHUB_ENV
-          echo "Claimed port $TEST_PORT for API tests"
+          # Claim a unique port for this shard
+          # Port Daddy guarantees no two shards get the same port
+          PORT=$(pd claim "${IDENTITY}:server" --quiet)
 
-      - name: Run API tests
+          echo "Shard ${{ matrix.shard }} claimed port: $PORT"
+          echo "TEST_PORT=$PORT" >> "$GITHUB_ENV"
+
+          # Record the port assignment as a session note
+          pd note "Claimed port $PORT for test server" --agent "$AGENT_ID"
+
+      # -----------------------------------------------------------------------
+      # Run tests with the assigned port
+      # -----------------------------------------------------------------------
+      - name: Run test shard
         run: |
-          echo "Running API tests on port $TEST_PORT"
-          # Your test command here, e.g.:
-          # PORT=$TEST_PORT npm run test:api
-          npm run test:api -- --port $TEST_PORT
-        env:
-          PORT: ${{ env.TEST_PORT }}
+          # Pass the unique port to the test runner
+          # Each shard runs a different subset of tests
+          TEST_PORT=${{ env.TEST_PORT }} \
+          npx jest \
+            --shard=${{ matrix.shard }}/${{ matrix.total-shards }} \
+            --ci \
+            --forceExit \
+            --detectOpenHandles \
+            2>&1 | tee test-output.txt
 
-      - name: Release port
+          # Record test results as a note for debugging
+          RESULT=$(tail -5 test-output.txt | tr '\n' ' ')
+          pd note "Test results: $RESULT" --agent "$AGENT_ID"
+
+      # -----------------------------------------------------------------------
+      # Cleanup: release port and end session (runs even if tests fail)
+      # -----------------------------------------------------------------------
+      - name: Cleanup
         if: always()
         run: |
-          port-daddy release ci:api:test || true
+          # Release the claimed port
+          pd release "${IDENTITY}:server" --quiet 2>/dev/null || true
 
-  test-frontend:
-    runs-on: ubuntu-latest
-    needs: setup
-    steps:
-      - uses: actions/checkout@v4
+          # End the session with a summary
+          if [ "${{ job.status }}" = "success" ]; then
+            SUMMARY="Shard ${{ matrix.shard }} passed"
+          else
+            SUMMARY="Shard ${{ matrix.shard }} failed"
+          fi
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+          pd done \
+            --agent "$AGENT_ID" \
+            --summary "$SUMMARY" \
+            --quiet 2>/dev/null || true
 
-      - name: Install dependencies
-        run: |
-          npm ci
-          npm install -g port-daddy
-
-      - name: Start daemon and claim port
-        run: |
-          port-daddy start &
-          sleep 2
-          export TEST_PORT=$(port-daddy claim ci:frontend:test -q)
-          echo "TEST_PORT=$TEST_PORT" >> $GITHUB_ENV
-          echo "Claimed port $TEST_PORT for frontend tests"
-
-      - name: Run frontend tests
-        run: |
-          echo "Running frontend tests on port $TEST_PORT"
-          # PORT=$TEST_PORT npm run test:frontend
-          npm run test:frontend -- --port $TEST_PORT
-        env:
-          PORT: ${{ env.TEST_PORT }}
-
-      - name: Release port
-        if: always()
-        run: |
-          port-daddy release ci:frontend:test || true
-
-  test-integration:
-    runs-on: ubuntu-latest
-    needs: setup
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install dependencies
-        run: |
-          npm ci
-          npm install -g port-daddy
-
-      - name: Start daemon and claim ports for multiple services
-        run: |
-          port-daddy start &
-          sleep 2
-          # Integration tests need both API and DB ports
-          export API_PORT=$(port-daddy claim ci:integration:api -q)
-          export DB_PORT=$(port-daddy claim ci:integration:db -q)
-          echo "API_PORT=$API_PORT" >> $GITHUB_ENV
-          echo "DB_PORT=$DB_PORT" >> $GITHUB_ENV
-          echo "Claimed API port $API_PORT and DB port $DB_PORT"
-
-      - name: Run integration tests
-        run: |
-          echo "Running integration tests (API=$API_PORT, DB=$DB_PORT)"
-          # API_PORT=$API_PORT DB_PORT=$DB_PORT npm run test:integration
-          npm run test:integration
-        env:
-          API_PORT: ${{ env.API_PORT }}
-          DB_PORT: ${{ env.DB_PORT }}
-
-      - name: Release ports
-        if: always()
-        run: |
-          port-daddy release "ci:integration:*" || true
-
-  # ─────────────────────────────────────────────────────────────────────────
-  # Step 3: Cleanup (always runs, even on failure)
-  # ─────────────────────────────────────────────────────────────────────────
-
-  cleanup:
-    runs-on: ubuntu-latest
-    needs: [test-api, test-frontend, test-integration]
+  # ---------------------------------------------------------------------------
+  # Aggregate results from all shards
+  # ---------------------------------------------------------------------------
+  results:
+    needs: test
     if: always()
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Port Daddy
-        run: npm install -g port-daddy
-
-      - name: Cleanup all CI ports
+      - name: Check shard results
         run: |
-          port-daddy start &
-          sleep 2
-          # Release any remaining CI ports (in case jobs crashed)
-          port-daddy release "ci:*" || true
-          port-daddy cleanup || true
-          echo "CI ports cleaned up"
+          if [ "${{ needs.test.result }}" = "success" ]; then
+            echo "All test shards passed"
+          else
+            echo "Some test shards failed"
+            exit 1
+          fi

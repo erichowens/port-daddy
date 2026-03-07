@@ -7,7 +7,7 @@
  */
 
 import type Database from 'better-sqlite3';
-import { randomBytes } from 'crypto';
+import { randomUUID } from 'crypto';
 import { ActivityType } from './activity.js';
 import { getWorktreeId } from './worktree.js';
 
@@ -336,7 +336,7 @@ export function createSessions(db: Database.Database) {
   }
 
   function generateSessionId(): string {
-    return 'session-' + randomBytes(4).toString('hex');
+    return 'session-' + randomUUID();
   }
 
   function formatSession(row: SessionRow) {

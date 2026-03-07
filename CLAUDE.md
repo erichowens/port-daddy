@@ -33,23 +33,13 @@ lib/
   health.ts         # Health check utilities
   client.ts         # JavaScript SDK (PortDaddy class)
   log-prefix.ts     # Color-coded log prefixes for orchestrator
-  sugar.ts          # Compound operations (begin/done/whoami)
   utils.ts          # Common utilities
 routes/
   index.ts          # Route registration
   projects.ts       # /scan, /projects endpoints
   sessions.ts       # /sessions, /notes endpoints
-  sugar.ts          # /sugar/begin, /sugar/done, /sugar/whoami endpoints
 bin/
   port-daddy-cli.ts # CLI entry point
-cli/
-  commands/
-    sugar.ts        # begin, done, whoami, with-lock CLI commands
-    tutorial.ts     # pd learn interactive tutorial
-  utils/
-    prompt.ts       # Maritime interactive prompting (readline-based)
-    fetch.ts        # Daemon connection (socket/TCP with port file)
-    output.ts       # Terminal output helpers
 public/
   index.html        # Dashboard UI
 completions/
@@ -145,7 +135,7 @@ pd agent register --agent test-123 --purpose "Testing resurrection"
 sqlite3 port-registry.db "UPDATE agents SET lastHeartbeat = datetime('now', '-30 minutes') WHERE id = 'test-123'"
 
 # Trigger the reaper to move dead agents to resurrection queue
-curl -X POST http://localhost:9876/resurrection/reap
+curl -X POST http://localhost:9876/salvage/reap
 
 # Check salvage queue
 pd salvage
@@ -208,8 +198,6 @@ When adding ANY new command, endpoint, or operation, verify it exists in ALL of:
 | CLAUDE.md | `CLAUDE.md` | varies |
 | CHANGELOG.md | `CHANGELOG.md` | must update per release |
 
-**v3.5 sugar commands** (`begin`, `done`, `whoami`, `with-lock`, aliases `n`/`u`/`d`) are implemented across CLI (`cli/commands/sugar.ts`), SDK (`lib/client.ts`), REST (`routes/sugar.ts`), and MCP. **v3.6** added named flag alternatives (`-P`, `-n`, `-c`, `-m`, `-d`, `-t`, `-i`, `-a`, `-s`, `-o`, `-f`), interactive mode (TTY prompting), and `pd learn` tutorial. Distribution freshness tests (`tests/unit/distribution-freshness.test.js`) enforce parity automatically — run them after any surface change.
-
 **Parity checklist for every new feature:**
 1. API route exists and tested
 2. CLI command exists with `--quiet/-q` and `--json/-j` flags
@@ -226,15 +214,30 @@ Fish completions are historically the worst — double-check fish.
 
 **Update this section for every feature in progress.**
 
-### Context-Aware Salvage — Remaining Work
+### Context-Aware Salvage
+
+When an agent dies, other agents in the same project should be notified.
 
 | Surface | Status | Notes |
 |---------|--------|-------|
-| `public/index.html` | ⬜ TODO | Add "Resurrection Queue" panel showing dead agents by project |
-| `completions/*.{bash,zsh,fish}` | ✅ DONE | `--identity`, `--project`, `--purpose` flags added in v3.3/v3.4 |
+| `lib/agents.ts` | ✅ DONE | Added identity_project/stack/context, worktree_id, purpose columns. `register()` returns salvageHint. `listStale()` filters by identity prefix. |
+| `lib/resurrection.ts` | ✅ DONE | Added identity_project/stack/context columns. `pending()` and `list()` filter by project/stack. `countByProject()` for salvage hints. |
+| `routes/agents.ts` | ✅ DONE | Accepts identity, worktreeId, purpose. Returns salvageHint. Broadcasts identity to radio. |
+| `routes/resurrection.ts` | ✅ DONE | `/salvage/*` as primary routes, `/resurrection/*` as deprecated aliases. |
+| `cli/commands/agents.ts` | ✅ DONE | Accepts `--identity`, `--purpose`, `--worktree`. Shows salvageHint notice on register. |
+| `cli/commands/resurrection.ts` | ✅ DONE | Uses `/salvage/*` routes. Maritime labels paired with standard terms. |
+| `public/index.html` | ⬜ TODO | Add "Salvage Queue" panel showing dead agents by project |
+| `completions/*.{bash,zsh,fish}` | ⬜ TODO | Add `--identity`, `--project`, `--purpose` flags |
 | `lib/client.ts` | ⬜ TODO | Add identity/purpose params to register(), salvage filter to SDK |
 | `README.md` | ⬜ TODO | Document agent identity and auto-salvage notice |
-| `CHANGELOG.md` | ✅ DONE | Entry in v3.3.0 and v3.4.0 |
+| `CHANGELOG.md` | ⬜ TODO | Add entry when feature ships |
+
+**Flow:**
+1. `pd agent register --identity myapp:api --purpose "Building auth"` → stores identity
+2. Server checks for dead agents in `myapp:*` → returns `salvageHint` in response
+3. CLI displays: "⚠️ 2 dead agent(s) in myapp:*. Run: pd salvage --project myapp"
+4. `pd salvage --project myapp` shows only dead agents in that project
+5. Dashboard shows resurrection queue prominently with project grouping
 
 ## Adding New Features
 
@@ -255,8 +258,8 @@ Fish completions are historically the worst — double-check fish.
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/claim` | POST | Claim a port (id in body) |
-| `/release` | DELETE | Release a service (id in body) |
+| `/claim/:id` | POST | Claim a port |
+| `/release/:id` | DELETE | Release a service |
 | `/services` | GET | List services |
 | `/services/health` | GET | Health check all services |
 | `/services/health/:id` | GET | Health check single service |
@@ -264,14 +267,9 @@ Fish completions are historically the worst — double-check fish.
 | `/locks` | GET | List locks |
 | `/msg/:channel` | POST/GET/DELETE | Publish/get/clear messages |
 | `/channels` | GET | List pub/sub channels |
-| `/msg/:channel/subscribe` | GET | SSE subscription |
-| `/agents` | POST/GET | Register agent (id in body) / list agents |
-| `/agents/:id` | GET/DELETE | Get/unregister agent |
-| `/agents/:id/heartbeat` | POST | Agent heartbeat |
-| `/agents/:id/inbox` | POST/GET/DELETE | Send/read/clear inbox messages |
-| `/agents/:id/inbox/stats` | GET | Inbox message stats |
-| `/agents/:id/inbox/:messageId/read` | PUT | Mark inbox message read |
-| `/agents/:id/inbox/read-all` | PUT | Mark all inbox messages read |
+| `/subscribe/:channel` | GET | SSE subscription |
+| `/agents/:id` | POST/DELETE | Register/unregister agent |
+| `/agents/:id/heartbeat` | PUT | Agent heartbeat |
 | `/webhooks` | POST/GET | Create/list webhooks |
 | `/webhooks/events` | GET | List available webhook events |
 | `/webhooks/:id` | GET/PUT/DELETE | Get/update/delete webhook |
@@ -282,16 +280,15 @@ Fish completions are historically the worst — double-check fish.
 | `/sessions/:id/notes` | POST/GET | Add/get session notes |
 | `/sessions/:id/files` | POST/DELETE/GET | Claim/release/list files |
 | `/notes` | POST/GET | Quick note / recent notes |
-| `/resurrection` | GET | List resurrection queue |
-| `/resurrection/pending` | GET | Check for dead agents |
-| `/resurrection/claim/:agentId` | POST | Claim dead agent's work |
-| `/resurrection/reap` | POST | Trigger reaper |
-| `/dns` | POST/GET | Register/list DNS records |
-| `/dns/lookup/:hostname` | GET | Resolve hostname |
-| `/dns/cleanup` | POST | Clean stale DNS records |
-| `/dns/status` | GET | DNS system status |
+| `/salvage` | GET | List salvage queue entries |
+| `/salvage/pending` | GET | List agents pending salvage |
+| `/salvage/claim/:agentId` | POST | Claim dead agent's work |
+| `/salvage/complete/:agentId` | POST | Mark salvage complete |
+| `/salvage/abandon/:agentId` | POST | Return agent to queue |
+| `/salvage/:agentId` | DELETE | Dismiss agent from queue |
+| `/resurrection/*` | * | Deprecated aliases for /salvage/* |
 | `/changelog` | POST/GET | Add entry / list changelog |
-| `/changelog/identities` | GET | List identities with changelog entries |
+| `/changelog/identities` | GET | List all identities with changelog entries |
 | `/tunnel/providers` | GET | Check which tunnel providers are installed |
 | `/tunnel/:id` | POST/DELETE/GET | Start/stop/status tunnel for service |
 | `/tunnels` | GET | List all active tunnels |
@@ -309,6 +306,3 @@ Fish completions are historically the worst — double-check fish.
 | `/ports/cleanup` | POST | Release stale ports |
 | `/health` | GET | Daemon health check |
 | `/version` | GET | Version and code hash |
-| `/sugar/begin` | POST | Register agent + start session atomically |
-| `/sugar/done` | POST | End session + unregister agent atomically |
-| `/sugar/whoami` | GET | Show current agent/session context |
