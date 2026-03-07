@@ -10,6 +10,7 @@ import { parseExpires } from './utils.js';
 
 const DEFAULT_RANGE: [number, number] = [3100, 9999];
 const RESERVED_PORTS = new Set([8080, 8000, 9876]);
+const MAX_SERVICES_PER_IDENTITY = 20;
 
 interface ServiceRow {
   id: string;
@@ -104,6 +105,7 @@ export function createServices(db: Database.Database) {
     deleteExpired: db.prepare('DELETE FROM services WHERE expires_at IS NOT NULL AND expires_at < ?'),
     getRunningWithPid: db.prepare("SELECT * FROM services WHERE pid IS NOT NULL AND status = 'running'"),
     countActive: db.prepare("SELECT COUNT(*) as count FROM services WHERE status IN ('assigned', 'running')"),
+    countByProject: db.prepare("SELECT COUNT(*) as count FROM services WHERE id LIKE ? || ':%'"),
 
     // Endpoints
     getEndpoints: db.prepare('SELECT * FROM endpoints WHERE service_id = ?'),
@@ -175,7 +177,7 @@ export function createServices(db: Database.Database) {
       systemPorts = new Set<number>()
     } = options;
 
-    // Check for existing service
+    // Check for existing service (re-claim is idempotent, skip limit check)
     const existing = stmts.getById.get(parsed.normalized) as ServiceRow | undefined;
 
     if (existing) {
@@ -198,6 +200,18 @@ export function createServices(db: Database.Database) {
         existing: true,
         message: 'reusing existing service'
       };
+    }
+
+    // Enforce per-identity service limit (only for NEW claims, not re-claims)
+    if (parsed.project) {
+      const projectCount = (stmts.countByProject.get(parsed.project) as { count: number }).count;
+      if (projectCount >= MAX_SERVICES_PER_IDENTITY) {
+        return {
+          success: false,
+          error: `Service limit reached for identity "${parsed.project}" (${MAX_SERVICES_PER_IDENTITY} services). Release unused services first.`,
+          code: 'RESOURCE_LIMIT',
+        };
+      }
     }
 
     // Find a port
