@@ -23,7 +23,7 @@ Port Daddy is a local daemon that manages dev server ports, starts your entire s
 
 One daemon. Many projects. Zero port conflicts.
 
-**Jump to:** [Just Want Stable Ports?](#just-want-stable-ports) | [Run Your Whole Stack](#run-your-whole-stack) | [Agent Coordination](#agent-coordination) | [Sessions & Notes](#sessions--notes) | [Changelog](#changelog) | [Local DNS](#local-dns-for-ports) | [CLI Reference](#cli-reference) | [API Reference](#api-reference)
+**Jump to:** [Just Want Stable Ports?](#just-want-stable-ports) | [Run Your Whole Stack](#run-your-whole-stack) | [Agent Coordination](#agent-coordination) | [Sessions & Notes](#sessions--notes) | [Changelog](#changelog) | [Local DNS](#local-dns-for-ports) | [Parity Coverage](#parity-coverage) | [CLI Reference](#cli-reference) | [API Reference](#api-reference)
 
 ---
 
@@ -50,6 +50,8 @@ PORT=$(pd claim myproject -q) npm run dev -- --port $PORT
 
 Ports persist across restarts. `myapp:api` always gets the same port on this machine.
 
+New to Port Daddy? Run `pd learn` for a 5-minute interactive tutorial that walks you through ports, sessions, and coordination.
+
 ### How naming works
 
 Port Daddy uses `project:stack:context` identifiers. All three parts are optional:
@@ -68,6 +70,7 @@ Wildcards work everywhere: `pd find myapp:*`, `pd release *:api:*`.
 npm install -g port-daddy
 pd start                    # start the daemon (auto-starts on first use too)
 pd doctor                   # verify your environment
+pd learn                    # interactive tutorial — learn the basics in 5 minutes
 ```
 
 Auto-start on login (optional):
@@ -163,7 +166,19 @@ If you *need* a specific port (e.g., OAuth callbacks to `localhost:3000`), speci
 
 ## Agent Coordination
 
-Port Daddy includes built-in primitives for multi-agent and multi-process coordination. No external message broker required.
+Port Daddy includes built-in primitives for multi-agent and multi-process coordination. No external message broker required. If you only need ports, you can skip this section entirely.
+
+### Quick Start (Agents)
+
+Sugar commands handle the most common workflow -- register, work, finish -- in three commands:
+
+```bash
+pd begin "Implementing auth system"     # register agent + start session
+pd note "Switched to JWT approach"      # log progress
+pd done "Auth complete, tests passing"  # end session + unregister
+```
+
+These compose `agent register` + `session start` and `session end` + `agent unregister` atomically. Use `pd whoami` to check your current context.
 
 ### Pub/Sub Messaging
 
@@ -493,9 +508,53 @@ The skill teaches agents to claim ports with semantic identities, coordinate via
 
 ---
 
+## Parity Coverage
+
+Every feature is available across multiple surfaces. This table shows what works where:
+
+| Feature | CLI | SDK | MCP | Dashboard |
+|---------|:---:|:---:|:---:|:---------:|
+| Claim/release ports | yes | yes | yes | yes |
+| List services | yes | yes | yes | yes |
+| Health checks | yes | yes | yes | yes |
+| Sessions (start/end) | yes | yes | yes | yes |
+| Notes (add/list) | yes | yes | yes | yes |
+| File claims | yes | yes | yes | yes |
+| Sugar (begin/done/whoami) | yes | yes | yes | -- |
+| Distributed locks | yes | yes | yes | yes |
+| Pub/sub messaging | yes | yes | yes | yes |
+| Agent registry | yes | yes | yes | yes |
+| Agent heartbeat | yes | yes | yes | -- |
+| Salvage/resurrection | yes | yes | yes | -- |
+| Changelog | yes | yes | -- | -- |
+| Local DNS | yes | yes | yes | -- |
+| Tunnels | yes | yes | yes | -- |
+| Webhooks | yes | yes | -- | -- |
+| Project scanning | yes | yes | yes | yes |
+| Orchestration (up/down) | yes | yes | -- | -- |
+| Activity log | yes | yes | yes | yes |
+| Briefing | yes | -- | yes | -- |
+| Integration signals | yes | -- | yes | -- |
+
+**CLI** = `pd` command. **SDK** = `PortDaddy` class ([docs/sdk.md](docs/sdk.md)). **MCP** = AI agent tools (45 tools across 12 categories). **Dashboard** = web UI at `http://localhost:9876`.
+
+---
+
 ## CLI Reference
 
 `pd` is the short alias for `port-daddy`. All commands accept `--json/-j` for machine output and `--quiet/-q` for minimal output.
+
+### Sugar Commands (Start Here)
+
+| Command | Description |
+|---------|-------------|
+| `pd begin <purpose>` | Register agent + start session atomically |
+| `pd done [note]` | End session + unregister agent |
+| `pd whoami` | Show current agent/session context |
+| `pd with-lock <name> -- <cmd>` | Run command while holding a lock |
+| `pd learn` | Interactive tutorial (5 minutes) |
+
+Aliases: `pd n` = `pd note`, `pd u` = `pd up`, `pd d` = `pd down`.
 
 ### Ports & Services
 
@@ -647,8 +706,10 @@ All endpoints are served from the daemon at `http://localhost:9876`.
 ```
 GET    /health                  GET    /version
 GET    /metrics                 GET    /config
-POST   /claim/:id              DELETE /release/:id
+POST   /claim                   DELETE /release
 GET    /services                GET    /services/health
+POST   /sugar/begin             POST   /sugar/done
+GET    /sugar/whoami
 POST   /sessions                GET    /sessions
 GET    /sessions/:id            PUT    /sessions/:id
 DELETE /sessions/:id            POST   /sessions/:id/notes
@@ -657,9 +718,15 @@ POST   /notes                   GET    /notes
 POST   /locks/:name             PUT    /locks/:name
 DELETE /locks/:name             GET    /locks
 POST   /msg/:channel            GET    /msg/:channel
-GET    /subscribe/:channel      GET    /channels
-POST   /agents/:id              GET    /agents
-GET    /salvage                 POST   /salvage
+GET    /msg/:channel/subscribe  GET    /channels
+POST   /agents                  GET    /agents
+GET    /agents/:id              DELETE /agents/:id
+POST   /agents/:id/heartbeat
+GET    /resurrection            GET    /resurrection/pending
+POST   /resurrection/claim/:id  POST   /resurrection/reap
+POST   /dns                     GET    /dns
+GET    /dns/lookup/:hostname    POST   /dns/cleanup
+GET    /dns/status
 POST   /changelog               GET    /changelog
 GET    /changelog/identities
 POST   /webhooks                GET    /webhooks/:id

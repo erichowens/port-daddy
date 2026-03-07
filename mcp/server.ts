@@ -93,17 +93,172 @@ const PUT = (path: string, body?: Record<string, unknown>) => api('PUT', path, b
 const DELETE = (path: string, body?: Record<string, unknown>) => api('DELETE', path, body);
 
 // ---------------------------------------------------------------------------
+// Tiered tool loading — reduce context window overhead by 80%
+//
+// By default, only Essential tools (8) + pd_discover are sent to the agent.
+// Full mode (--full flag or PORT_DADDY_MCP_FULL=1) exposes all 45+ tools.
+// Agents can call pd_discover to learn about additional tools by category,
+// then call them directly — handleTool processes ALL tools regardless of tier.
+// ---------------------------------------------------------------------------
+
+const FULL_MODE = process.argv.includes('--full') || process.env.PORT_DADDY_MCP_FULL === '1';
+
+const ESSENTIAL_TOOL_NAMES = new Set([
+  'begin_session',
+  'end_session_full',
+  'whoami',
+  'claim_port',
+  'release_port',
+  'add_note',
+  'acquire_lock',
+  'list_services',
+]);
+
+const TOOL_CATEGORIES: Record<string, { description: string; tools: string[] }> = {
+  'session-lifecycle': {
+    description: 'Start/end sessions, manage agent registration (sugar commands)',
+    tools: ['begin_session', 'end_session_full', 'whoami'],
+  },
+  'ports': {
+    description: 'Claim, release, and list port assignments',
+    tools: ['claim_port', 'release_port', 'list_services', 'get_service', 'health_check'],
+  },
+  'sessions': {
+    description: 'Detailed session management (start, end, phases, file claims)',
+    tools: ['start_session', 'end_session', 'list_sessions', 'set_session_phase', 'claim_files', 'list_file_claims', 'who_owns_file'],
+  },
+  'notes': {
+    description: 'Add and list session notes',
+    tools: ['add_note', 'list_notes'],
+  },
+  'locks': {
+    description: 'Distributed locks for coordinating file/resource access',
+    tools: ['acquire_lock', 'release_lock', 'list_locks'],
+  },
+  'messaging': {
+    description: 'Pub/sub messaging between agents',
+    tools: ['publish_message', 'get_messages'],
+  },
+  'agents': {
+    description: 'Agent registry, heartbeats, salvage/resurrection',
+    tools: ['register_agent', 'agent_heartbeat', 'list_agents', 'check_salvage', 'claim_salvage'],
+  },
+  'integration': {
+    description: 'Cross-agent integration signals (ready/needs)',
+    tools: ['integration_ready', 'integration_needs', 'integration_list'],
+  },
+  'dns': {
+    description: 'Local DNS for service discovery',
+    tools: ['dns_register', 'dns_unregister', 'dns_list', 'dns_lookup', 'dns_cleanup', 'dns_status'],
+  },
+  'briefing': {
+    description: 'Generate project briefing files for .portdaddy/',
+    tools: ['briefing_generate', 'briefing_read'],
+  },
+  'tunnels': {
+    description: 'Expose local services via tunnels',
+    tools: ['start_tunnel', 'stop_tunnel', 'list_tunnels'],
+  },
+  'system': {
+    description: 'Project scanning, daemon status, activity log',
+    tools: ['scan_project', 'daemon_status', 'activity_log'],
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Tool definitions
 // ---------------------------------------------------------------------------
 
 const TOOLS = [
+  // ── Sugar (Compound Operations) ──────────────────────────────────────
+  {
+    name: 'begin_session',
+    description:
+      '[Essential] Register agent + start session in one atomic step. Use this at the start of every ' +
+      'coding session instead of calling register_agent and start_session separately. ' +
+      'Returns agentId, sessionId, and a salvageHint if dead agents need attention. ' +
+      'Usage: begin_session({purpose: "Building auth system", identity: "myapp:api:main"})',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        purpose: {
+          type: 'string',
+          description: 'What you are working on (e.g. "Implementing OAuth flow")',
+        },
+        identity: {
+          type: 'string',
+          description: 'Semantic identity in project:stack:context format (e.g. "myapp:api:main")',
+        },
+        agent_id: {
+          type: 'string',
+          description: 'Agent ID (auto-generated if omitted)',
+        },
+        type: {
+          type: 'string',
+          description: 'Agent type (default: mcp)',
+        },
+        files: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Files to claim for this session (advisory — shows conflicts to other agents)',
+        },
+      },
+      required: ['purpose'],
+    },
+  },
+  {
+    name: 'end_session_full',
+    description:
+      '[Essential] End session + unregister agent in one step. Use this at the end of every coding ' +
+      'session instead of calling end_session and then unregistering the agent separately. ' +
+      'Usage: end_session_full({agent_id: "agent-abc123", note: "Auth complete, all tests passing"})',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agent_id: {
+          type: 'string',
+          description: 'Your agent ID (from begin_session response)',
+        },
+        session_id: {
+          type: 'string',
+          description: 'Session ID to end (auto-found from agent_id if omitted)',
+        },
+        note: {
+          type: 'string',
+          description: 'Final closing note summarizing what was accomplished',
+        },
+        status: {
+          type: 'string',
+          enum: ['completed', 'abandoned'],
+          description: 'How the session ended (default: completed)',
+        },
+      },
+    },
+  },
+  {
+    name: 'whoami',
+    description:
+      '[Essential] Show your current agent and session context. Useful for confirming your registration ' +
+      'is active and seeing which session, files, and notes are associated with your agent ID. ' +
+      'Usage: whoami({agent_id: "agent-abc123"})',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agent_id: {
+          type: 'string',
+          description: 'Your agent ID (from begin_session response)',
+        },
+      },
+    },
+  },
+
   // ── Port Management ──────────────────────────────────────────────────
   {
     name: 'claim_port',
     description:
-      'Claim a port for a service. Returns a stable, deterministic port based on the identity hash. ' +
-      'Identity format: project:stack:context (e.g. "myapp:api:main"). ' +
-      'If the service was already claimed, returns the existing port.',
+      '[Essential] Claim a port for your service. Returns a stable, deterministic port based on the ' +
+      'identity hash — same identity always gets the same port. If the service was already claimed, ' +
+      'returns the existing port. Usage: claim_port({identity: "myapp:api:main"})',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -130,8 +285,8 @@ const TOOLS = [
   {
     name: 'release_port',
     description:
-      'Release a claimed port. Supports wildcards (e.g. "myapp:*" releases all stacks). ' +
-      'Use --expired flag equivalent to only release expired services.',
+      '[Essential] Release a claimed port. Supports wildcards (e.g. "myapp:*" releases all stacks). ' +
+      'Pass expired_only: true to only release services that have expired.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -150,7 +305,7 @@ const TOOLS = [
   {
     name: 'list_services',
     description:
-      'List all claimed services with their ports, status, and metadata. ' +
+      '[Essential] List all claimed services with their ports, status, and metadata. ' +
       'Optionally filter by pattern (e.g. "myapp:*").',
     inputSchema: {
       type: 'object' as const,
@@ -164,7 +319,7 @@ const TOOLS = [
   },
   {
     name: 'get_service',
-    description: 'Get detailed information about a specific service by its identity.',
+    description: '[Standard] Get detailed information about a specific service by its identity.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -179,7 +334,7 @@ const TOOLS = [
   {
     name: 'health_check',
     description:
-      'Check health of services. With no ID, checks all services. ' +
+      '[Standard] Check health of services. With no ID, checks all services. ' +
       'With an ID, checks only that service.',
     inputSchema: {
       type: 'object' as const,
@@ -196,9 +351,9 @@ const TOOLS = [
   {
     name: 'start_session',
     description:
-      'Start a coordination session. Sessions track what an agent is working on, ' +
+      '[Standard] Start a coordination session. Sessions track what an agent is working on, ' +
       'which files it claims, and provide an audit trail via notes. ' +
-      'IMPORTANT: Always start a session when beginning work on a task.',
+      'For a single atomic call that also registers your agent, prefer begin_session instead.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -222,7 +377,8 @@ const TOOLS = [
   {
     name: 'end_session',
     description:
-      'End the current active session. Status can be "completed" (success) or "abandoned" (gave up).',
+      '[Standard] End the current active session. Status can be "completed" (success) or "abandoned" ' +
+      '(gave up). For a single atomic call that also unregisters your agent, prefer end_session_full instead.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -241,9 +397,10 @@ const TOOLS = [
   {
     name: 'add_note',
     description:
-      'Add a note to the current session or create a quick standalone note. ' +
+      '[Essential] Add a note to the current session or create a quick standalone note. ' +
       'Notes are immutable — once added, they cannot be edited or deleted. ' +
-      'Use for progress updates, decisions, blockers, or coordination messages.',
+      'Use liberally: progress updates, decisions made, blockers hit, handoffs to other agents. ' +
+      'Usage: add_note({content: "Switched to PKCE flow for SPAs", type: "decision"})',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -266,7 +423,7 @@ const TOOLS = [
   },
   {
     name: 'list_sessions',
-    description: 'List sessions. Shows active sessions by default, or all sessions with the "all" flag.',
+    description: '[Standard] List sessions. Shows active sessions by default, or all sessions with the "all" flag.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -283,7 +440,7 @@ const TOOLS = [
   },
   {
     name: 'list_notes',
-    description: 'List notes for a session, or recent notes across all sessions.',
+    description: '[Standard] List notes for a session, or recent notes across all sessions.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -301,7 +458,7 @@ const TOOLS = [
   {
     name: 'claim_files',
     description:
-      'Claim files for the active session (advisory locking). ' +
+      '[Standard] Claim files for the active session (advisory locking). ' +
       'Other agents can see which files are claimed to avoid conflicts.',
     inputSchema: {
       type: 'object' as const,
@@ -321,7 +478,7 @@ const TOOLS = [
   {
     name: 'acquire_lock',
     description:
-      'Acquire a distributed lock. Use for exclusive access to shared resources ' +
+      '[Essential] Acquire a distributed lock. Use for exclusive access to shared resources ' +
       '(e.g. database migrations, build artifacts). Locks auto-expire after TTL.',
     inputSchema: {
       type: 'object' as const,
@@ -344,7 +501,7 @@ const TOOLS = [
   },
   {
     name: 'release_lock',
-    description: 'Release a distributed lock.',
+    description: '[Standard] Release a distributed lock.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -366,7 +523,7 @@ const TOOLS = [
   },
   {
     name: 'list_locks',
-    description: 'List all active distributed locks.',
+    description: '[Standard] List all active distributed locks.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -382,7 +539,7 @@ const TOOLS = [
   {
     name: 'publish_message',
     description:
-      'Publish a message to a pub/sub channel. Other agents subscribed to the channel ' +
+      '[Advanced] Publish a message to a pub/sub channel. Other agents subscribed to the channel ' +
       'will receive it. Use for coordination, build signals, status updates.',
     inputSchema: {
       type: 'object' as const,
@@ -405,7 +562,7 @@ const TOOLS = [
   },
   {
     name: 'get_messages',
-    description: 'Get messages from a pub/sub channel.',
+    description: '[Advanced] Get messages from a pub/sub channel.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -426,9 +583,9 @@ const TOOLS = [
   {
     name: 'register_agent',
     description:
-      'Register as an agent with the Port Daddy daemon. Enables heartbeat monitoring ' +
+      '[Standard] Register as an agent with the Port Daddy daemon. Enables heartbeat monitoring ' +
       'and agent resurrection (salvage) if the agent dies. ' +
-      'IMPORTANT: Register at the start of every agent session.',
+      'For a single atomic call that also starts a session, prefer begin_session instead.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -456,7 +613,7 @@ const TOOLS = [
   {
     name: 'agent_heartbeat',
     description:
-      'Send a heartbeat to keep the agent alive in the registry. ' +
+      '[Standard] Send a heartbeat to keep the agent alive in the registry. ' +
       'Agents that stop heartbeating are marked stale (10 min) then dead (20 min). ' +
       'Dead agents enter the resurrection/salvage queue.',
     inputSchema: {
@@ -472,7 +629,7 @@ const TOOLS = [
   },
   {
     name: 'list_agents',
-    description: 'List all registered agents with their status and heartbeat info.',
+    description: '[Standard] List all registered agents with their status and heartbeat info.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -488,9 +645,11 @@ const TOOLS = [
   {
     name: 'check_salvage',
     description:
-      'Check the salvage queue for dead agents whose work can be continued. ' +
-      'When an agent dies, its session, notes, and file claims are preserved. ' +
-      'A new agent can claim the dead agent and continue its work.',
+      '[Essential] Check the salvage queue for dead agents whose work can be continued. ' +
+      'Run this at the start of every session before beginning new work — another agent may have ' +
+      'died mid-task with work you should continue. When an agent dies, its session, notes, and ' +
+      'file claims are preserved for pickup. ' +
+      'Usage: check_salvage({project: "myapp"}) to filter to your project.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -504,7 +663,7 @@ const TOOLS = [
   {
     name: 'claim_salvage',
     description:
-      'Claim a dead agent from the salvage queue to continue its work. ' +
+      '[Standard] Claim a dead agent from the salvage queue to continue its work. ' +
       'Returns the dead agent\'s session context, notes, and purpose.',
     inputSchema: {
       type: 'object' as const,
@@ -522,11 +681,173 @@ const TOOLS = [
     },
   },
 
+  // ── Session Phases ──────────────────────────────────────────────────
+  {
+    name: 'set_session_phase',
+    description:
+      '[Standard] Set the lifecycle phase of a session (planning, in_progress, testing, reviewing, completed, abandoned).',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        session_id: { type: 'string', description: 'Session ID' },
+        phase: {
+          type: 'string',
+          enum: ['planning', 'in_progress', 'testing', 'reviewing', 'completed', 'abandoned'],
+          description: 'Session phase',
+        },
+      },
+      required: ['session_id', 'phase'],
+    },
+  },
+
+  // ── File Claims ────────────────────────────────────────────────────
+  {
+    name: 'list_file_claims',
+    description: '[Standard] List all file claims across all active sessions.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
+    name: 'who_owns_file',
+    description: '[Standard] Check which session/agent owns a specific file.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        path: { type: 'string', description: 'File path to look up' },
+      },
+      required: ['path'],
+    },
+  },
+
+  // ── Integration Signals ────────────────────────────────────────────
+  {
+    name: 'integration_ready',
+    description:
+      '[Advanced] Signal that your service is ready for integration. Other agents watching for this signal will be notified.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        service: { type: 'string', description: 'Service identity that is ready' },
+        payload: { type: 'object', description: 'Additional metadata about the ready state' },
+      },
+      required: ['service'],
+    },
+  },
+  {
+    name: 'integration_needs',
+    description:
+      '[Advanced] Signal that you need another service to be ready before continuing.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        service: { type: 'string', description: 'Service identity you need' },
+        payload: { type: 'object', description: 'Details about what you need' },
+      },
+      required: ['service'],
+    },
+  },
+  {
+    name: 'integration_list',
+    description: '[Advanced] List all integration signal channels.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+
+  // ── Briefing ───────────────────────────────────────────────────────
+  {
+    name: 'briefing_generate',
+    description:
+      '[Advanced] Generate a project briefing for onboarding new agents. Captures current state of services, sessions, agents, and recent activity.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        project_root: { type: 'string', description: 'Project root directory' },
+      },
+    },
+  },
+  {
+    name: 'briefing_read',
+    description: '[Advanced] Read the most recent briefing for a project.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        project_root: { type: 'string', description: 'Project root directory' },
+      },
+    },
+  },
+
+  // ── DNS ────────────────────────────────────────────────────────────
+  {
+    name: 'dns_register',
+    description:
+      '[Advanced] Register a local DNS record (.local hostname) for a claimed service.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        hostname: { type: 'string', description: 'Hostname to register (e.g. "myapp-api")' },
+        target: { type: 'string', description: 'Target IP (default: 127.0.0.1)' },
+        port: { type: 'number', description: 'Port number' },
+        service: { type: 'string', description: 'Associated service identity' },
+      },
+      required: ['hostname'],
+    },
+  },
+  {
+    name: 'dns_unregister',
+    description: '[Advanced] Remove a local DNS record.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        hostname: { type: 'string', description: 'Hostname to unregister' },
+      },
+      required: ['hostname'],
+    },
+  },
+  {
+    name: 'dns_list',
+    description: '[Advanced] List all registered local DNS records.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
+    name: 'dns_lookup',
+    description: '[Advanced] Look up a specific DNS record by hostname.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        hostname: { type: 'string', description: 'Hostname to look up' },
+      },
+      required: ['hostname'],
+    },
+  },
+  {
+    name: 'dns_cleanup',
+    description: '[Advanced] Clean up stale DNS records for services that no longer exist.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
+    name: 'dns_status',
+    description: '[Advanced] Check DNS system status (mDNS/Bonjour availability).',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+
   // ── Tunnels ──────────────────────────────────────────────────────────
   {
     name: 'start_tunnel',
     description:
-      'Start a public tunnel for a claimed service. Makes your local dev server ' +
+      '[Advanced] Start a public tunnel for a claimed service. Makes your local dev server ' +
       'accessible via a public URL. Requires cloudflared, ngrok, or localtunnel installed.',
     inputSchema: {
       type: 'object' as const,
@@ -546,7 +867,7 @@ const TOOLS = [
   },
   {
     name: 'stop_tunnel',
-    description: 'Stop an active tunnel for a service.',
+    description: '[Advanced] Stop an active tunnel for a service.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -560,7 +881,7 @@ const TOOLS = [
   },
   {
     name: 'list_tunnels',
-    description: 'List all active tunnels with their public URLs.',
+    description: '[Advanced] List all active tunnels with their public URLs.',
     inputSchema: {
       type: 'object' as const,
       properties: {},
@@ -571,7 +892,7 @@ const TOOLS = [
   {
     name: 'scan_project',
     description:
-      'Deep-scan a directory to detect all services, frameworks, and dependencies. ' +
+      '[Advanced] Deep-scan a directory to detect all services, frameworks, and dependencies. ' +
       'Detects 60+ frameworks (Next.js, Vite, Express, FastAPI, Django, Go, Rust, etc.). ' +
       'Can generate a .portdaddyrc configuration file.',
     inputSchema: {
@@ -593,7 +914,7 @@ const TOOLS = [
   {
     name: 'daemon_status',
     description:
-      'Check Port Daddy daemon status including version, uptime, active ports, and health.',
+      '[Standard] Check Port Daddy daemon status including version, uptime, active ports, and health.',
     inputSchema: {
       type: 'object' as const,
       properties: {},
@@ -601,7 +922,7 @@ const TOOLS = [
   },
   {
     name: 'activity_log',
-    description: 'View recent activity log entries (audit trail).',
+    description: '[Advanced] View recent activity log entries (audit trail).',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -616,7 +937,32 @@ const TOOLS = [
       },
     },
   },
+  // ── Meta-Tool (Progressive Disclosure) ─────────────────────────────
+  {
+    name: 'pd_discover',
+    description:
+      '[Essential] List available Port Daddy tool categories and their tools. ' +
+      'In default mode, only essential tools are loaded. Use this to discover ' +
+      'additional tools by category, then call them directly by name. ' +
+      'Categories: session-lifecycle, ports, sessions, notes, locks, messaging, agents, integration, dns, briefing, tunnels, system.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        category: {
+          type: 'string',
+          description: 'Category to get detailed tool info for (e.g. "dns", "agents", "locks"). Omit to list all categories.',
+        },
+      },
+    },
+  },
 ];
+
+// ---------------------------------------------------------------------------
+// Daemon recovery hint — consistent message for sugar command failures
+// ---------------------------------------------------------------------------
+
+const DAEMON_RECOVERY_HINT =
+  'Daemon not reachable. Start it with: pd (the daemon auto-starts on first command)';
 
 // ---------------------------------------------------------------------------
 // Tool handler
@@ -629,6 +975,33 @@ async function handleTool(
   let res: ApiResponse;
 
   switch (name) {
+    // ── Sugar (Compound Operations) ────────────────────────────────────
+    case 'begin_session': {
+      const body: Record<string, unknown> = { purpose: args.purpose };
+      if (args.identity) body.identity = args.identity;
+      if (args.agent_id) body.agentId = args.agent_id;
+      if (args.type) body.type = args.type;
+      if (args.files) body.files = args.files;
+      res = await POST('/sugar/begin', body);
+      break;
+    }
+
+    case 'end_session_full': {
+      const body: Record<string, unknown> = {};
+      if (args.agent_id) body.agentId = args.agent_id;
+      if (args.session_id) body.sessionId = args.session_id;
+      if (args.note) body.note = args.note;
+      if (args.status) body.status = args.status;
+      res = await POST('/sugar/done', body);
+      break;
+    }
+
+    case 'whoami': {
+      const qs = args.agent_id ? `?agentId=${encodeURIComponent(args.agent_id as string)}` : '';
+      res = await GET(`/sugar/whoami${qs}`);
+      break;
+    }
+
     // ── Port Management ────────────────────────────────────────────────
     case 'claim_port': {
       const body: Record<string, unknown> = { id: args.identity };
@@ -776,16 +1149,17 @@ async function handleTool(
     // ── Agents ─────────────────────────────────────────────────────────
     case 'register_agent': {
       const body: Record<string, unknown> = {
+        id: args.agent_id,
         type: (args.type as string) || 'mcp',
       };
       if (args.identity) body.identity = args.identity;
       if (args.purpose) body.purpose = args.purpose;
-      res = await POST(`/agents/${encodeURIComponent(args.agent_id as string)}`, body);
+      res = await POST('/agents', body);
       break;
     }
 
     case 'agent_heartbeat': {
-      res = await PUT(`/agents/${encodeURIComponent(args.agent_id as string)}/heartbeat`);
+      res = await POST(`/agents/${encodeURIComponent(args.agent_id as string)}/heartbeat`);
       break;
     }
 
@@ -798,15 +1172,102 @@ async function handleTool(
     // ── Salvage ────────────────────────────────────────────────────────
     case 'check_salvage': {
       const qs = args.project ? `?project=${encodeURIComponent(args.project as string)}` : '';
-      res = await GET(`/salvage${qs}`);
+      res = await GET(`/resurrection/pending${qs}`);
       break;
     }
 
     case 'claim_salvage': {
-      res = await POST('/salvage', {
-        deadAgentId: args.dead_agent_id,
+      res = await POST(`/resurrection/claim/${encodeURIComponent(args.dead_agent_id as string)}`, {
         newAgentId: args.new_agent_id,
       });
+      break;
+    }
+
+    // ── Session Phases ──────────────────────────────────────────────
+    case 'set_session_phase': {
+      res = await PUT(`/sessions/${encodeURIComponent(args.session_id as string)}/phase`, {
+        phase: args.phase,
+      });
+      break;
+    }
+
+    // ── File Claims ─────────────────────────────────────────────────
+    case 'list_file_claims': {
+      res = await GET('/files');
+      break;
+    }
+
+    case 'who_owns_file': {
+      res = await GET(`/files/who-owns?path=${encodeURIComponent(args.path as string)}`);
+      break;
+    }
+
+    // ── Integration Signals ─────────────────────────────────────────
+    case 'integration_ready': {
+      const channel = `integration:ready:${args.service}`;
+      const body: Record<string, unknown> = { payload: args.payload || {} };
+      res = await POST(`/msg/${encodeURIComponent(channel)}`, body);
+      break;
+    }
+
+    case 'integration_needs': {
+      const channel = `integration:needs:${args.service}`;
+      const body: Record<string, unknown> = { payload: args.payload || {} };
+      res = await POST(`/msg/${encodeURIComponent(channel)}`, body);
+      break;
+    }
+
+    case 'integration_list': {
+      res = await GET('/channels');
+      break;
+    }
+
+    // ── Briefing ────────────────────────────────────────────────────
+    case 'briefing_generate': {
+      const body: Record<string, unknown> = {};
+      if (args.project_root) body.projectRoot = args.project_root;
+      res = await POST('/briefing', body);
+      break;
+    }
+
+    case 'briefing_read': {
+      const root = args.project_root ? encodeURIComponent(args.project_root as string) : '';
+      res = await GET(`/briefing/${root}`);
+      break;
+    }
+
+    // ── DNS ─────────────────────────────────────────────────────────
+    case 'dns_register': {
+      const body: Record<string, unknown> = {};
+      if (args.target) body.target = args.target;
+      if (args.port) body.port = args.port;
+      if (args.service) body.service = args.service;
+      res = await POST(`/dns/${encodeURIComponent(args.hostname as string)}`, body);
+      break;
+    }
+
+    case 'dns_unregister': {
+      res = await DELETE(`/dns/${encodeURIComponent(args.hostname as string)}`);
+      break;
+    }
+
+    case 'dns_list': {
+      res = await GET('/dns');
+      break;
+    }
+
+    case 'dns_lookup': {
+      res = await GET(`/dns/${encodeURIComponent(args.hostname as string)}`);
+      break;
+    }
+
+    case 'dns_cleanup': {
+      res = await POST('/dns/cleanup');
+      break;
+    }
+
+    case 'dns_status': {
+      res = await GET('/dns/status');
       break;
     }
 
@@ -864,6 +1325,44 @@ async function handleTool(
       break;
     }
 
+    // ── Meta-Tool (Progressive Disclosure) ──────────────────────────────
+    case 'pd_discover': {
+      const category = args.category as string | undefined;
+      if (category) {
+        const cat = TOOL_CATEGORIES[category];
+        if (!cat) {
+          return JSON.stringify({
+            error: `Unknown category: ${category}`,
+            available: Object.keys(TOOL_CATEGORIES),
+          }, null, 2);
+        }
+        // Return full tool schemas for the requested category
+        const categoryTools = TOOLS.filter(t => cat.tools.includes(t.name));
+        return JSON.stringify({
+          category,
+          description: cat.description,
+          tools: categoryTools.map(t => ({
+            name: t.name,
+            description: t.description,
+            parameters: t.inputSchema.properties,
+            required: ('required' in t.inputSchema) ? t.inputSchema.required : [],
+          })),
+          hint: 'You can now call these tools directly by name.',
+        }, null, 2);
+      }
+      // List all categories with tool counts
+      return JSON.stringify({
+        mode: FULL_MODE ? 'full (all tools exposed)' : 'tiered (essential + discover)',
+        categories: Object.entries(TOOL_CATEGORIES).map(([catName, cat]) => ({
+          name: catName,
+          description: cat.description,
+          toolCount: cat.tools.length,
+          tools: cat.tools,
+        })),
+        hint: 'Call pd_discover with a category name to get full tool schemas.',
+      }, null, 2);
+    }
+
     default:
       throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
   }
@@ -876,18 +1375,33 @@ async function handleTool(
 // ---------------------------------------------------------------------------
 
 const server = new Server(
-  { name: 'port-daddy', version: '3.3.0' },
+  {
+    name: 'port-daddy',
+    version: '3.7.0',
+  },
   {
     capabilities: {
       tools: {},
       resources: {},
     },
+    instructions: [
+      'Port Daddy is the authoritative port manager for multi-agent development.',
+      'Services use semantic identities in project:stack:context format (e.g. "myapp:api:main").',
+      'Same identity always maps to the same port -- deterministic hashing.',
+      'Start every session with begin_session, end with end_session_full.',
+      'Check check_salvage before starting new work -- another agent may have died mid-task.',
+      'Use pd_discover to find additional tools (DNS, locks, pub/sub, tunnels, etc.).',
+      'File claims are advisory -- they announce intent, not enforce locks.',
+      'Notes are immutable -- once written, they cannot be edited or deleted.',
+    ].join(' '),
   }
 );
 
-// List tools
+// List tools — tiered by default, full with --full flag
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: TOOLS,
+  tools: FULL_MODE
+    ? TOOLS
+    : TOOLS.filter(t => ESSENTIAL_TOOL_NAMES.has(t.name) || t.name === 'pd_discover'),
 }));
 
 // Execute tools
@@ -906,13 +1420,34 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // Connection refused = daemon not running
     if (err.message.includes('ECONNREFUSED')) {
+      const sugarTools = new Set(['begin_session', 'end_session_full', 'whoami']);
+      const isSugarTool = sugarTools.has(name);
       return {
         content: [
           {
             type: 'text' as const,
             text: JSON.stringify({
               error: 'Port Daddy daemon is not running',
-              hint: 'Start it with: pd start (or: npx port-daddy start)',
+              hint: isSugarTool
+                ? DAEMON_RECOVERY_HINT
+                : 'Daemon not reachable. Start it with: pd (the daemon auto-starts on first command)',
+              details: err.message,
+            }),
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // Timeout or other network error
+    if (err.message.includes('timed out') || err.message.includes('ECONNRESET')) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              error: 'Port Daddy daemon did not respond',
+              hint: DAEMON_RECOVERY_HINT,
               details: err.message,
             }),
           },
@@ -927,7 +1462,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           type: 'text' as const,
           text: JSON.stringify({
             error: err.message,
-            hint: 'Check that the Port Daddy daemon is running on localhost:9876',
+            hint: 'Check that the Port Daddy daemon is running on localhost:9876. ' + DAEMON_RECOVERY_HINT,
           }),
         },
       ],
