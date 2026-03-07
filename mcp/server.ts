@@ -96,7 +96,7 @@ const DELETE = (path: string, body?: Record<string, unknown>) => api('DELETE', p
 // Tiered tool loading — reduce context window overhead by 80%
 //
 // By default, only Essential tools (8) + pd_discover are sent to the agent.
-// Full mode (--full flag or PORT_DADDY_MCP_FULL=1) exposes all 44+ tools.
+// Full mode (--full flag or PORT_DADDY_MCP_FULL=1) exposes all 45+ tools.
 // Agents can call pd_discover to learn about additional tools by category,
 // then call them directly — handleTool processes ALL tools regardless of tier.
 // ---------------------------------------------------------------------------
@@ -305,7 +305,7 @@ const TOOLS = [
   {
     name: 'list_services',
     description:
-      '[Standard] List all claimed services with their ports, status, and metadata. ' +
+      '[Essential] List all claimed services with their ports, status, and metadata. ' +
       'Optionally filter by pattern (e.g. "myapp:*").',
     inputSchema: {
       type: 'object' as const,
@@ -478,7 +478,7 @@ const TOOLS = [
   {
     name: 'acquire_lock',
     description:
-      '[Standard] Acquire a distributed lock. Use for exclusive access to shared resources ' +
+      '[Essential] Acquire a distributed lock. Use for exclusive access to shared resources ' +
       '(e.g. database migrations, build artifacts). Locks auto-expire after TTL.',
     inputSchema: {
       type: 'object' as const,
@@ -725,7 +725,7 @@ const TOOLS = [
   {
     name: 'integration_ready',
     description:
-      '[Standard] Signal that your service is ready for integration. Other agents watching for this signal will be notified.',
+      '[Advanced] Signal that your service is ready for integration. Other agents watching for this signal will be notified.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -738,7 +738,7 @@ const TOOLS = [
   {
     name: 'integration_needs',
     description:
-      '[Standard] Signal that you need another service to be ready before continuing.',
+      '[Advanced] Signal that you need another service to be ready before continuing.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -750,7 +750,7 @@ const TOOLS = [
   },
   {
     name: 'integration_list',
-    description: '[Standard] List all integration signal channels.',
+    description: '[Advanced] List all integration signal channels.',
     inputSchema: {
       type: 'object' as const,
       properties: {},
@@ -941,7 +941,7 @@ const TOOLS = [
   {
     name: 'pd_discover',
     description:
-      'List available Port Daddy tool categories and their tools. ' +
+      '[Essential] List available Port Daddy tool categories and their tools. ' +
       'In default mode, only essential tools are loaded. Use this to discover ' +
       'additional tools by category, then call them directly by name. ' +
       'Categories: session-lifecycle, ports, sessions, notes, locks, messaging, agents, integration, dns, briefing, tunnels, system.',
@@ -956,6 +956,13 @@ const TOOLS = [
     },
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Daemon recovery hint — consistent message for sugar command failures
+// ---------------------------------------------------------------------------
+
+const DAEMON_RECOVERY_HINT =
+  'Daemon not reachable. Start it with: pd (the daemon auto-starts on first command)';
 
 // ---------------------------------------------------------------------------
 // Tool handler
@@ -1346,8 +1353,8 @@ async function handleTool(
       // List all categories with tool counts
       return JSON.stringify({
         mode: FULL_MODE ? 'full (all tools exposed)' : 'tiered (essential + discover)',
-        categories: Object.entries(TOOL_CATEGORIES).map(([name, cat]) => ({
-          name,
+        categories: Object.entries(TOOL_CATEGORIES).map(([catName, cat]) => ({
+          name: catName,
           description: cat.description,
           toolCount: cat.tools.length,
           tools: cat.tools,
@@ -1371,22 +1378,22 @@ const server = new Server(
   {
     name: 'port-daddy',
     version: '3.7.0',
-    instructions: [
-      'Port Daddy is the authoritative port manager for multi-agent development.',
-      'Services use semantic identities in project:stack:context format (e.g. "myapp:api:main").',
-      'Same identity always maps to the same port — deterministic hashing.',
-      'Start every session with begin_session, end with end_session_full.',
-      'Check check_salvage before starting new work — another agent may have died mid-task.',
-      'Use pd_discover to find additional tools (DNS, locks, pub/sub, tunnels, etc.).',
-      'File claims are advisory — they announce intent, not enforce locks.',
-      'Notes are immutable — once written, they cannot be edited or deleted.',
-    ].join(' '),
   },
   {
     capabilities: {
       tools: {},
       resources: {},
     },
+    instructions: [
+      'Port Daddy is the authoritative port manager for multi-agent development.',
+      'Services use semantic identities in project:stack:context format (e.g. "myapp:api:main").',
+      'Same identity always maps to the same port -- deterministic hashing.',
+      'Start every session with begin_session, end with end_session_full.',
+      'Check check_salvage before starting new work -- another agent may have died mid-task.',
+      'Use pd_discover to find additional tools (DNS, locks, pub/sub, tunnels, etc.).',
+      'File claims are advisory -- they announce intent, not enforce locks.',
+      'Notes are immutable -- once written, they cannot be edited or deleted.',
+    ].join(' '),
   }
 );
 
@@ -1422,8 +1429,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             text: JSON.stringify({
               error: 'Port Daddy daemon is not running',
               hint: isSugarTool
-                ? `Daemon may be offline. Start it with: pd daemon start (or npm run dev in the port-daddy directory)`
-                : 'Start the daemon with: pd daemon start (or: npx port-daddy start)',
+                ? DAEMON_RECOVERY_HINT
+                : 'Daemon not reachable. Start it with: pd (the daemon auto-starts on first command)',
+              details: err.message,
+            }),
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // Timeout or other network error
+    if (err.message.includes('timed out') || err.message.includes('ECONNRESET')) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              error: 'Port Daddy daemon did not respond',
+              hint: DAEMON_RECOVERY_HINT,
               details: err.message,
             }),
           },
@@ -1438,7 +1462,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           type: 'text' as const,
           text: JSON.stringify({
             error: err.message,
-            hint: 'Check that the Port Daddy daemon is running on localhost:9876',
+            hint: 'Check that the Port Daddy daemon is running on localhost:9876. ' + DAEMON_RECOVERY_HINT,
           }),
         },
       ],

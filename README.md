@@ -23,45 +23,7 @@ Port Daddy is a local daemon that manages dev server ports, starts your entire s
 
 One daemon. Many projects. Zero port conflicts.
 
-**Jump to:** [Quick Start](#quick-start) | [Just Want Stable Ports?](#just-want-stable-ports) | [Run Your Whole Stack](#run-your-whole-stack) | [Agent Coordination](#agent-coordination) | [Sessions & Notes](#sessions--notes) | [Sugar Commands](#sugar-commands) | [Changelog](#changelog) | [Local DNS](#local-dns-for-ports) | [CLI Reference](#cli-reference) | [API Reference](#api-reference)
-
----
-
-## Quick Start
-
-```bash
-# Install and start the daemon
-npm install -g port-daddy
-pd up
-
-# Begin a session (registers agent + starts session atomically)
-pd begin "Implementing user auth"
-
-# Check your context at any time
-pd whoami
-
-# Add progress notes as you work
-pd note "Created auth middleware"
-pd note "JWT validation complete" --type commit
-
-# Finish up (ends session + unregisters agent atomically)
-pd done "Auth system complete"
-```
-
-`pd begin` and `pd done` replace the previous 3-command ceremony (`pd agent register` + `pd session start` + `pd agent heartbeat`). See [Sugar Commands](#sugar-commands) for the full reference.
-
----
-
-## Who Uses Port Daddy
-
-Port Daddy is built for multi-agent Claude Code workflows. If you run more than one AI coding agent against the same codebase — or if you have multiple services starting on overlapping ports — Port Daddy is the coordination layer that prevents chaos.
-
-Common setups:
-
-- **Solo developer, multiple projects** — stable ports that never collide across projects
-- **Single project, parallel agents** — agents each claim ports and sessions; no stepping on each other
-- **Worktree-based parallelism** — each worktree gets its own isolated port space and session scope
-- **CI/CD pipelines** — atomic port assignment prevents flaky test failures from port conflicts
+**Jump to:** [Just Want Stable Ports?](#just-want-stable-ports) | [Run Your Whole Stack](#run-your-whole-stack) | [Agent Coordination](#agent-coordination) | [Sessions & Notes](#sessions--notes) | [Changelog](#changelog) | [Local DNS](#local-dns-for-ports) | [Parity Coverage](#parity-coverage) | [CLI Reference](#cli-reference) | [API Reference](#api-reference)
 
 ---
 
@@ -88,6 +50,8 @@ PORT=$(pd claim myproject -q) npm run dev -- --port $PORT
 
 Ports persist across restarts. `myapp:api` always gets the same port on this machine.
 
+New to Port Daddy? Run `pd learn` for a 5-minute interactive tutorial that walks you through ports, sessions, and coordination.
+
 ### How naming works
 
 Port Daddy uses `project:stack:context` identifiers. All three parts are optional:
@@ -106,7 +70,7 @@ Wildcards work everywhere: `pd find myapp:*`, `pd release *:api:*`.
 npm install -g port-daddy
 pd start                    # start the daemon (auto-starts on first use too)
 pd doctor                   # verify your environment
-pd learn                    # interactive tutorial (recommended for new users)
+pd learn                    # interactive tutorial — learn the basics in 5 minutes
 ```
 
 Auto-start on login (optional):
@@ -200,43 +164,21 @@ If you *need* a specific port (e.g., OAuth callbacks to `localhost:3000`), speci
 
 ---
 
-## Port Management vs Agent Coordination
-
-Port Daddy serves two distinct audiences:
-
-| Use case | What you need | Getting started |
-|----------|--------------|-----------------|
-| **Solo developer** — stable ports across projects | `pd claim`, `pd release`, `pd up` | [Just Want Stable Ports?](#just-want-stable-ports) |
-| **Multi-agent workflows** — coordinate parallel AI agents | All of the above + sessions, notes, locks, pub/sub | This section |
-
-You do not need agent coordination for basic port management. If you are running multiple AI coding agents against the same codebase, read on.
-
 ## Agent Coordination
 
-Port Daddy includes built-in primitives for multi-agent and multi-process coordination. No external message broker required.
+Port Daddy includes built-in primitives for multi-agent and multi-process coordination. No external message broker required. If you only need ports, you can skip this section entirely.
 
-### Sugar Commands (Recommended Starting Point)
+### Quick Start (Agents)
 
-The quickest way to start coordinating is with the compound sugar commands. These handle agent registration and session management in a single call:
+Sugar commands handle the most common workflow -- register, work, finish -- in three commands:
 
 ```bash
-# Start — registers your agent + opens a session in one step
-pd begin "Implementing OAuth flow"
-
-# Log progress as you work
-pd note "Started Google OAuth integration"
-pd note "Switched to PKCE flow for SPAs" --type decision
-
-# See who you are and what session is active
-pd whoami
-
-# Finish — ends session + unregisters in one step
-pd done "OAuth complete, all tests passing"
+pd begin "Implementing auth system"     # register agent + start session
+pd note "Switched to JWT approach"      # log progress
+pd done "Auth complete, tests passing"  # end session + unregister
 ```
 
-If you are using the MCP server, the equivalent tools are `begin_session`, `add_note`, `whoami`, and `end_session_full`.
-
-If you want to step outside the sugar commands and control the individual operations, continue to the sections below.
+These compose `agent register` + `session start` and `session end` + `agent unregister` atomically. Use `pd whoami` to check your current context.
 
 ### Pub/Sub Messaging
 
@@ -367,158 +309,6 @@ pd session rm session-abc   # delete entirely (cascades to notes + file claims)
 | Stale locks rot | Garbage collection on stale sessions |
 | No timeline | Immutable, queryable note history |
 | Single file, many writers | Concurrent sessions, atomic operations |
-
----
-
-## Sugar Commands
-
-Sugar commands reduce the agent session lifecycle to three intuitive operations. They replace the previous multi-step ceremony and are implemented across CLI, REST API, SDK, and MCP.
-
-### `pd begin`
-
-Register as an agent and start a session in a single atomic call. Supports positional args, named flags, short flags, and interactive mode.
-
-```bash
-# Interactive mode — just run with no args (TTY only)
-pd begin
-
-# Positional (backward compatible)
-pd begin "Implementing user auth"
-
-# Named flags (equivalent)
-pd begin --purpose "Implementing user auth"
-pd begin -P "Implementing user auth"
-
-# With semantic identity and type
-pd begin -P "Refactoring auth module" \
-  --identity myapp:backend:feature-auth \
-  --type claude
-
-# Claim files up front
-pd begin -P "Fixing payment flow" --files src/payments/* src/checkout.ts
-
-# Quiet mode (print agentId for scripting)
-pd begin -P "Build task" -q
-```
-
-On completion, Port Daddy checks for dead agents in the same project and prints a salvage notice if any are found.
-
-### `pd done`
-
-End the current session and unregister the agent atomically.
-
-```bash
-# Interactive mode — prompts for note and status
-pd done
-
-# Positional note
-pd done "Auth system complete, tests passing"
-
-# Named flags
-pd done --note "Auth system complete" --status completed
-pd done -n "Partial — ran out of context" -s abandoned
-
-# End a specific agent/session (if not using .portdaddy/current.json)
-pd done --agent my-agent-id --session session-abc
-```
-
-### `pd whoami`
-
-Show the current agent and session context without making changes.
-
-```bash
-pd whoami
-
-# Example output:
-# Agent:    agent-a1b2c3
-# Session:  session-d4e5f6
-# Purpose:  Implementing user auth
-# Identity: myapp:backend:feature-auth
-# Notes:    4
-# Duration: 12m
-```
-
-### `pd with-lock`
-
-Execute a shell command while holding a distributed lock. The lock is automatically released when the command exits, even on failure.
-
-```bash
-# Run database migrations exclusively
-pd with-lock db-migrations npx prisma migrate dev
-
-# Run a shell pipeline (wrap in quotes)
-pd with-lock deploy-prod "npm run build && npm run deploy"
-
-# Custom TTL (milliseconds)
-pd with-lock cache-rebuild --ttl 60000 npm run warm-cache
-```
-
-`pd with-lock` has no REST equivalent — it is a CLI-only convenience that wraps the existing `/locks/:name` endpoints.
-
-### CLI Aliases (v3.5)
-
-| Alias | Expands to | When to use |
-|-------|-----------|-------------|
-| `pd n` | `pd note` | Quick progress notes |
-| `pd u` | `pd up` | Start your stack |
-| `pd d` | `pd down` | Stop your stack |
-
-### REST API
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/sugar/begin` | POST | Register agent + start session |
-| `/sugar/done` | POST | End session + unregister agent |
-| `/sugar/whoami` | GET | Current agent/session context |
-
-**POST /sugar/begin** request body:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `purpose` | string (required) | What this agent is doing |
-| `identity` | string | Semantic identity (`project:stack:context`) |
-| `agentId` | string | Override auto-generated agent ID |
-| `type` | string | Agent type (`cli`, `claude`, `ci`, etc.) |
-| `files` | string[] | Files to claim at session start |
-| `force` | boolean | Claim files even if conflicted |
-
-**POST /sugar/done** request body:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `agentId` | string | Agent to unregister (default: from `current.json`) |
-| `sessionId` | string | Session to end (default: from `current.json`) |
-| `note` | string | Closing note to attach |
-| `status` | string | `completed` (default) or `abandoned` |
-
-**GET /sugar/whoami** query params:
-
-| Param | Description |
-|-------|-------------|
-| `agentId` | Agent to look up (default: from `current.json`) |
-
-### SDK
-
-```javascript
-import { PortDaddy } from 'port-daddy/client';
-const pd = new PortDaddy();
-
-// Begin a session
-const { agentId, sessionId } = await pd.begin({
-  purpose: 'Implementing auth',
-  identity: 'myapp:backend:feature-auth',
-  files: ['src/auth/*'],
-});
-
-// Check context
-const ctx = await pd.whoami(agentId);
-console.log(ctx.duration); // e.g. "12m"
-
-// Finish
-await pd.done({ agentId, note: 'Auth complete' });
-```
-
-See [docs/sdk.md](docs/sdk.md#sugar-compound-operations) for the full typed API.
 
 ---
 
@@ -718,18 +508,53 @@ The skill teaches agents to claim ports with semantic identities, coordinate via
 
 ---
 
+## Parity Coverage
+
+Every feature is available across multiple surfaces. This table shows what works where:
+
+| Feature | CLI | SDK | MCP | Dashboard |
+|---------|:---:|:---:|:---:|:---------:|
+| Claim/release ports | yes | yes | yes | yes |
+| List services | yes | yes | yes | yes |
+| Health checks | yes | yes | yes | yes |
+| Sessions (start/end) | yes | yes | yes | yes |
+| Notes (add/list) | yes | yes | yes | yes |
+| File claims | yes | yes | yes | yes |
+| Sugar (begin/done/whoami) | yes | yes | yes | -- |
+| Distributed locks | yes | yes | yes | yes |
+| Pub/sub messaging | yes | yes | yes | yes |
+| Agent registry | yes | yes | yes | yes |
+| Agent heartbeat | yes | yes | yes | -- |
+| Salvage/resurrection | yes | yes | yes | -- |
+| Changelog | yes | yes | -- | -- |
+| Local DNS | yes | yes | yes | -- |
+| Tunnels | yes | yes | yes | -- |
+| Webhooks | yes | yes | -- | -- |
+| Project scanning | yes | yes | yes | yes |
+| Orchestration (up/down) | yes | yes | -- | -- |
+| Activity log | yes | yes | yes | yes |
+| Briefing | yes | -- | yes | -- |
+| Integration signals | yes | -- | yes | -- |
+
+**CLI** = `pd` command. **SDK** = `PortDaddy` class ([docs/sdk.md](docs/sdk.md)). **MCP** = AI agent tools (45 tools across 12 categories). **Dashboard** = web UI at `http://localhost:9876`.
+
+---
+
 ## CLI Reference
 
 `pd` is the short alias for `port-daddy`. All commands accept `--json/-j` for machine output and `--quiet/-q` for minimal output.
 
-### Quick Start (Sugar Commands)
+### Sugar Commands (Start Here)
 
 | Command | Description |
 |---------|-------------|
-| `pd begin <purpose>` | Register agent + start session in one step (`--identity project:stack:context`) |
-| `pd done [note]` | End session + unregister agent in one step |
-| `pd whoami` | Show current agent and session context |
-| `pd learn` | Interactive tutorial for new users |
+| `pd begin <purpose>` | Register agent + start session atomically |
+| `pd done [note]` | End session + unregister agent |
+| `pd whoami` | Show current agent/session context |
+| `pd with-lock <name> -- <cmd>` | Run command while holding a lock |
+| `pd learn` | Interactive tutorial (5 minutes) |
+
+Aliases: `pd n` = `pd note`, `pd u` = `pd up`, `pd d` = `pd down`.
 
 ### Ports & Services
 
@@ -774,19 +599,6 @@ The skill teaches agents to claim ports with semantic identities, coordinate via
 | `pd note <content>` | Quick note (`--type TYPE`) |
 | `pd notes [session-id]` | View notes (`--limit N`, `--type TYPE`) |
 
-### Sugar (Session Lifecycle)
-
-| Command | Description |
-|---------|-------------|
-| `pd begin [purpose]` | Register agent + start session (`-P`, `--identity`, `--type`, `--files`) |
-| `pd done [note]` | End session + unregister agent (`-n`, `--status`, `--agent`) |
-| `pd whoami` | Show current agent and session context |
-| `pd with-lock <name> <cmd>` | Execute command under distributed lock (`--ttl <ms>`) |
-| `pd n [content]` | Alias for `pd note` (`-c`, `--type`) |
-| `pd u` | Alias for `pd up` |
-| `pd d` | Alias for `pd down` |
-| `pd learn` | Interactive tutorial — learn Port Daddy step by step |
-
 ### Coordination
 
 | Command | Description |
@@ -808,7 +620,7 @@ The skill teaches agents to claim ports with semantic identities, coordinate via
 | `pd agents` | List all registered agents |
 | `pd salvage` | Check for dead agents (`--project`, `--stack`, `--all`, `--limit`) |
 | `pd salvage claim <id>` | Claim a dead agent's session |
-| `pd salvage complete <old> <new>` | Mark salvage complete |
+| `pd salvage complete <old> <new>` | Mark resurrection complete |
 | `pd salvage abandon <id>` | Return agent to queue |
 | `pd salvage dismiss <id>` | Remove from queue (reviewed) |
 
@@ -869,15 +681,6 @@ The skill teaches agents to claim ports with semantic identities, coordinate via
 | `-q, --quiet` | Minimal output (just the value) |
 | `--export` | Print `export PORT=N` for shell eval |
 | `--ttl <ms>` | Lock time-to-live |
-| `-P, --purpose` | Purpose text (for `begin`, `session start`) |
-| `-n, --note` | Note text (for `done`, `session end`) |
-| `-c, --content` | Note content (for `note`/`n`) |
-| `-m, --message` | Message payload (for `pub`) |
-| `-i, --identity` | Semantic identity (`project:stack:context`) |
-| `-a, --agent` | Agent ID |
-| `-t, --type` | Agent type or note type |
-| `-s, --status` | Session status |
-| `-f, --force` | Force operation |
 
 ### Shell Completions
 
@@ -896,35 +699,6 @@ cp /path/to/port-daddy/completions/port-daddy.fish ~/.config/fish/completions/
 
 ---
 
-## Feature Coverage Across Surfaces
-
-| Feature | CLI | REST API | SDK | MCP | Dashboard |
-|---------|-----|----------|-----|-----|-----------|
-| Port claim / release | Yes | Yes | Yes | Yes | Yes |
-| List services | Yes | Yes | Yes | Yes | Yes |
-| Health check | Yes | Yes | Yes | Yes | Yes |
-| Sessions (start/end) | Yes | Yes | Yes | Yes | Yes |
-| Notes | Yes | Yes | Yes | Yes | Yes |
-| File claims | Yes | Yes | Yes | Yes | Partial |
-| Distributed locks | Yes | Yes | Yes | Yes | Yes |
-| Pub/sub messaging | Yes | Yes | Yes | Yes | Partial |
-| Agent registry | Yes | Yes | Yes | Yes | Yes |
-| Agent heartbeat | Yes | Yes | Yes | Yes | No |
-| Salvage / resurrection | Yes | Yes | Yes | Yes | Yes |
-| Sugar (begin/done/whoami) | Yes | Yes | Yes | Yes | Partial |
-| DNS records | Yes | Yes | No | No | Yes |
-| Tunnels | Yes | Yes | No | Yes | Yes |
-| Webhooks | Yes | Yes | No | No | No |
-| Project scanning | Yes | Yes | No | Yes | Yes |
-| Activity log | Yes | Yes | No | Yes | Yes |
-| Changelog | Yes | Yes | No | No | No |
-| Briefing | Yes | Yes | No | No | Yes |
-| Shell completions | Bash/Zsh/Fish | — | — | — | — |
-
-This table reflects the v3.5 release. The CLI and REST API are the most complete surfaces. MCP covers the operations most relevant to AI agents. Dashboard coverage grows each release.
-
----
-
 ## API Reference
 
 All endpoints are served from the daemon at `http://localhost:9876`.
@@ -932,8 +706,10 @@ All endpoints are served from the daemon at `http://localhost:9876`.
 ```
 GET    /health                  GET    /version
 GET    /metrics                 GET    /config
-POST   /claim/:id              DELETE /release/:id
+POST   /claim                   DELETE /release
 GET    /services                GET    /services/health
+POST   /sugar/begin             POST   /sugar/done
+GET    /sugar/whoami
 POST   /sessions                GET    /sessions
 GET    /sessions/:id            PUT    /sessions/:id
 DELETE /sessions/:id            POST   /sessions/:id/notes
@@ -942,9 +718,15 @@ POST   /notes                   GET    /notes
 POST   /locks/:name             PUT    /locks/:name
 DELETE /locks/:name             GET    /locks
 POST   /msg/:channel            GET    /msg/:channel
-GET    /subscribe/:channel      GET    /channels
-POST   /agents/:id              GET    /agents
-GET    /salvage                 POST   /salvage
+GET    /msg/:channel/subscribe  GET    /channels
+POST   /agents                  GET    /agents
+GET    /agents/:id              DELETE /agents/:id
+POST   /agents/:id/heartbeat
+GET    /resurrection            GET    /resurrection/pending
+POST   /resurrection/claim/:id  POST   /resurrection/reap
+POST   /dns                     GET    /dns
+GET    /dns/lookup/:hostname    POST   /dns/cleanup
+GET    /dns/status
 POST   /changelog               GET    /changelog
 GET    /changelog/identities
 POST   /webhooks                GET    /webhooks/:id

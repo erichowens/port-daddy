@@ -5,9 +5,9 @@ description: Multi-agent coordination via Port Daddy. Use when starting dev serv
 
 ## Quick Start
 
-1. `pd begin "what I'm working on"` — registers you + starts session
-2. `pd note "progress update"` — log notes as you work
-3. `pd done` — wraps up session + unregisters
+1. `pd begin "what I'm working on"` -- registers you + starts session
+2. `pd note "progress update"` -- log notes as you work
+3. `pd done` -- wraps up session + unregisters
 
 ## MCP Progressive Disclosure
 
@@ -33,7 +33,7 @@ The MCP server uses **tiered tool loading** to keep context windows lean. By def
 | `pd release` | `release_port` | Essential |
 | `pd lock` | `acquire_lock` | Essential |
 | `pd find` | `list_services` | Essential |
-| — | `pd_discover` | Essential (meta) |
+| -- | `pd_discover` | Essential (meta) |
 | `pd salvage` | `check_salvage` | Standard |
 | `pd session start` | `start_session` | Standard |
 | `pd session end` | `end_session` | Standard |
@@ -56,7 +56,7 @@ The MCP server uses **tiered tool loading** to keep context windows lean. By def
 | `pd scan` | `scan_project` | Advanced |
 | `pd log` | `activity_log` | Advanced |
 
-# Port Daddy — The Authoritative Port Manager
+# Port Daddy -- The Authoritative Port Manager
 
 **Your ports. My rules. Zero conflicts.**
 
@@ -206,42 +206,6 @@ Locks auto-expire after TTL (default 60s). Use `--wait` to block until available
 
 ```bash
 pd lock deployment --owner agent-1 --wait --timeout 30000
-```
-
-### Run Command While Holding a Lock
-
-`pd with-lock` acquires a lock, runs a command, and releases the lock when done:
-
-```bash
-pd with-lock deployment -- npm run deploy
-pd with-lock db-migrate --ttl 120 -- npx prisma migrate deploy
-```
-
-### Integration Signals
-
-Use integration signals to coordinate readiness between agents:
-
-```bash
-# Signal that your service is ready for integration
-pd integration ready myapp:api --payload '{"port": 9234}'
-
-# Signal that you need another service
-pd integration needs myapp:frontend --payload '{"waiting_for": "myapp:api"}'
-
-# List all integration signals
-pd integration list
-```
-
-### Briefing (Project Intelligence)
-
-Generate a briefing file for onboarding new agents:
-
-```bash
-# Generate a project briefing
-pd briefing generate
-
-# Read the current briefing
-pd briefing read
 ```
 
 ## Direct Mode (No Daemon)
