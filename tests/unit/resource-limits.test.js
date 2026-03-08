@@ -112,9 +112,9 @@ describe('Resource Limits', () => {
       // Attempt to add one more
       const result = sessions.addNote(session.id, 'overflow note');
       expect(result.success).toBe(false);
-      expect(result.error).toMatch(/note limit reached/i);
+      expect(result.error).toMatch(/maximum of 500/i);
       expect(result.error).toMatch(/500/);
-      expect(result.code).toBe('RESOURCE_LIMIT');
+      expect(result.code).toBe('NOTES_LIMIT_EXCEEDED');
     });
 
     it('should enforce limit per-session (not globally)', () => {
@@ -163,10 +163,10 @@ describe('Resource Limits', () => {
       // Attempt to claim one more under the same project
       const result = services.claim('fullproject:svc20:main');
       expect(result.success).toBe(false);
-      expect(result.error).toMatch(/Service limit reached/);
+      expect(result.error).toMatch(/maximum of 20/);
       expect(result.error).toMatch(/fullproject/);
       expect(result.error).toMatch(/20/);
-      expect(result.code).toBe('RESOURCE_LIMIT');
+      expect(result.code).toBe('SERVICES_LIMIT_EXCEEDED');
     });
 
     it('should allow claims under a different project identity', () => {

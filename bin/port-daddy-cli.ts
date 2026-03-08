@@ -64,6 +64,16 @@ import {
   handleMetrics, handleConfigCmd, handleHealth, handlePorts, handleDashboard, handleDoctor, handleStatus, handleVersion,
   // Daemon
   handleDaemon, handleDev,
+  // DNS, Briefing, Integration
+  handleDns, handleBriefing, handleIntegration,
+  // Sugar commands
+  handleBegin, handleDone, handleWhoami, handleWithLock,
+  // Tutorial
+  handleLearn,
+  // File claims
+  handleWhoOwns,
+  // Briefing history
+  handleHistory,
 } from '../cli/commands/index.js';
 
 const __dirname: string = dirname(fileURLToPath(import.meta.url));
@@ -724,6 +734,8 @@ const ALL_COMMANDS: string[] = [
   'start', 'stop', 'restart', 'status', 'install', 'uninstall', 'dev', 'ci-gate',
   'doctor', 'diagnose', 'mcp', 'version', 'help',
   'salvage', 'resurrection', 'changelog', 'tunnel',
+  'services', 'dns', 'briefing', 'integration',
+  'b', 'w', 'who-owns', 'history', 'tutorial',
 ];
 
 /** Simple Levenshtein distance for short strings */
@@ -1793,6 +1805,52 @@ async function main(): Promise<void> {
         await new Promise(() => {});
         break;
       }
+
+      case 'dns':
+        await handleDns(positional[0], positional.slice(1), options);
+        break;
+
+      case 'briefing':
+        await handleBriefing(options);
+        break;
+
+      case 'history':
+        await handleHistory(options);
+        break;
+
+      case 'integration':
+        await handleIntegration(positional[0], positional.slice(1), options);
+        break;
+
+      // Sugar commands
+      case 'b':
+      case 'begin':
+        await handleBegin(positional[0], positional.slice(1), options);
+        break;
+
+      case 'done':
+        await handleDone(positional[0], options);
+        break;
+
+      case 'w':
+      case 'whoami':
+        await handleWhoami(options);
+        break;
+
+      case 'with-lock':
+        await handleWithLock(positional[0], positional.slice(1), options);
+        break;
+
+      // Tutorial
+      case 'learn':
+      case 'tutorial':
+        await handleLearn();
+        break;
+
+      // File ownership lookup
+      case 'who-owns':
+        await handleWhoOwns(positional[0], options);
+        break;
 
       default: {
         // Check for misspelled commands first

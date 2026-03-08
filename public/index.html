@@ -43,6 +43,7 @@
     body {
       font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
       background: var(--bg-dark);
+      background-image: radial-gradient(ellipse at 20% 50%, rgba(74,157,158,0.06) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(212,160,60,0.04) 0%, transparent 50%);
       color: var(--text);
       min-height: 100vh;
       line-height: 1.6;
@@ -145,6 +146,8 @@
     .stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px; }
     .stat-card {
       background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-dark) 100%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border: 1px solid var(--border);
       border-radius: var(--radius-md); padding: 14px 16px;
       position: relative; overflow: hidden;
@@ -214,7 +217,7 @@
       font-weight: 600; transition: all var(--transition-med);
     }
     .tab.active .tab-badge { background: var(--accent-glow); color: var(--accent); }
-    .tab-content { display: none; padding: 20px; overflow-y: auto; flex: 1; min-height: 0; animation: fadeIn 0.2s ease; }
+    .tab-content { display: none; padding: 20px; overflow-y: auto; flex: 1; min-height: 0; animation: fadeIn 0.2s ease; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
     .tab-content.active { display: block; }
     #tab-terminal.active { display: flex; flex-direction: column; min-height: 420px; }
 
@@ -934,7 +937,7 @@
       </div>
     </div>
 
-    <div class="stats" id="stats-grid">
+    <div class="stats" id="stats-grid" data-panel-role="panel-overview">
       <div class="stat-card"><svg class="stat-icon-bg icon-xl" aria-hidden="true"><use href="#icon-server"/></svg><div class="value" id="stat-services">-</div><div class="label"><svg class="icon" aria-hidden="true"><use href="#icon-server"/></svg>Services</div></div>
       <div class="stat-card"><svg class="stat-icon-bg icon-xl" aria-hidden="true"><use href="#icon-bot"/></svg><div class="value" id="stat-agents">-</div><div class="label"><svg class="icon" aria-hidden="true"><use href="#icon-bot"/></svg>Agents</div></div>
       <div class="stat-card"><svg class="stat-icon-bg icon-xl" aria-hidden="true"><use href="#icon-lock"/></svg><div class="value" id="stat-locks">-</div><div class="label"><svg class="icon" aria-hidden="true"><use href="#icon-lock"/></svg>Locks</div></div>
@@ -985,6 +988,7 @@
       <div class="tabs-wrapper" role="navigation" aria-label="Main navigation">
         <div class="tabs">
           <!-- Primary panels (always visible) -->
+          <button class="tab" data-tab="overview" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-compass"/></svg>Overview</button>
           <button class="tab active" data-tab="terminal" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-terminal"/></svg>Terminal</button>
           <button class="tab" data-tab="services" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-server"/></svg><span class="tab-section-label">Fleet</span>Services<span class="tab-badge" id="badge-services">0</span></button>
           <button class="tab" data-tab="agents" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-bot"/></svg><span class="tab-section-label">Crew</span>Agents<span class="tab-badge" id="badge-agents">0</span></button>
@@ -1003,12 +1007,18 @@
             <button class="tab" data-tab="webhooks" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-webhook"/></svg>Webhooks<span class="tab-badge" id="badge-webhooks">0</span></button>
             <button class="tab" data-tab="projects" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-folder"/></svg>Projects<span class="tab-badge" id="badge-projects">0</span></button>
             <button class="tab" data-tab="changelog" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-book"/></svg>Changelog<span class="tab-badge" id="badge-changelog">0</span></button>
+            <button class="tab" data-tab="dns" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-globe"/></svg>DNS<span class="tab-badge" id="badge-dns">0</span></button>
             <button class="tab" data-tab="config" role="tab" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-settings"/></svg>Config</button>
           </span>
         </div>
       </div>
 
-      <div class="tab-content active" id="tab-terminal">
+      <div class="tab-content" id="panel-overview">
+        <h3 style="color:var(--accent);margin-bottom:16px;font-size:1.05em">Harbor Overview</h3>
+        <p class="text-muted" style="margin-bottom:16px">System status at a glance. Stats are displayed in the header above.</p>
+        <div id="overview-health" style="margin-bottom:16px"></div>
+      </div>
+      <div class="tab-content active" id="panel-terminal">
         <div class="command-output" id="command-output" style="flex:1;max-height:600px">
           <div class="cmd-entry"><div class="cmd-entry-body" style="border-left:3px solid var(--border)"><pre><span class="text-muted">Type a command below, or try: find, scan, projects, status, tutorial</span></pre></div></div>
         </div>
@@ -1022,7 +1032,7 @@
         </div>
       </div>
 
-      <div class="tab-content" id="tab-services">
+      <div class="tab-content" id="panel-services">
         <div class="tab-toolbar">
           <button class="refresh-btn" onclick="refreshServices()" id="refresh-services"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button>
           <div class="view-toggle">
@@ -1038,7 +1048,7 @@
         </div>
       </div>
 
-      <div class="tab-content" id="tab-agents">
+      <div class="tab-content" id="panel-agents">
         <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshAgents()" id="refresh-agents"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button></div>
         <div class="table-wrap">
         <table>
@@ -1048,7 +1058,7 @@
         </div>
       </div>
 
-      <div class="tab-content" id="tab-salvage">
+      <div class="tab-content" id="panel-salvage">
         <div class="tab-toolbar">
           <button class="refresh-btn" onclick="refreshSalvage()" id="refresh-salvage"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button>
           <span style="flex:1"></span>
@@ -1062,7 +1072,7 @@
         </div>
       </div>
 
-      <div class="tab-content" id="tab-locks">
+      <div class="tab-content" id="panel-locks">
         <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshLocks()" id="refresh-locks"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button></div>
         <div class="table-wrap">
         <table>
@@ -1072,12 +1082,12 @@
         </div>
       </div>
 
-      <div class="tab-content" id="tab-channels">
+      <div class="tab-content" id="panel-channels">
         <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshChannels()" id="refresh-channels"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button></div>
         <div id="channels-list"><div class="empty-state"><svg class="empty-state-icon"><use href="#icon-message"/></svg><div class="empty-state-text">Loading...</div></div></div>
       </div>
 
-      <div class="tab-content" id="tab-webhooks">
+      <div class="tab-content" id="panel-webhooks">
         <div class="tab-toolbar"><button class="refresh-btn" onclick="refreshWebhooks()" id="refresh-webhooks"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button></div>
         <div class="table-wrap">
         <table>
@@ -1087,7 +1097,7 @@
         </div>
       </div>
 
-      <div class="tab-content" id="tab-projects">
+      <div class="tab-content" id="panel-projects">
         <div class="tab-toolbar">
           <button class="refresh-btn" onclick="refreshProjects()" id="refresh-projects"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button>
         </div>
@@ -1099,7 +1109,7 @@
         </div>
       </div>
 
-      <div class="tab-content" id="tab-sessions">
+      <div class="tab-content" id="panel-sessions">
         <div class="tab-toolbar">
           <button class="refresh-btn" onclick="refreshSessions()" id="refresh-sessions"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button>
           <select class="filter-select" id="sessions-filter" onchange="refreshSessions()">
@@ -1119,7 +1129,7 @@
         <div class="activity-feed" id="notes-feed"><div class="empty-state"><svg class="empty-state-icon"><use href="#icon-message"/></svg><div class="empty-state-text">No notes yet</div></div></div>
       </div>
 
-      <div class="tab-content" id="tab-changelog">
+      <div class="tab-content" id="panel-changelog">
         <div class="tab-toolbar">
           <button class="refresh-btn" onclick="refreshChangelog()" id="refresh-changelog"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button>
           <select class="filter-select" id="changelog-identity" onchange="refreshChangelog()">
@@ -1135,7 +1145,7 @@
         <div class="activity-feed" id="changelog-feed"><div class="empty-state"><svg class="empty-state-icon"><use href="#icon-book"/></svg><div class="empty-state-text">Loading...</div></div></div>
       </div>
 
-      <div class="tab-content" id="tab-activity">
+      <div class="tab-content" id="panel-activity">
         <div class="tab-toolbar">
           <button class="refresh-btn" onclick="refreshActivity()" id="refresh-activity"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button>
           <select class="filter-select" id="activity-filter" onchange="refreshActivity()">
@@ -1150,7 +1160,13 @@
         <div class="activity-feed" id="activity-feed"><div class="empty-state"><svg class="empty-state-icon"><use href="#icon-activity"/></svg><div class="empty-state-text">Loading...</div></div></div>
       </div>
 
-      <div class="tab-content" id="tab-config">
+      <div class="tab-content" id="panel-dns">
+        <div class="tab-toolbar">
+          <button class="refresh-btn" onclick="refreshDNS()" id="refresh-dns"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg>Refresh</button>
+        </div>
+        <div class="table-wrap"><table class="data-table" id="dns-table"><thead><tr><th>Hostname</th><th>Target</th><th>Port</th><th>Registered</th></tr></thead><tbody id="dns-body"><tr><td colspan="4" class="text-muted">No DNS records</td></tr></tbody></table></div>
+      </div>
+      <div class="tab-content" id="panel-config">
         <h3 style="color:var(--accent);margin-bottom:16px;font-size:1.05em">Configuration Locations</h3>
         <div class="config-grid" id="config-grid">
           <div class="config-item"><div class="config-label"><svg class="icon" aria-hidden="true"><use href="#icon-folder"/></svg>Database</div><code class="config-path" id="config-db">Loading...</code><div class="config-desc">SQLite database storing all services, locks, agents, and messages</div></div>
@@ -1496,7 +1512,7 @@
       document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
       document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
       var tabBtn = document.querySelector('.tab[data-tab="' + tabName + '"]');
-      var tabContent = document.getElementById('tab-' + tabName);
+      var tabContent = document.getElementById('panel-' + tabName);
       if (tabBtn) tabBtn.classList.add('active');
       if (tabContent) tabContent.classList.add('active');
       /* 2a: Hash routing */
@@ -1511,6 +1527,7 @@
         applyMoreTabsState();
       }
     }
+    var showPanel = switchToTab; // Alias for panel navigation compatibility
     document.querySelectorAll('.tab').forEach(function(tab) {
       tab.addEventListener('click', function() { switchToTab(tab.dataset.tab); });
     });
@@ -1838,8 +1855,8 @@
         throw new Error('Missing required argument.\n\nUsage: ' + verb + ' ' + info.args + (info.opts.length ? '\nOptions: ' + info.opts.join(', ') : ''));
       }
       switch (verb) {
-        case 'claim': return fetch(API + '/claim/' + opts.target, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ port: opts.port }) }).then(function(r) { return r.json(); });
-        case 'release': return fetch(API + '/release/' + opts.target, { method: 'DELETE' }).then(function(r) { return r.json(); });
+        case 'claim': return fetch(API + '/claim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: opts.target, port: opts.port }) }).then(function(r) { return r.json(); });
+        case 'release': return fetch(API + '/release', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: opts.target }) }).then(function(r) { return r.json(); });
         case 'find': case 'ps': return fetch(opts.target ? API + '/services?pattern=' + encodeURIComponent(opts.target) : API + '/services').then(function(r) { return r.json(); });
         case 'lock': return fetch(API + '/locks/' + opts.target, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ owner: opts.owner || 'dashboard', ttl: opts.ttl }) }).then(function(r) { return r.json(); });
         case 'unlock': return fetch(API + '/locks/' + opts.target, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ owner: opts.owner || 'dashboard', force: true }) }).then(function(r) { return r.json(); });
@@ -1916,7 +1933,7 @@
     /* ── Service Actions ── */
     async function releaseService(id) {
       if (!confirm('Release ' + id + '?')) return;
-      await fetch(API + '/release/' + encodeURIComponent(id), { method: 'DELETE' });
+      await fetch(API + '/release', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id }) });
       showToast('Released ' + id, 'success');
       refreshServices();
     }
@@ -2188,6 +2205,28 @@
             td4.appendChild(s1); td4.appendChild(document.createTextNode(' / ')); td4.appendChild(s2);
             var td5 = document.createElement('td'); td5.textContent = w.lastTriggered ? formatTime(w.lastTriggered) : 'Never';
             tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5);
+            tbody.appendChild(tr);
+          });
+        }
+      } catch (e) { console.error(e); }
+    }
+    async function refreshDNS() {
+      spinRefreshBtn('refresh-dns');
+      try {
+        var data = await (await fetch(API + '/dns')).json();
+        document.getElementById('badge-dns').textContent = data.records ? data.records.length : 0;
+        var tbody = document.getElementById('dns-body');
+        tbody.textContent = '';
+        if (!data.records || data.records.length === 0) {
+          renderEmptyTd(tbody, '#icon-globe', 'No DNS records', 'Register DNS via pd claim --dns', 4);
+        } else {
+          data.records.forEach(function(r) {
+            var tr = document.createElement('tr');
+            var td1 = document.createElement('td'); var c = document.createElement('code'); c.textContent = r.hostname; td1.appendChild(c);
+            var td2 = document.createElement('td'); td2.textContent = r.target || '127.0.0.1';
+            var td3 = document.createElement('td'); td3.textContent = r.port || '-';
+            var td4 = document.createElement('td'); td4.textContent = r.created_at ? formatTime(r.created_at) : '-';
+            tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
             tbody.appendChild(tr);
           });
         }
@@ -2526,7 +2565,7 @@
         var data = await (await fetch(API + '/services')).json();
         var released = 0;
         for (var i = 0; i < data.services.length; i++) {
-          await fetch(API + '/release/' + encodeURIComponent(data.services[i].id), { method: 'DELETE' });
+          await fetch(API + '/release', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: data.services[i].id }) });
           released++;
         }
         body.className = 'cmd-entry-body success-entry';
@@ -2665,7 +2704,7 @@
       } catch (e) { showToast('Failed to abandon session', 'error'); }
     }
     async function refreshAll() {
-      await Promise.all([refreshHealth(), refreshVersion(), refreshServices(), refreshAgents(), refreshSalvage(), refreshLocks(), refreshChannels(), refreshWebhooks(), refreshActivity(), refreshProjects(), refreshSessions(), refreshConfig(), refreshChangelog()]);
+      await Promise.all([refreshHealth(), refreshVersion(), refreshServices(), refreshAgents(), refreshSalvage(), refreshLocks(), refreshChannels(), refreshWebhooks(), refreshActivity(), refreshProjects(), refreshSessions(), refreshConfig(), refreshChangelog(), refreshDNS()]);
       checkWelcomeState();
     }
 

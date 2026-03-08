@@ -72,7 +72,7 @@
       "description": "Agent resurrection / salvage queue",
       "cli": ["salvage", "resurrection"],
       "sdk": ["salvage", "salvageClaim", "salvageComplete", "salvageAbandon", "salvageDismiss"],
-      "routes": ["GET /resurrection/pending", "GET /resurrection", "POST /resurrection/claim/:param", "POST /resurrection/complete/:param", "POST /resurrection/abandon/:param", "DELETE /resurrection/:param", "GET /salvage/pending", "GET /salvage", "POST /salvage/claim/:param", "POST /salvage/complete/:param", "POST /salvage/abandon/:param", "DELETE /salvage/:param"],
+      "routes": ["GET /resurrection/pending", "GET /resurrection", "POST /resurrection/claim/:param", "POST /resurrection/complete/:param", "POST /resurrection/abandon/:param", "POST /resurrection/reap", "DELETE /resurrection/:param", "GET /salvage/pending", "GET /salvage", "POST /salvage/claim/:param", "POST /salvage/complete/:param", "POST /salvage/abandon/:param", "POST /salvage/reap", "DELETE /salvage/:param"],
       "completions": ["salvage", "resurrection"],
       "docs": { "readme": true, "sdk": true }
     },

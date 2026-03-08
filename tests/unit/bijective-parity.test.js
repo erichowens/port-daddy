@@ -177,7 +177,7 @@ describe('Test Group 1: CLI -> Completions Parity', () => {
     // in ALL_COMMANDS.  Same for 'services' (alias handled in the switch
     // but the canonical names 'ps'/'find'/'list' are in ALL_COMMANDS).
     const NESTED_SUBCOMMANDS = new Set([
-      'end', 'abandon', 'rm',  // session sub-commands
+      'end', 'abandon', 'rm', 'files',  // session sub-commands
     ]);
 
     // Every case in the switch should be in ALL_COMMANDS or be a known
@@ -421,9 +421,12 @@ describe('Test Group 4: Dashboard Visual Regression', () => {
   });
 
   test('dashboard uses SVG icon system (not emojis as icons)', () => {
-    // The dashboard uses inline SVGs with <svg viewBox="...">
-    const inlineSvgCount = countOccurrences(/<svg\s+viewBox/g);
-    expect(inlineSvgCount).toBeGreaterThanOrEqual(10);
+    // The dashboard uses SVG sprite system with <symbol viewBox="..."> + <use href="...">
+    const symbolCount = countOccurrences(/<symbol\s+id="/g);
+    const useHrefCount = countOccurrences(/<use\s+href="#icon-/g);
+    // Must have at least 10 SVG symbol definitions and 20 icon usages
+    expect(symbolCount).toBeGreaterThanOrEqual(10);
+    expect(useHrefCount).toBeGreaterThanOrEqual(20);
   });
 
   test('dashboard total size exceeds 50KB (prevents gutted replacement)', () => {

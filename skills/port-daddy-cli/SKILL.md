@@ -208,6 +208,27 @@ Locks auto-expire after TTL (default 60s). Use `--wait` to block until available
 pd lock deployment --owner agent-1 --wait --timeout 30000
 ```
 
+Use `pd with-lock` to hold a lock for the duration of a command:
+
+```bash
+pd with-lock deployment -- npm run deploy
+```
+
+### Integration Signals
+
+Coordinate readiness between services with integration signals:
+
+```bash
+# Signal that your service is ready for integration
+pd integration ready myapp:api --capabilities "auth,users,billing"
+
+# Signal that your service needs another service
+pd integration needs myapp:frontend --requires myapp:api
+
+# Check integration status
+pd integration status myapp
+```
+
 ## Direct Mode (No Daemon)
 
 Core operations work without the daemon running:
