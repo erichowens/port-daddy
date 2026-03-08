@@ -29,8 +29,8 @@ describe('Resurrection Module', () => {
   // THRESHOLD EXPOSURE
   // ======================================================================
   describe('Thresholds', () => {
-    it('should expose stale threshold (10 minutes)', () => {
-      expect(resurrection.thresholds.stale).toBe(10 * 60 * 1000);
+    it('should expose stale threshold (12 minutes for default/ready status)', () => {
+      expect(resurrection.thresholds.stale).toBe(Math.round(20 * 60 * 1000 * 0.6));
     });
 
     it('should expose dead threshold (20 minutes)', () => {
@@ -56,7 +56,7 @@ describe('Resurrection Module', () => {
       const result = resurrection.check({
         id: 'agent-1',
         name: 'Agent One',
-        lastHeartbeat: Date.now() - (11 * 60 * 1000), // 11 minutes ago
+        lastHeartbeat: Date.now() - (13 * 60 * 1000), // 13 minutes ago (stale threshold for ready = 12 min)
       });
 
       expect(result.status).toBe('stale');
@@ -75,11 +75,11 @@ describe('Resurrection Module', () => {
     });
 
     it('should promote stale agent to dead when heartbeat worsens', () => {
-      // First check — stale
+      // First check — stale (13 min > 12 min stale threshold for default/ready)
       resurrection.check({
         id: 'agent-1',
         name: 'Agent One',
-        lastHeartbeat: Date.now() - (11 * 60 * 1000),
+        lastHeartbeat: Date.now() - (13 * 60 * 1000),
       });
 
       // Second check — dead (heartbeat even older)
@@ -93,11 +93,11 @@ describe('Resurrection Module', () => {
     });
 
     it('should remove agent from queue when heartbeat recovers', () => {
-      // First: make it stale
+      // First: make it stale (13 min > 12 min stale threshold)
       resurrection.check({
         id: 'agent-1',
         name: 'Agent One',
-        lastHeartbeat: Date.now() - (11 * 60 * 1000),
+        lastHeartbeat: Date.now() - (13 * 60 * 1000),
       });
 
       // Then: heartbeat recovers
@@ -217,7 +217,7 @@ describe('Resurrection Module', () => {
       resurrection.check({
         id: 'stale-agent',
         name: 'Stale',
-        lastHeartbeat: Date.now() - (11 * 60 * 1000), // 11 min
+        lastHeartbeat: Date.now() - (13 * 60 * 1000), // 13 min (past 12 min stale threshold)
       });
 
       const result = resurrection.pending();
@@ -522,7 +522,7 @@ describe('Resurrection Module', () => {
 
       resurrection.check({
         id: 'stale-1', name: 'Stale Agent',
-        lastHeartbeat: Date.now() - (11 * 60 * 1000),
+        lastHeartbeat: Date.now() - (13 * 60 * 1000),
       });
 
       expect(handler).toHaveBeenCalledTimes(1);
@@ -563,7 +563,7 @@ describe('Resurrection Module', () => {
       // First check — stale (not dead yet)
       resurrection.check({
         id: 'agent-1', name: 'Agent',
-        lastHeartbeat: Date.now() - (11 * 60 * 1000),
+        lastHeartbeat: Date.now() - (13 * 60 * 1000),
       });
       expect(handler).not.toHaveBeenCalled();
 

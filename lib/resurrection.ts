@@ -123,11 +123,26 @@ export function createResurrection(db: Database.Database) {
 
   const emitter = new EventEmitter();
 
-  // Heartbeat thresholds — tuned for typical agentic task distribution
-  // Stale: Agent hasn't checked in, might be deep in thought or stuck
-  // Dead: Agent is definitely gone, work should be salvaged
-  const STALE_THRESHOLD = 10 * 60 * 1000;  // 10 minutes
-  const DEAD_THRESHOLD = 20 * 60 * 1000;   // 20 minutes
+  // Adaptive thresholds by agent status
+  const DEAD_THRESHOLDS: Record<string, number> = {
+    starting: 15 * 60 * 1000,
+    ready: 20 * 60 * 1000,
+    busy: 30 * 60 * 1000,
+    draining: 5 * 60 * 1000,
+  };
+  const DEFAULT_DEAD_THRESHOLD = 20 * 60 * 1000;
+
+  function getDeadThreshold(status?: string): number {
+    return DEAD_THRESHOLDS[status || ''] || DEFAULT_DEAD_THRESHOLD;
+  }
+
+  function getStaleThreshold(status?: string): number {
+    return Math.round(getDeadThreshold(status) * 0.6);
+  }
+
+  // Legacy fixed thresholds (backward compat)
+  const STALE_THRESHOLD = getStaleThreshold('ready');
+  const DEAD_THRESHOLD = getDeadThreshold('ready');
 
   function formatQueueEntry(row: ResurrectionQueueRow): StaleAgent {
     const metadata = row.metadata ? JSON.parse(row.metadata) : {};
@@ -157,6 +172,7 @@ export function createResurrection(db: Database.Database) {
       sessionId?: string;
       lastHeartbeat: number;
       notes?: string[];
+      status?: string;
       // Semantic identity components for context-aware filtering
       identityProject?: string;
       identityStack?: string;
@@ -165,14 +181,18 @@ export function createResurrection(db: Database.Database) {
       const now = Date.now();
       const sinceHeartbeat = now - agent.lastHeartbeat;
 
-      if (sinceHeartbeat < STALE_THRESHOLD) {
+      // Use adaptive thresholds based on agent status
+      const agentStaleThreshold = getStaleThreshold(agent.status);
+      const agentDeadThreshold = getDeadThreshold(agent.status);
+
+      if (sinceHeartbeat < agentStaleThreshold) {
         // Agent is healthy, remove from queue if present
         stmts.remove.run(agent.id);
         return { status: 'healthy' };
       }
 
       const existing = stmts.get.get(agent.id) as ResurrectionQueueRow | undefined;
-      const status = sinceHeartbeat >= DEAD_THRESHOLD ? 'dead' : 'stale';
+      const status = sinceHeartbeat >= agentDeadThreshold ? 'dead' : 'stale';
 
       const metadata = JSON.stringify({
         lastHeartbeat: agent.lastHeartbeat,
@@ -348,5 +368,8 @@ export function createResurrection(db: Database.Database) {
       stale: STALE_THRESHOLD,
       dead: DEAD_THRESHOLD,
     },
+
+    getDeadThreshold,
+    getStaleThreshold,
   };
 }

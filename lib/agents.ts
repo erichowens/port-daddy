@@ -9,9 +9,29 @@ import type Database from 'better-sqlite3';
 import { parseIdentity } from './identity.js';
 
 const DEFAULT_HEARTBEAT_INTERVAL = 30000;  // 30 seconds
-const DEFAULT_AGENT_TTL = 120000;          // 2 minutes without heartbeat = dead
+const DEFAULT_AGENT_TTL = 120000;          // 2 minutes without heartbeat = display as inactive
+const DEFAULT_DISPLAY_TTL = DEFAULT_AGENT_TTL;  // Renamed: display concern
 const DEFAULT_MAX_SERVICES_PER_AGENT = 50;
 const DEFAULT_MAX_LOCKS_PER_AGENT = 20;
+
+const VALID_STATUSES = ['starting', 'ready', 'busy', 'draining'] as const;
+
+// Adaptive reaper thresholds by agent status (operational concern)
+const DEAD_THRESHOLDS: Record<string, number> = {
+  starting: 15 * 60 * 1000,
+  ready: 20 * 60 * 1000,
+  busy: 30 * 60 * 1000,
+  draining: 5 * 60 * 1000,
+};
+const DEFAULT_DEAD_THRESHOLD = 20 * 60 * 1000;
+
+function getDeadThresholdForStatus(status?: string): number {
+  return DEAD_THRESHOLDS[status || ''] || DEFAULT_DEAD_THRESHOLD;
+}
+
+function getStaleThresholdForStatus(status?: string): number {
+  return Math.round(getDeadThresholdForStatus(status) * 0.6);
+}
 
 interface AgentRow {
   id: string;
@@ -29,6 +49,10 @@ interface AgentRow {
   identity_stack: string | null;
   identity_context: string | null;
   purpose: string | null;
+  // Liveness & readiness
+  status: string;
+  readiness: string | null;
+  progress: string | null;
 }
 
 interface RegisterOptions {
@@ -41,6 +65,7 @@ interface RegisterOptions {
   worktreeId?: string | null;
   identity?: string | null;   // Semantic identity: project:stack:context (parsed into components)
   purpose?: string | null;    // What this agent is doing
+  status?: string;            // Agent status: starting, ready, busy, draining
 }
 
 interface ListOptions {
@@ -49,8 +74,17 @@ interface ListOptions {
   identityPrefix?: string | null;  // Filter by identity prefix (project or project:stack)
 }
 
+interface ReadinessCheck {
+  name: string;
+  ok: boolean;
+  reason?: string;
+}
+
 interface HeartbeatOptions {
   pid?: number;
+  status?: string;
+  readiness?: ReadinessCheck[];
+  progress?: string;
   [key: string]: unknown;
 }
 
@@ -72,6 +106,15 @@ interface AgentFormatted {
   identityStack: string | null;
   identityContext: string | null;
   purpose: string | null;
+  // Liveness & readiness
+  status: string;
+  readiness: ReadinessCheck[] | null;
+  isReady: boolean;
+  progress: string | null;
+  healthAssessment: {
+    liveness: 'alive' | 'stale' | 'dead';
+    graceRemaining: number;
+  };
 }
 
 interface ResourceCheck {
@@ -106,7 +149,10 @@ export function createAgents(db: Database.Database) {
       identity_project TEXT,
       identity_stack TEXT,
       identity_context TEXT,
-      purpose TEXT
+      purpose TEXT,
+      status TEXT DEFAULT 'ready',
+      readiness TEXT,
+      progress TEXT
     );
 
     CREATE INDEX IF NOT EXISTS idx_agents_heartbeat ON agents(last_heartbeat);
@@ -121,6 +167,9 @@ export function createAgents(db: Database.Database) {
     'ALTER TABLE agents ADD COLUMN identity_stack TEXT',
     'ALTER TABLE agents ADD COLUMN identity_context TEXT',
     'ALTER TABLE agents ADD COLUMN purpose TEXT',
+    "ALTER TABLE agents ADD COLUMN status TEXT DEFAULT 'ready'",
+    'ALTER TABLE agents ADD COLUMN readiness TEXT',
+    'ALTER TABLE agents ADD COLUMN progress TEXT',
   ];
   for (const sql of migrations) {
     try { db.exec(sql); } catch { /* already exists */ }
@@ -129,10 +178,10 @@ export function createAgents(db: Database.Database) {
   const stmts = {
     get: db.prepare('SELECT * FROM agents WHERE id = ?'),
     register: db.prepare(`
-      INSERT OR REPLACE INTO agents (id, name, pid, type, registered_at, last_heartbeat, metadata, max_services, max_locks, worktree_id, identity_project, identity_stack, identity_context, purpose)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO agents (id, name, pid, type, registered_at, last_heartbeat, metadata, max_services, max_locks, worktree_id, identity_project, identity_stack, identity_context, purpose, status, readiness, progress)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `),
-    heartbeat: db.prepare('UPDATE agents SET last_heartbeat = ?, pid = ? WHERE id = ?'),
+    heartbeat: db.prepare('UPDATE agents SET last_heartbeat = ?, pid = ?, status = COALESCE(?, status), readiness = COALESCE(?, readiness), progress = COALESCE(?, progress) WHERE id = ?'),
     unregister: db.prepare('DELETE FROM agents WHERE id = ?'),
     list: db.prepare('SELECT * FROM agents ORDER BY last_heartbeat DESC'),
     listByWorktree: db.prepare('SELECT * FROM agents WHERE worktree_id = ? ORDER BY last_heartbeat DESC'),
@@ -174,7 +223,8 @@ export function createAgents(db: Database.Database) {
       maxLocks = DEFAULT_MAX_LOCKS_PER_AGENT,
       worktreeId = null,
       identity = null,
-      purpose = null
+      purpose = null,
+      status = 'ready'
     } = options;
 
     // Parse semantic identity into components
@@ -191,6 +241,11 @@ export function createAgents(db: Database.Database) {
       } else {
         return { success: false, error: `Invalid identity: ${parsed.error}`, code: 'VALIDATION_ERROR' };
       }
+    }
+
+    // Validate status
+    if (!(VALID_STATUSES as readonly string[]).includes(status)) {
+      return { success: false, error: `Invalid status: ${status}. Must be one of: ${VALID_STATUSES.join(', ')}` };
     }
 
     // Validate maxServices if provided
@@ -224,7 +279,10 @@ export function createAgents(db: Database.Database) {
         identityProject,
         identityStack,
         identityContext,
-        purpose
+        purpose,
+        status,
+        null,  // readiness (set via heartbeat)
+        null   // progress (set via heartbeat)
       );
 
       // Check for dead agents in the same project to alert the user
@@ -250,14 +308,14 @@ export function createAgents(db: Database.Database) {
   }
 
   /**
-   * Send heartbeat for an agent
+   * Send heartbeat for an agent (enriched with status, readiness, progress)
    */
   function heartbeat(agentId: string, options: HeartbeatOptions = {}) {
     if (!agentId || typeof agentId !== 'string') {
       return { success: false, error: 'agent ID must be a non-empty string' };
     }
 
-    const { pid = process.pid } = options;
+    const { pid = process.pid, status, readiness, progress } = options;
     const now = Date.now();
 
     const existing = stmts.get.get(agentId) as AgentRow | undefined;
@@ -266,13 +324,48 @@ export function createAgents(db: Database.Database) {
       return register(agentId, { pid, ...options });
     }
 
-    stmts.heartbeat.run(now, pid, agentId);
+    // Validate status if provided
+    if (status !== undefined && !(VALID_STATUSES as readonly string[]).includes(status)) {
+      return { success: false, error: `Invalid status: ${status}. Must be one of: ${VALID_STATUSES.join(', ')}` };
+    }
+
+    // Validate readiness checks if provided
+    if (readiness !== undefined) {
+      if (!Array.isArray(readiness)) {
+        return { success: false, error: 'readiness must be an array of checks' };
+      }
+      for (const check of readiness) {
+        if (!check || typeof check.name !== 'string' || typeof check.ok !== 'boolean') {
+          return { success: false, error: 'Each readiness check must have a string "name" and boolean "ok"' };
+        }
+      }
+    }
+
+    // Build update values (null = keep existing via COALESCE)
+    const statusValue = status !== undefined ? status : null;
+    const readinessValue = readiness !== undefined ? JSON.stringify(readiness) : null;
+    const progressValue = progress !== undefined ? progress : null;
+
+    stmts.heartbeat.run(now, pid, statusValue, readinessValue, progressValue, agentId);
+
+    // Compute health assessment for response
+    const effectiveStatus = status || existing.status || 'ready';
+    const effectiveReadiness = readiness || safeJsonParse(existing.readiness) as ReadinessCheck[] | null;
+    const failingChecks = effectiveReadiness
+      ? effectiveReadiness.filter(c => !c.ok).map(c => c.name)
+      : [];
+    const readinessState = failingChecks.length > 0 ? 'not_ready' : 'ready';
 
     return {
       success: true,
       agentId,
       lastHeartbeat: now,
-      message: 'heartbeat recorded'
+      message: 'heartbeat recorded',
+      health: {
+        liveness: 'alive' as const,
+        readiness: readinessState,
+        failingChecks
+      }
     };
   }
 
@@ -306,6 +399,28 @@ export function createAgents(db: Database.Database) {
     const identity = [agent.identity_project, agent.identity_stack, agent.identity_context]
       .filter(Boolean).join(':') || null;
 
+    const agentStatus = agent.status || 'ready';
+    const readiness = safeJsonParse(agent.readiness) as ReadinessCheck[] | null;
+    const sinceHeartbeat = now - agent.last_heartbeat;
+
+    // isReady: status must be ready|busy AND all readiness checks must pass (or none reported)
+    const statusReady = agentStatus === 'ready' || agentStatus === 'busy';
+    const checksPass = !readiness || readiness.every(c => c.ok);
+    const isReady = statusReady && checksPass;
+
+    // Health assessment using adaptive thresholds
+    const deadThreshold = getDeadThresholdForStatus(agentStatus);
+    const staleThreshold = getStaleThresholdForStatus(agentStatus);
+    let liveness: 'alive' | 'stale' | 'dead';
+    if (sinceHeartbeat >= deadThreshold) {
+      liveness = 'dead';
+    } else if (sinceHeartbeat >= staleThreshold) {
+      liveness = 'stale';
+    } else {
+      liveness = 'alive';
+    }
+    const graceRemaining = Math.max(0, deadThreshold - sinceHeartbeat);
+
     return {
       id: agent.id,
       name: agent.name,
@@ -322,7 +437,15 @@ export function createAgents(db: Database.Database) {
       identityProject: agent.identity_project,
       identityStack: agent.identity_stack,
       identityContext: agent.identity_context,
-      purpose: agent.purpose
+      purpose: agent.purpose,
+      status: agentStatus,
+      readiness,
+      isReady,
+      progress: agent.progress,
+      healthAssessment: {
+        liveness,
+        graceRemaining
+      }
     };
   }
 
@@ -537,6 +660,8 @@ export function createAgents(db: Database.Database) {
     canAcquireLock,
     cleanup,
     DEFAULT_HEARTBEAT_INTERVAL,
-    DEFAULT_AGENT_TTL
+    DEFAULT_AGENT_TTL,
+    DEFAULT_DISPLAY_TTL,
+    VALID_STATUSES: VALID_STATUSES as unknown as string[]
   };
 }
