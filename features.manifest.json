@@ -198,7 +198,8 @@
       "sdk": ["dnsRegister", "dnsUnregister", "dnsList", "dnsGet", "dnsCleanup", "dnsStatus"],
       "routes": ["POST /dns/:param", "DELETE /dns/:param", "GET /dns", "GET /dns/status", "GET /dns/:param", "POST /dns/cleanup"],
       "completions": ["dns"],
-      "docs": { "readme": true, "sdk": true }
+      "docs": { "readme": true, "sdk": false },
+      "_note": "SDK methods exist but docs/sdk.md not yet updated"
     },
     "wait": {
       "description": "Wait for services to become available",
@@ -237,7 +238,7 @@
     "briefing": {
       "description": "Project-local agent intelligence (.portdaddy/ briefing)",
       "cli": ["briefing", "history"],
-      "sdk": ["generateBriefing", "getBriefing", "getProjectHistory"],
+      "sdk": ["generateBriefing", "getBriefing"],
       "routes": ["POST /briefing", "GET /briefing/:param"],
       "completions": ["briefing", "history"],
       "docs": { "readme": false, "sdk": false }

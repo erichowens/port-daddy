@@ -735,7 +735,7 @@ const ALL_COMMANDS: string[] = [
   'doctor', 'diagnose', 'mcp', 'version', 'help',
   'salvage', 'resurrection', 'changelog', 'tunnel',
   'services', 'dns', 'briefing', 'integration',
-  'b', 'w', 'who-owns', 'history', 'tutorial',
+  'b', 'w', 'who-owns', 'history', 'tutorial', 'files',
 ];
 
 /** Simple Levenshtein distance for short strings */
