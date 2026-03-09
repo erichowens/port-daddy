@@ -96,7 +96,7 @@ const DELETE = (path: string, body?: Record<string, unknown>) => api('DELETE', p
 // Tiered tool loading — reduce context window overhead by 80%
 //
 // By default, only Essential tools (8) + pd_discover are sent to the agent.
-// Full mode (--full flag or PORT_DADDY_MCP_FULL=1) exposes all 45+ tools.
+// Full mode (--full flag or PORT_DADDY_MCP_FULL=1) exposes all tools.
 // Agents can call pd_discover to learn about additional tools by category,
 // then call them directly — handleTool processes ALL tools regardless of tier.
 // ---------------------------------------------------------------------------
@@ -121,11 +121,11 @@ const TOOL_CATEGORIES: Record<string, { description: string; tools: string[] }> 
   },
   'ports': {
     description: 'Claim, release, and list port assignments',
-    tools: ['claim_port', 'release_port', 'list_services', 'get_service', 'health_check'],
+    tools: ['claim_port', 'release_port', 'list_services', 'get_service', 'health_check', 'list_active_ports', 'list_system_ports', 'cleanup_ports'],
   },
   'sessions': {
     description: 'Detailed session management (start, end, phases, file claims)',
-    tools: ['start_session', 'end_session', 'list_sessions', 'set_session_phase', 'claim_files', 'list_file_claims', 'who_owns_file'],
+    tools: ['start_session', 'end_session', 'get_session', 'delete_session', 'list_sessions', 'set_session_phase', 'claim_files', 'release_files', 'list_file_claims', 'who_owns_file'],
   },
   'notes': {
     description: 'Add and list session notes',
@@ -137,11 +137,19 @@ const TOOL_CATEGORIES: Record<string, { description: string; tools: string[] }> 
   },
   'messaging': {
     description: 'Pub/sub messaging between agents',
-    tools: ['publish_message', 'get_messages'],
+    tools: ['publish_message', 'get_messages', 'list_channels', 'clear_channel'],
   },
   'agents': {
     description: 'Agent registry, heartbeats, salvage/resurrection',
-    tools: ['register_agent', 'agent_heartbeat', 'list_agents', 'check_salvage', 'claim_salvage'],
+    tools: ['register_agent', 'agent_heartbeat', 'unregister_agent', 'get_agent', 'list_agents', 'check_salvage', 'claim_salvage', 'salvage_complete', 'salvage_abandon', 'salvage_dismiss'],
+  },
+  'inbox': {
+    description: 'Agent-to-agent direct messaging via inbox',
+    tools: ['inbox_send', 'inbox_read', 'inbox_stats', 'inbox_mark_read', 'inbox_mark_all_read', 'inbox_clear'],
+  },
+  'webhooks': {
+    description: 'Register and manage webhooks for Port Daddy event notifications',
+    tools: ['webhook_add', 'webhook_list', 'webhook_events', 'webhook_get', 'webhook_update', 'webhook_remove', 'webhook_test', 'webhook_deliveries'],
   },
   'integration': {
     description: 'Cross-agent integration signals (ready/needs)',
@@ -159,9 +167,21 @@ const TOOL_CATEGORIES: Record<string, { description: string; tools: string[] }> 
     description: 'Expose local services via tunnels',
     tools: ['start_tunnel', 'stop_tunnel', 'list_tunnels'],
   },
+  'projects': {
+    description: 'Scan, list, and manage registered projects',
+    tools: ['scan_project', 'list_projects', 'get_project', 'delete_project'],
+  },
+  'changelog': {
+    description: 'Track and query changelog entries per agent/session/identity',
+    tools: ['changelog_add', 'changelog_list', 'changelog_get', 'changelog_identities', 'changelog_by_session', 'changelog_by_agent'],
+  },
+  'activity': {
+    description: 'Activity log queries and statistics',
+    tools: ['activity_log', 'activity_summary', 'activity_stats', 'activity_range'],
+  },
   'system': {
-    description: 'Project scanning, daemon status, activity log',
-    tools: ['scan_project', 'daemon_status', 'activity_log'],
+    description: 'Daemon status, version, metrics, and config',
+    tools: ['daemon_status', 'get_version', 'get_metrics', 'get_config', 'wait_for_service'],
   },
 };
 
@@ -346,6 +366,39 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: 'list_active_ports',
+    description: '[Standard] List all active port assignments with project, PID, and age information.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
+    name: 'list_system_ports',
+    description: '[Advanced] List system/well-known ports with info about which ones Port Daddy manages.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        range_only: {
+          type: 'boolean',
+          description: 'Only show ports within the configured Port Daddy range',
+        },
+        unmanaged_only: {
+          type: 'boolean',
+          description: 'Only show ports NOT managed by Port Daddy',
+        },
+      },
+    },
+  },
+  {
+    name: 'cleanup_ports',
+    description: '[Standard] Release stale port claims that have been inactive.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
 
   // ── Sessions & Notes ─────────────────────────────────────────────────
   {
@@ -392,6 +445,34 @@ const TOOLS = [
           description: 'How the session ended (default: completed)',
         },
       },
+    },
+  },
+  {
+    name: 'get_session',
+    description: '[Standard] Get full details for a session including notes, file claims, and phase.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        session_id: {
+          type: 'string',
+          description: 'Session ID to retrieve',
+        },
+      },
+      required: ['session_id'],
+    },
+  },
+  {
+    name: 'delete_session',
+    description: '[Advanced] Permanently delete a session and cascade-delete its notes and file claims.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        session_id: {
+          type: 'string',
+          description: 'Session ID to delete',
+        },
+      },
+      required: ['session_id'],
     },
   },
   {
@@ -459,7 +540,7 @@ const TOOLS = [
     name: 'claim_files',
     description:
       '[Standard] Claim files for the active session (advisory locking). ' +
-      'Supports whole-file claims (paths) and region-level claims (regions) for fine-grained coordination.',
+      'Other agents can see which files are claimed to avoid conflicts.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -469,22 +550,69 @@ const TOOLS = [
           items: { type: 'string' },
           description: 'File paths to claim (whole file)',
         },
-        regions: {
+      },
+      required: ['session_id', 'paths'],
+    },
+  },
+  {
+    name: 'release_files',
+    description: '[Standard] Release specific file claims from a session.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        session_id: {
+          type: 'string',
+          description: 'Session ID',
+        },
+        files: {
           type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              path: { type: 'string', description: 'File path' },
-              startLine: { type: 'number', description: 'Start line (1-indexed)' },
-              endLine: { type: 'number', description: 'End line (1-indexed, inclusive)' },
-              symbol: { type: 'string', description: 'Optional label (e.g. "class Foo", "handleAuth")' },
-            },
-            required: ['path', 'startLine', 'endLine'],
-          },
-          description: 'Region-level claims (specific line ranges)',
+          items: { type: 'string' },
+          description: 'File paths to release',
         },
       },
-      required: ['session_id'],
+      required: ['session_id', 'files'],
+    },
+  },
+
+  // ── Session Phases ──────────────────────────────────────────────────
+  {
+    name: 'set_session_phase',
+    description:
+      '[Standard] Set the lifecycle phase of a session (planning, in_progress, testing, reviewing, completed, abandoned).',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        session_id: { type: 'string', description: 'Session ID' },
+        phase: {
+          type: 'string',
+          enum: ['planning', 'in_progress', 'testing', 'reviewing', 'completed', 'abandoned'],
+          description: 'Session phase',
+        },
+      },
+      required: ['session_id', 'phase'],
+    },
+  },
+
+  // ── File Claims ────────────────────────────────────────────────────
+  {
+    name: 'list_file_claims',
+    description: '[Standard] List all file claims across all active sessions.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
+    name: 'who_owns_file',
+    description: '[Standard] Check which session/agent owns a specific file. Optionally filter by line range.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        path: { type: 'string', description: 'File path to look up' },
+        startLine: { type: 'number', description: 'Optional: start of line range to check (1-indexed)' },
+        endLine: { type: 'number', description: 'Optional: end of line range to check (1-indexed)' },
+      },
+      required: ['path'],
     },
   },
 
@@ -592,6 +720,28 @@ const TOOLS = [
       required: ['channel'],
     },
   },
+  {
+    name: 'list_channels',
+    description: '[Advanced] List all active pub/sub channels.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
+    name: 'clear_channel',
+    description: '[Advanced] Clear all messages from a pub/sub channel.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        channel: {
+          type: 'string',
+          description: 'Channel name to clear',
+        },
+      },
+      required: ['channel'],
+    },
+  },
 
   // ── Agent Registry ───────────────────────────────────────────────────
   {
@@ -636,6 +786,34 @@ const TOOLS = [
         agent_id: {
           type: 'string',
           description: 'Agent identifier to heartbeat',
+        },
+      },
+      required: ['agent_id'],
+    },
+  },
+  {
+    name: 'unregister_agent',
+    description: '[Standard] Unregister an agent from the daemon registry.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agent_id: {
+          type: 'string',
+          description: 'Agent ID to unregister',
+        },
+      },
+      required: ['agent_id'],
+    },
+  },
+  {
+    name: 'get_agent',
+    description: '[Standard] Get info for a specific registered agent by ID.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agent_id: {
+          type: 'string',
+          description: 'Agent ID to look up',
         },
       },
       required: ['agent_id'],
@@ -694,46 +872,297 @@ const TOOLS = [
       required: ['dead_agent_id', 'new_agent_id'],
     },
   },
-
-  // ── Session Phases ──────────────────────────────────────────────────
   {
-    name: 'set_session_phase',
-    description:
-      '[Standard] Set the lifecycle phase of a session (planning, in_progress, testing, reviewing, completed, abandoned).',
+    name: 'salvage_complete',
+    description: '[Standard] Mark a resurrection/salvage as complete after finishing the dead agent\'s work.',
     inputSchema: {
       type: 'object' as const,
       properties: {
-        session_id: { type: 'string', description: 'Session ID' },
-        phase: {
+        dead_agent_id: {
           type: 'string',
-          enum: ['planning', 'in_progress', 'testing', 'reviewing', 'completed', 'abandoned'],
-          description: 'Session phase',
+          description: 'ID of the dead agent whose work was completed',
+        },
+        new_agent_id: {
+          type: 'string',
+          description: 'Your agent ID (the one who completed the work)',
         },
       },
-      required: ['session_id', 'phase'],
+      required: ['dead_agent_id', 'new_agent_id'],
+    },
+  },
+  {
+    name: 'salvage_abandon',
+    description: '[Standard] Return a dead agent to the salvage queue (another agent will try).',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        dead_agent_id: {
+          type: 'string',
+          description: 'ID of the dead agent to return to queue',
+        },
+      },
+      required: ['dead_agent_id'],
+    },
+  },
+  {
+    name: 'salvage_dismiss',
+    description: '[Advanced] Permanently dismiss a dead agent from the salvage queue without completing the work.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        dead_agent_id: {
+          type: 'string',
+          description: 'ID of the dead agent to dismiss',
+        },
+      },
+      required: ['dead_agent_id'],
     },
   },
 
-  // ── File Claims ────────────────────────────────────────────────────
+  // ── Agent Inbox ───────────────────────────────────────────────────────
   {
-    name: 'list_file_claims',
-    description: '[Standard] List all file claims across all active sessions.',
+    name: 'inbox_send',
+    description: '[Advanced] Send a direct message to another agent\'s inbox.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agent_id: {
+          type: 'string',
+          description: 'Recipient agent ID',
+        },
+        content: {
+          type: 'string',
+          description: 'Message content',
+        },
+        from: {
+          type: 'string',
+          description: 'Sender agent ID (optional)',
+        },
+        type: {
+          type: 'string',
+          description: 'Message type (default: message)',
+        },
+      },
+      required: ['agent_id', 'content'],
+    },
+  },
+  {
+    name: 'inbox_read',
+    description: '[Advanced] Read messages from an agent\'s inbox.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agent_id: {
+          type: 'string',
+          description: 'Agent ID whose inbox to read',
+        },
+        unread_only: {
+          type: 'boolean',
+          description: 'Only return unread messages',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of messages to return',
+        },
+      },
+      required: ['agent_id'],
+    },
+  },
+  {
+    name: 'inbox_stats',
+    description: '[Advanced] Get inbox statistics (total and unread count) for an agent.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agent_id: {
+          type: 'string',
+          description: 'Agent ID to get stats for',
+        },
+      },
+      required: ['agent_id'],
+    },
+  },
+  {
+    name: 'inbox_mark_read',
+    description: '[Advanced] Mark a specific inbox message as read.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agent_id: {
+          type: 'string',
+          description: 'Agent ID',
+        },
+        message_id: {
+          type: 'number',
+          description: 'Message ID to mark as read',
+        },
+      },
+      required: ['agent_id', 'message_id'],
+    },
+  },
+  {
+    name: 'inbox_mark_all_read',
+    description: '[Advanced] Mark all messages in an agent\'s inbox as read.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agent_id: {
+          type: 'string',
+          description: 'Agent ID',
+        },
+      },
+      required: ['agent_id'],
+    },
+  },
+  {
+    name: 'inbox_clear',
+    description: '[Advanced] Delete all messages from an agent\'s inbox.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agent_id: {
+          type: 'string',
+          description: 'Agent ID whose inbox to clear',
+        },
+      },
+      required: ['agent_id'],
+    },
+  },
+
+  // ── Webhooks ──────────────────────────────────────────────────────────
+  {
+    name: 'webhook_add',
+    description: '[Advanced] Register a webhook to receive Port Daddy event notifications. Events are delivered via HTTP POST to the specified URL.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        url: {
+          type: 'string',
+          description: 'Webhook URL to deliver events to',
+        },
+        events: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Event types to subscribe to (e.g. ["service.claim", "agent.register"])',
+        },
+        secret: {
+          type: 'string',
+          description: 'Optional HMAC signing secret for payload verification',
+        },
+        filter_pattern: {
+          type: 'string',
+          description: 'Optional service identity pattern filter',
+        },
+      },
+      required: ['url', 'events'],
+    },
+  },
+  {
+    name: 'webhook_list',
+    description: '[Advanced] List all registered webhooks.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        active_only: {
+          type: 'boolean',
+          description: 'Only show active webhooks',
+        },
+      },
+    },
+  },
+  {
+    name: 'webhook_events',
+    description: '[Advanced] List all available webhook event types that can be subscribed to.',
     inputSchema: {
       type: 'object' as const,
       properties: {},
     },
   },
   {
-    name: 'who_owns_file',
-    description: '[Standard] Check which session/agent owns a specific file. Optionally filter by line range.',
+    name: 'webhook_get',
+    description: '[Advanced] Get details for a specific webhook by ID.',
     inputSchema: {
       type: 'object' as const,
       properties: {
-        path: { type: 'string', description: 'File path to look up' },
-        startLine: { type: 'number', description: 'Optional: start of line range to check (1-indexed)' },
-        endLine: { type: 'number', description: 'Optional: end of line range to check (1-indexed)' },
+        webhook_id: {
+          type: 'string',
+          description: 'Webhook ID to retrieve',
+        },
       },
-      required: ['path'],
+      required: ['webhook_id'],
+    },
+  },
+  {
+    name: 'webhook_update',
+    description: '[Advanced] Update a webhook\'s URL, events, or active status.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        webhook_id: {
+          type: 'string',
+          description: 'Webhook ID to update',
+        },
+        url: {
+          type: 'string',
+          description: 'New webhook URL',
+        },
+        events: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'New event types to subscribe to',
+        },
+        active: {
+          type: 'boolean',
+          description: 'Enable or disable the webhook',
+        },
+      },
+      required: ['webhook_id'],
+    },
+  },
+  {
+    name: 'webhook_remove',
+    description: '[Advanced] Remove a webhook registration.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        webhook_id: {
+          type: 'string',
+          description: 'Webhook ID to remove',
+        },
+      },
+      required: ['webhook_id'],
+    },
+  },
+  {
+    name: 'webhook_test',
+    description: '[Advanced] Send a test delivery to a webhook to verify it is working.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        webhook_id: {
+          type: 'string',
+          description: 'Webhook ID to test',
+        },
+      },
+      required: ['webhook_id'],
+    },
+  },
+  {
+    name: 'webhook_deliveries',
+    description: '[Advanced] List delivery history for a webhook.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        webhook_id: {
+          type: 'string',
+          description: 'Webhook ID to get deliveries for',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of deliveries to return (default: 50)',
+        },
+      },
+      required: ['webhook_id'],
     },
   },
 
@@ -928,7 +1357,7 @@ const TOOLS = [
     },
   },
 
-  // ── Project Scanning ─────────────────────────────────────────────────
+  // ── Projects ─────────────────────────────────────────────────────────
   {
     name: 'scan_project',
     description:
@@ -949,17 +1378,156 @@ const TOOLS = [
       },
     },
   },
-
-  // ── System ───────────────────────────────────────────────────────────
   {
-    name: 'daemon_status',
-    description:
-      '[Standard] Check Port Daddy daemon status including version, uptime, active ports, and health.',
+    name: 'list_projects',
+    description: '[Standard] List all registered projects with their service counts and metadata.',
     inputSchema: {
       type: 'object' as const,
       properties: {},
     },
   },
+  {
+    name: 'get_project',
+    description: '[Standard] Get full details for a registered project by ID.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        project_id: {
+          type: 'string',
+          description: 'Project ID to retrieve',
+        },
+      },
+      required: ['project_id'],
+    },
+  },
+  {
+    name: 'delete_project',
+    description: '[Advanced] Remove a project from the registry.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        project_id: {
+          type: 'string',
+          description: 'Project ID to remove',
+        },
+      },
+      required: ['project_id'],
+    },
+  },
+
+  // ── Changelog ─────────────────────────────────────────────────────────
+  {
+    name: 'changelog_add',
+    description: '[Standard] Add a changelog entry linked to an identity, session, or agent.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        identity: {
+          type: 'string',
+          description: 'Semantic identity for the changelog entry (e.g. "myapp:api")',
+        },
+        summary: {
+          type: 'string',
+          description: 'Short summary of the change',
+        },
+        type: {
+          type: 'string',
+          enum: ['feature', 'fix', 'refactor', 'docs', 'chore', 'breaking'],
+          description: 'Change type (default: chore)',
+        },
+        description: {
+          type: 'string',
+          description: 'Detailed description (optional)',
+        },
+        session_id: {
+          type: 'string',
+          description: 'Session ID to associate (optional)',
+        },
+        agent_id: {
+          type: 'string',
+          description: 'Agent ID to associate (optional)',
+        },
+      },
+      required: ['identity', 'summary'],
+    },
+  },
+  {
+    name: 'changelog_list',
+    description: '[Standard] List recent changelog entries, optionally filtered by identity.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        identity: {
+          type: 'string',
+          description: 'Filter by identity prefix (e.g. "myapp" or "myapp:api")',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of entries to return (default: 50)',
+        },
+        since: {
+          type: 'number',
+          description: 'Return entries since this Unix timestamp (ms)',
+        },
+      },
+    },
+  },
+  {
+    name: 'changelog_get',
+    description: '[Standard] Get a single changelog entry by numeric ID.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        id: {
+          type: 'number',
+          description: 'Changelog entry ID',
+        },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'changelog_identities',
+    description: '[Standard] List all distinct identities that have changelog entries.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
+    name: 'changelog_by_session',
+    description: '[Standard] List changelog entries associated with a specific session.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        session_id: {
+          type: 'string',
+          description: 'Session ID to filter by',
+        },
+      },
+      required: ['session_id'],
+    },
+  },
+  {
+    name: 'changelog_by_agent',
+    description: '[Standard] List changelog entries associated with a specific agent.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        agent_id: {
+          type: 'string',
+          description: 'Agent ID to filter by',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of entries to return (default: 50)',
+        },
+      },
+      required: ['agent_id'],
+    },
+  },
+
+  // ── Activity ──────────────────────────────────────────────────────────
   {
     name: 'activity_log',
     description: '[Advanced] View recent activity log entries (audit trail).',
@@ -977,6 +1545,112 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: 'activity_summary',
+    description: '[Advanced] Get activity summary grouped by type since a given timestamp.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        since: {
+          type: 'number',
+          description: 'Unix timestamp (ms) to summarize from (default: beginning)',
+        },
+      },
+    },
+  },
+  {
+    name: 'activity_stats',
+    description: '[Advanced] Get overall activity log statistics.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
+    name: 'activity_range',
+    description: '[Advanced] Get activity log entries within a time range.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        start: {
+          type: 'number',
+          description: 'Start Unix timestamp (ms) — required',
+        },
+        end: {
+          type: 'number',
+          description: 'End Unix timestamp (ms) (default: now)',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of entries to return (default: 1000)',
+        },
+      },
+      required: ['start'],
+    },
+  },
+
+  // ── System ───────────────────────────────────────────────────────────
+  {
+    name: 'daemon_status',
+    description:
+      '[Standard] Check Port Daddy daemon status including version, uptime, active ports, and health.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
+    name: 'get_version',
+    description: '[Standard] Get daemon version, code hash, start time, and Node.js info.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
+    name: 'get_metrics',
+    description: '[Standard] Get daemon metrics including active ports, uptime, and error counts.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
+    name: 'get_config',
+    description: '[Standard] Get the resolved .portdaddyrc configuration for a directory.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        directory: {
+          type: 'string',
+          description: 'Directory to look for .portdaddyrc (defaults to current working directory)',
+        },
+      },
+    },
+  },
+  {
+    name: 'wait_for_service',
+    description: '[Standard] Wait for a service to become healthy (polling until it responds). Useful for startup coordination.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        identity: {
+          type: 'string',
+          description: 'Service identity to wait for',
+        },
+        timeout: {
+          type: 'number',
+          description: 'Maximum wait time in milliseconds (default: 60000, max: 300000)',
+        },
+        services: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Multiple service identities to wait for simultaneously (use instead of identity)',
+        },
+      },
+    },
+  },
+
   // ── Meta-Tool (Progressive Disclosure) ─────────────────────────────
   {
     name: 'pd_discover',
@@ -984,13 +1658,14 @@ const TOOLS = [
       '[Essential] List available Port Daddy tool categories and their tools. ' +
       'In default mode, only essential tools are loaded. Use this to discover ' +
       'additional tools by category, then call them directly by name. ' +
-      'Categories: session-lifecycle, ports, sessions, notes, locks, messaging, agents, integration, dns, briefing, tunnels, system.',
+      'Categories: session-lifecycle, ports, sessions, notes, locks, messaging, agents, inbox, ' +
+      'webhooks, integration, dns, briefing, tunnels, projects, changelog, activity, system.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         category: {
           type: 'string',
-          description: 'Category to get detailed tool info for (e.g. "dns", "agents", "locks"). Omit to list all categories.',
+          description: 'Category to get detailed tool info for (e.g. "dns", "agents", "webhooks"). Omit to list all categories.',
         },
       },
     },
@@ -1081,6 +1756,25 @@ async function handleTool(
       break;
     }
 
+    case 'list_active_ports': {
+      res = await GET('/ports/active');
+      break;
+    }
+
+    case 'list_system_ports': {
+      const params = new URLSearchParams();
+      if (args.range_only) params.set('range_only', 'true');
+      if (args.unmanaged_only) params.set('unmanaged_only', 'true');
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      res = await GET(`/ports/system${qs}`);
+      break;
+    }
+
+    case 'cleanup_ports': {
+      res = await POST('/ports/cleanup');
+      break;
+    }
+
     // ── Sessions & Notes ───────────────────────────────────────────────
     case 'start_session': {
       const body: Record<string, unknown> = { purpose: args.purpose };
@@ -1106,6 +1800,16 @@ async function handleTool(
           status: args.status || 'completed',
         });
       }
+      break;
+    }
+
+    case 'get_session': {
+      res = await GET(`/sessions/${encodeURIComponent(args.session_id as string)}`);
+      break;
+    }
+
+    case 'delete_session': {
+      res = await DELETE(`/sessions/${encodeURIComponent(args.session_id as string)}`);
       break;
     }
 
@@ -1143,10 +1847,38 @@ async function handleTool(
     }
 
     case 'claim_files': {
-      const claimBody: Record<string, unknown> = {};
-      if (args.paths) claimBody.files = args.paths;
-      if (args.regions) claimBody.regions = args.regions;
-      res = await POST(`/sessions/${args.session_id}/files`, claimBody);
+      res = await POST(`/sessions/${args.session_id}/files`, {
+        files: args.paths,
+      });
+      break;
+    }
+
+    case 'release_files': {
+      res = await DELETE(`/sessions/${encodeURIComponent(args.session_id as string)}/files`, {
+        files: args.files,
+      });
+      break;
+    }
+
+    // ── Session Phases ──────────────────────────────────────────────
+    case 'set_session_phase': {
+      res = await PUT(`/sessions/${encodeURIComponent(args.session_id as string)}/phase`, {
+        phase: args.phase,
+      });
+      break;
+    }
+
+    // ── File Claims ─────────────────────────────────────────────────
+    case 'list_file_claims': {
+      res = await GET('/files');
+      break;
+    }
+
+    case 'who_owns_file': {
+      let whoOwnsUrl = `/files/who-owns?path=${encodeURIComponent(args.path as string)}`;
+      if (args.startLine) whoOwnsUrl += `&startLine=${args.startLine}`;
+      if (args.endLine) whoOwnsUrl += `&endLine=${args.endLine}`;
+      res = await GET(whoOwnsUrl);
       break;
     }
 
@@ -1187,6 +1919,16 @@ async function handleTool(
       break;
     }
 
+    case 'list_channels': {
+      res = await GET('/channels');
+      break;
+    }
+
+    case 'clear_channel': {
+      res = await DELETE(`/msg/${encodeURIComponent(args.channel as string)}`);
+      break;
+    }
+
     // ── Agents ─────────────────────────────────────────────────────────
     case 'register_agent': {
       const body: Record<string, unknown> = {
@@ -1201,6 +1943,16 @@ async function handleTool(
 
     case 'agent_heartbeat': {
       res = await POST(`/agents/${encodeURIComponent(args.agent_id as string)}/heartbeat`);
+      break;
+    }
+
+    case 'unregister_agent': {
+      res = await DELETE(`/agents/${encodeURIComponent(args.agent_id as string)}`);
+      break;
+    }
+
+    case 'get_agent': {
+      res = await GET(`/agents/${encodeURIComponent(args.agent_id as string)}`);
       break;
     }
 
@@ -1224,25 +1976,111 @@ async function handleTool(
       break;
     }
 
-    // ── Session Phases ──────────────────────────────────────────────
-    case 'set_session_phase': {
-      res = await PUT(`/sessions/${encodeURIComponent(args.session_id as string)}/phase`, {
-        phase: args.phase,
+    case 'salvage_complete': {
+      res = await POST(`/resurrection/complete/${encodeURIComponent(args.dead_agent_id as string)}`, {
+        newAgentId: args.new_agent_id,
       });
       break;
     }
 
-    // ── File Claims ─────────────────────────────────────────────────
-    case 'list_file_claims': {
-      res = await GET('/files');
+    case 'salvage_abandon': {
+      res = await POST(`/resurrection/abandon/${encodeURIComponent(args.dead_agent_id as string)}`);
       break;
     }
 
-    case 'who_owns_file': {
-      let whoOwnsUrl = `/files/who-owns?path=${encodeURIComponent(args.path as string)}`;
-      if (args.startLine) whoOwnsUrl += `&startLine=${args.startLine}`;
-      if (args.endLine) whoOwnsUrl += `&endLine=${args.endLine}`;
-      res = await GET(whoOwnsUrl);
+    case 'salvage_dismiss': {
+      res = await DELETE(`/resurrection/${encodeURIComponent(args.dead_agent_id as string)}`);
+      break;
+    }
+
+    // ── Agent Inbox ─────────────────────────────────────────────────────
+    case 'inbox_send': {
+      const body: Record<string, unknown> = { content: args.content };
+      if (args.from) body.from = args.from;
+      if (args.type) body.type = args.type;
+      res = await POST(`/agents/${encodeURIComponent(args.agent_id as string)}/inbox`, body);
+      break;
+    }
+
+    case 'inbox_read': {
+      const params = new URLSearchParams();
+      if (args.unread_only) params.set('unread', 'true');
+      if (args.limit) params.set('limit', String(args.limit));
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      res = await GET(`/agents/${encodeURIComponent(args.agent_id as string)}/inbox${qs}`);
+      break;
+    }
+
+    case 'inbox_stats': {
+      res = await GET(`/agents/${encodeURIComponent(args.agent_id as string)}/inbox/stats`);
+      break;
+    }
+
+    case 'inbox_mark_read': {
+      res = await PUT(`/agents/${encodeURIComponent(args.agent_id as string)}/inbox/${args.message_id}/read`);
+      break;
+    }
+
+    case 'inbox_mark_all_read': {
+      res = await PUT(`/agents/${encodeURIComponent(args.agent_id as string)}/inbox/read-all`);
+      break;
+    }
+
+    case 'inbox_clear': {
+      res = await DELETE(`/agents/${encodeURIComponent(args.agent_id as string)}/inbox`);
+      break;
+    }
+
+    // ── Webhooks ────────────────────────────────────────────────────────
+    case 'webhook_add': {
+      const body: Record<string, unknown> = {
+        url: args.url,
+        events: args.events,
+      };
+      if (args.secret) body.secret = args.secret;
+      if (args.filter_pattern) body.filterPattern = args.filter_pattern;
+      res = await POST('/webhooks', body);
+      break;
+    }
+
+    case 'webhook_list': {
+      const qs = args.active_only ? '?active=true' : '';
+      res = await GET(`/webhooks${qs}`);
+      break;
+    }
+
+    case 'webhook_events': {
+      res = await GET('/webhooks/events');
+      break;
+    }
+
+    case 'webhook_get': {
+      res = await GET(`/webhooks/${encodeURIComponent(args.webhook_id as string)}`);
+      break;
+    }
+
+    case 'webhook_update': {
+      const body: Record<string, unknown> = {};
+      if (args.url) body.url = args.url;
+      if (args.events) body.events = args.events;
+      if (args.active !== undefined) body.active = args.active;
+      res = await PUT(`/webhooks/${encodeURIComponent(args.webhook_id as string)}`, body);
+      break;
+    }
+
+    case 'webhook_remove': {
+      res = await DELETE(`/webhooks/${encodeURIComponent(args.webhook_id as string)}`);
+      break;
+    }
+
+    case 'webhook_test': {
+      res = await POST(`/webhooks/${encodeURIComponent(args.webhook_id as string)}/test`);
+      break;
+    }
+
+    case 'webhook_deliveries': {
+      const qs = args.limit ? `?limit=${args.limit}` : '';
+      res = await GET(`/webhooks/${encodeURIComponent(args.webhook_id as string)}/deliveries${qs}`);
       break;
     }
 
@@ -1348,12 +2186,108 @@ async function handleTool(
       break;
     }
 
-    // ── Project Scanning ───────────────────────────────────────────────
+    // ── Projects ───────────────────────────────────────────────────────
     case 'scan_project': {
       const body: Record<string, unknown> = {};
-      if (args.directory) body.directory = args.directory;
+      if (args.directory) body.dir = args.directory;
       if (args.dry_run) body.dryRun = true;
       res = await POST('/scan', body);
+      break;
+    }
+
+    case 'list_projects': {
+      res = await GET('/projects');
+      break;
+    }
+
+    case 'get_project': {
+      res = await GET(`/projects/${encodeURIComponent(args.project_id as string)}`);
+      break;
+    }
+
+    case 'delete_project': {
+      res = await DELETE(`/projects/${encodeURIComponent(args.project_id as string)}`);
+      break;
+    }
+
+    // ── Changelog ──────────────────────────────────────────────────────
+    case 'changelog_add': {
+      const body: Record<string, unknown> = {
+        identity: args.identity,
+        summary: args.summary,
+      };
+      if (args.type) body.type = args.type;
+      if (args.description) body.description = args.description;
+      if (args.session_id) body.sessionId = args.session_id;
+      if (args.agent_id) body.agentId = args.agent_id;
+      res = await POST('/changelog', body);
+      break;
+    }
+
+    case 'changelog_list': {
+      if (args.identity) {
+        const params = new URLSearchParams();
+        if (args.limit) params.set('limit', String(args.limit));
+        const qs = params.toString() ? `?${params.toString()}` : '';
+        res = await GET(`/changelog/${encodeURIComponent(args.identity as string)}${qs}`);
+      } else {
+        const params = new URLSearchParams();
+        if (args.limit) params.set('limit', String(args.limit));
+        if (args.since) params.set('since', String(args.since));
+        const qs = params.toString() ? `?${params.toString()}` : '';
+        res = await GET(`/changelog${qs}`);
+      }
+      break;
+    }
+
+    case 'changelog_get': {
+      res = await GET(`/changelog/${args.id}`);
+      break;
+    }
+
+    case 'changelog_identities': {
+      res = await GET('/changelog/identities');
+      break;
+    }
+
+    case 'changelog_by_session': {
+      res = await GET(`/changelog/session/${encodeURIComponent(args.session_id as string)}`);
+      break;
+    }
+
+    case 'changelog_by_agent': {
+      const qs = args.limit ? `?limit=${args.limit}` : '';
+      res = await GET(`/changelog/agent/${encodeURIComponent(args.agent_id as string)}${qs}`);
+      break;
+    }
+
+    // ── Activity ───────────────────────────────────────────────────────
+    case 'activity_log': {
+      const params = new URLSearchParams();
+      if (args.limit) params.set('limit', String(args.limit));
+      if (args.type) params.set('type', args.type as string);
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      res = await GET(`/activity${qs}`);
+      break;
+    }
+
+    case 'activity_summary': {
+      const qs = args.since ? `?since=${args.since}` : '';
+      res = await GET(`/activity/summary${qs}`);
+      break;
+    }
+
+    case 'activity_stats': {
+      res = await GET('/activity/stats');
+      break;
+    }
+
+    case 'activity_range': {
+      const params = new URLSearchParams();
+      params.set('start', String(args.start));
+      if (args.end) params.set('end', String(args.end));
+      if (args.limit) params.set('limit', String(args.limit));
+      res = await GET(`/activity/range?${params.toString()}`);
       break;
     }
 
@@ -1375,12 +2309,35 @@ async function handleTool(
       );
     }
 
-    case 'activity_log': {
-      const params = new URLSearchParams();
-      if (args.limit) params.set('limit', String(args.limit));
-      if (args.type) params.set('type', args.type as string);
-      const qs = params.toString() ? `?${params.toString()}` : '';
-      res = await GET(`/activity${qs}`);
+    case 'get_version': {
+      res = await GET('/version');
+      break;
+    }
+
+    case 'get_metrics': {
+      res = await GET('/metrics');
+      break;
+    }
+
+    case 'get_config': {
+      const qs = args.directory ? `?dir=${encodeURIComponent(args.directory as string)}` : '';
+      res = await GET(`/config${qs}`);
+      break;
+    }
+
+    case 'wait_for_service': {
+      if (args.services && Array.isArray(args.services)) {
+        // Wait for multiple services
+        const body: Record<string, unknown> = { services: args.services };
+        if (args.timeout) body.timeout = args.timeout;
+        res = await POST('/wait', body);
+      } else if (args.identity) {
+        // Wait for a single service
+        const qs = args.timeout ? `?timeout=${args.timeout}` : '';
+        res = await GET(`/wait/${encodeURIComponent(args.identity as string)}${qs}`);
+      } else {
+        return JSON.stringify({ success: false, error: 'identity or services is required' });
+      }
       break;
     }
 
@@ -1436,7 +2393,7 @@ async function handleTool(
 const server = new Server(
   {
     name: 'port-daddy',
-    version: '3.7.0',
+    version: '3.5.0',
   },
   {
     capabilities: {
@@ -1449,7 +2406,7 @@ const server = new Server(
       'Same identity always maps to the same port -- deterministic hashing.',
       'Start every session with begin_session, end with end_session_full.',
       'Check check_salvage before starting new work -- another agent may have died mid-task.',
-      'Use pd_discover to find additional tools (DNS, locks, pub/sub, tunnels, etc.).',
+      'Use pd_discover to find additional tools (DNS, locks, pub/sub, tunnels, webhooks, inbox, etc.).',
       'File claims are advisory -- they announce intent, not enforce locks.',
       'Notes are immutable -- once written, they cannot be edited or deleted.',
     ].join(' '),
