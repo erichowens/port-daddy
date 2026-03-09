@@ -328,6 +328,105 @@ await pd.tunnelStop('myapp:api');
 
 ---
 
+## Inbox
+
+Every registered agent has a personal inbox. Any caller can send a message; only the registered agent receives it. Inbox messages are persistent (up to 1000 per agent) and survive until read or cleared. Use the inbox for targeted handoffs and task results; use pub/sub for broadcast signals.
+
+```javascript
+// Send a message to another agent
+await pd.inboxSend('agent-bob', 'Migrations complete, ready for review', {
+  type: 'handoff',
+  from: 'agent-alice',
+});
+
+// Read your inbox (unread only)
+const { messages } = await pd.inboxList('agent-alice', { unreadOnly: true });
+for (const msg of messages) {
+  console.log(`[${msg.type}] From ${msg.from ?? 'system'}: ${msg.content}`);
+}
+
+// Get stats
+const { total, unread } = await pd.inboxStats('agent-alice');
+console.log(`${unread} unread of ${total} total`);
+
+// Mark a single message read
+await pd.inboxMarkRead('agent-alice', messages[0].id);
+
+// Mark all as read
+await pd.inboxMarkAllRead('agent-alice');
+
+// Clear inbox
+const { deleted } = await pd.inboxClear('agent-alice');
+console.log(`Cleared ${deleted} messages`);
+```
+
+**`InboxMessage` shape:**
+```typescript
+interface InboxMessage {
+  id: string;
+  agentId: string;    // recipient
+  from?: string;      // sender (optional, free-form)
+  content: string;
+  type: string;       // 'message' | 'handoff' | 'alert' | any string
+  read: boolean;
+  createdAt: string;  // ISO 8601
+}
+```
+
+**`inboxList` options:**
+```typescript
+interface InboxListOptions {
+  unreadOnly?: boolean;   // default false — return only unread messages
+  limit?: number;         // default 50, max 1000
+  since?: string;         // ISO 8601 — messages after this timestamp
+}
+```
+
+---
+
+## Changelog
+
+The changelog records meaningful work against semantic identities. Entries roll up automatically: a change logged to `myapp:api:auth` also appears when you query `myapp:api` or `myapp`.
+
+```javascript
+// Log what was accomplished
+const { id, ancestors } = await pd.addChangelog({
+  identity: 'myapp:api:auth',
+  summary: 'Implemented JWT middleware',
+  type: 'feature',
+  description: 'Added RS256 JWT verification with refresh token rotation.',
+  sessionId: session.id,   // optional — link to current session
+  agentId: 'my-agent',     // optional — link to current agent
+});
+// ancestors: ['myapp:api', 'myapp'] — shows where it rolls up
+
+// List recent entries (across all identities)
+const { entries } = await pd.listChangelog({ limit: 20 });
+
+// List by identity and all children
+const { entries } = await pd.listChangelogTree('myapp:api');
+// Includes: myapp:api, myapp:api:auth, myapp:api:payments, ...
+
+// All tracked identities (useful for dashboards)
+const { identities } = await pd.changelogIdentities();
+```
+
+**Change types:** `feature`, `fix`, `refactor`, `docs`, `chore`, `breaking`
+
+**`addChangelog` options:**
+```typescript
+interface AddChangelogOptions {
+  identity: string;      // e.g. 'myapp:api:auth'
+  summary: string;       // short one-liner (<200 chars)
+  type?: string;         // default 'chore'
+  description?: string;  // longer markdown body
+  sessionId?: string;    // link to a session
+  agentId?: string;      // link to an agent
+}
+```
+
+---
+
 ## Error Handling
 
 ```javascript
