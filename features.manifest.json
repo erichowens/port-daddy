@@ -114,7 +114,7 @@
       "sdk": [],
       "routes": ["POST /changelog", "GET /changelog", "GET /changelog/identities", "GET /changelog/session/:param", "GET /changelog/agent/:param", "GET /changelog/:param"],
       "completions": ["changelog"],
-      "docs": { "readme": true, "sdk": false },
+      "docs": { "readme": true, "sdk": true },
       "_note": "SDK methods not yet implemented"
     },
     "orchestration": {
@@ -215,7 +215,7 @@
       "sdk": [],
       "routes": ["PUT /sessions/:param/phase"],
       "completions": [],
-      "docs": { "readme": false, "sdk": false },
+      "docs": { "readme": true, "sdk": true },
       "_note": "Phase is set via MCP tool or API, no dedicated CLI command"
     },
     "file_claims": {
@@ -224,7 +224,7 @@
       "sdk": [],
       "routes": ["GET /files", "GET /files/who-owns"],
       "completions": ["files", "who-owns"],
-      "docs": { "readme": false, "sdk": false }
+      "docs": { "readme": true, "sdk": false }
     },
     "integration_signals": {
       "description": "Integration signals via pub/sub (ready/needs)",
@@ -232,7 +232,7 @@
       "sdk": [],
       "routes": [],
       "completions": ["integration"],
-      "docs": { "readme": false, "sdk": false },
+      "docs": { "readme": true, "sdk": true },
       "_note": "Routes are messaging routes reused with integration: prefix channels"
     },
     "briefing": {
@@ -241,7 +241,7 @@
       "sdk": ["generateBriefing", "getBriefing"],
       "routes": ["POST /briefing", "GET /briefing/:param"],
       "completions": ["briefing", "history"],
-      "docs": { "readme": false, "sdk": false }
+      "docs": { "readme": true, "sdk": true }
     },
     "sugar": {
       "description": "Compound commands for common workflows (begin/done/whoami)",
@@ -249,7 +249,7 @@
       "sdk": ["begin", "done", "whoami"],
       "routes": ["POST /sugar/begin", "POST /sugar/done", "GET /sugar/whoami"],
       "completions": ["begin", "b", "done", "whoami", "w", "with-lock"],
-      "docs": { "readme": false, "sdk": false }
+      "docs": { "readme": true, "sdk": true }
     },
     "tutorial": {
       "description": "Interactive tutorial — learn Port Daddy step by step",
@@ -257,7 +257,24 @@
       "sdk": [],
       "routes": [],
       "completions": ["learn", "tutorial"],
-      "docs": { "readme": false, "sdk": false }
+      "docs": { "readme": true, "sdk": false }
+    },
+    "dns": {
+      "description": "Local DNS for ports via /etc/hosts",
+      "cli": ["dns"],
+      "sdk": ["dnsRegister", "dnsList", "dnsGet", "dnsRemove", "dnsStatus", "dnsCleanup", "dnsSetup", "dnsSync", "dnsTeardown", "dnsResolver"],
+      "routes": ["GET /dns", "POST /dns/:param", "GET /dns/:param", "DELETE /dns/:param", "GET /dns/status", "POST /dns/setup", "POST /dns/teardown", "POST /dns/sync", "GET /dns/resolver", "POST /dns/cleanup"],
+      "completions": ["dns"],
+      "docs": { "readme": true, "sdk": true }
+    },
+    "inbox": {
+      "description": "Agent inbox messaging",
+      "cli": ["inbox"],
+      "sdk": [],
+      "routes": ["POST /agents/:param/inbox", "GET /agents/:param/inbox", "DELETE /agents/:param/inbox", "GET /agents/:param/inbox/stats"],
+      "completions": ["inbox"],
+      "docs": { "readme": true, "sdk": false },
+      "_note": "SDK methods not yet implemented"
     }
   }
 }
