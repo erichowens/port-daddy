@@ -99,14 +99,21 @@
       "completions": ["tunnel"],
       "docs": { "readme": true, "sdk": true }
     },
+    "inbox": {
+      "description": "Agent inbox messaging",
+      "cli": ["inbox"],
+      "sdk": ["inboxSend", "inboxList", "inboxStats", "inboxMarkRead", "inboxMarkAllRead", "inboxClear"],
+      "routes": ["POST /agents/:param/inbox", "GET /agents/:param/inbox", "DELETE /agents/:param/inbox", "GET /agents/:param/inbox/stats", "PUT /agents/:param/inbox/:param/read", "PUT /agents/:param/inbox/read-all"],
+      "completions": ["inbox"],
+      "docs": { "readme": true, "sdk": true }
+    },
     "changelog": {
       "description": "Hierarchical changelog",
       "cli": ["changelog"],
-      "sdk": [],
-      "routes": ["POST /changelog", "GET /changelog", "GET /changelog/identities"],
+      "sdk": ["addChangelog", "listChangelog", "getChangelog", "listChangelogByIdentity", "listChangelogTree", "listChangelogBySession", "listChangelogByAgent", "changelogIdentities"],
+      "routes": ["POST /changelog", "GET /changelog", "GET /changelog/identities", "GET /changelog/session/:param", "GET /changelog/agent/:param", "GET /changelog/:param"],
       "completions": ["changelog"],
-      "docs": { "readme": true, "sdk": false },
-      "_note": "SDK methods not yet implemented"
+      "docs": { "readme": true, "sdk": true }
     },
     "orchestration": {
       "description": "Service orchestration (up/down)",

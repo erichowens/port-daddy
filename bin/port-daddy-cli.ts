@@ -50,6 +50,8 @@ import {
   handleSalvage,
   // Changelog
   handleChangelog,
+  // Inbox
+  handleInbox,
   // Tunnel
   handleTunnel,
   // Activity
@@ -542,7 +544,7 @@ const ALL_COMMANDS: string[] = [
   'claim', 'c', 'release', 'r', 'find', 'f', 'list', 'l', 'ps', 'url', 'env',
   'pub', 'publish', 'sub', 'subscribe', 'wait', 'lock', 'unlock', 'locks',
   'up', 'down', 'scan', 's', 'projects', 'p',
-  'agent', 'agents', 'log', 'activity',
+  'agent', 'agents', 'inbox', 'log', 'activity',
   'session', 'sessions', 'note', 'notes',
   'dashboard', 'channels', 'webhook', 'webhooks', 'metrics', 'config', 'health', 'ports',
   'start', 'stop', 'restart', 'status', 'install', 'uninstall', 'dev', 'ci-gate',
@@ -1474,6 +1476,11 @@ async function main(): Promise<void> {
       // Hierarchical changelog
       case 'changelog':
         await handleChangelog(positional[0], positional.slice(1), options);
+        break;
+
+      // Agent inbox (top-level shortcut)
+      case 'inbox':
+        await handleInbox(positional[0], positional.slice(1), options);
         break;
 
       // Tunnel
