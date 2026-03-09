@@ -459,7 +459,7 @@ const TOOLS = [
     name: 'claim_files',
     description:
       '[Standard] Claim files for the active session (advisory locking). ' +
-      'Other agents can see which files are claimed to avoid conflicts.',
+      'Supports whole-file claims (paths) and region-level claims (regions) for fine-grained coordination.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -467,10 +467,24 @@ const TOOLS = [
         paths: {
           type: 'array',
           items: { type: 'string' },
-          description: 'File paths to claim',
+          description: 'File paths to claim (whole file)',
+        },
+        regions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              path: { type: 'string', description: 'File path' },
+              startLine: { type: 'number', description: 'Start line (1-indexed)' },
+              endLine: { type: 'number', description: 'End line (1-indexed, inclusive)' },
+              symbol: { type: 'string', description: 'Optional label (e.g. "class Foo", "handleAuth")' },
+            },
+            required: ['path', 'startLine', 'endLine'],
+          },
+          description: 'Region-level claims (specific line ranges)',
         },
       },
-      required: ['session_id', 'paths'],
+      required: ['session_id'],
     },
   },
 
@@ -711,11 +725,13 @@ const TOOLS = [
   },
   {
     name: 'who_owns_file',
-    description: '[Standard] Check which session/agent owns a specific file.',
+    description: '[Standard] Check which session/agent owns a specific file. Optionally filter by line range.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         path: { type: 'string', description: 'File path to look up' },
+        startLine: { type: 'number', description: 'Optional: start of line range to check (1-indexed)' },
+        endLine: { type: 'number', description: 'Optional: end of line range to check (1-indexed)' },
       },
       required: ['path'],
     },
@@ -1103,9 +1119,10 @@ async function handleTool(
     }
 
     case 'claim_files': {
-      res = await POST(`/sessions/${args.session_id}/files`, {
-        paths: args.paths,
-      });
+      const claimBody: Record<string, unknown> = {};
+      if (args.paths) claimBody.files = args.paths;
+      if (args.regions) claimBody.regions = args.regions;
+      res = await POST(`/sessions/${args.session_id}/files`, claimBody);
       break;
     }
 
@@ -1198,7 +1215,10 @@ async function handleTool(
     }
 
     case 'who_owns_file': {
-      res = await GET(`/files/who-owns?path=${encodeURIComponent(args.path as string)}`);
+      let whoOwnsUrl = `/files/who-owns?path=${encodeURIComponent(args.path as string)}`;
+      if (args.startLine) whoOwnsUrl += `&startLine=${args.startLine}`;
+      if (args.endLine) whoOwnsUrl += `&endLine=${args.endLine}`;
+      res = await GET(whoOwnsUrl);
       break;
     }
 

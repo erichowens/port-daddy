@@ -332,6 +332,9 @@ export async function handleFiles(options: CLIOptions): Promise<void> {
     agentId: string | null;
     phase: string;
     claimedAt: number;
+    startLine: number | null;
+    endLine: number | null;
+    symbol: string | null;
   }>;
 
   if (!claims || claims.length === 0) {
@@ -342,15 +345,20 @@ export async function handleFiles(options: CLIOptions): Promise<void> {
   }
 
   const now = Date.now();
-  console.log('FILE'.padEnd(40) + 'SESSION'.padEnd(18) + 'AGENT'.padEnd(14) + 'PHASE'.padEnd(14) + 'AGE');
-  console.log('\u2500'.repeat(90));
+  console.log('FILE'.padEnd(40) + 'SESSION'.padEnd(18) + 'AGENT'.padEnd(14) + 'REGION'.padEnd(22) + 'AGE');
+  console.log('\u2500'.repeat(100));
 
   for (const c of claims) {
     const age = formatAge(now - c.claimedAt);
     const file = c.filePath.length > 38 ? '...' + c.filePath.slice(-35) : c.filePath.padEnd(40);
     const agent = (c.agentId || '-').slice(0, 12).padEnd(14);
+    let region = 'whole file';
+    if (c.startLine != null && c.endLine != null) {
+      region = `lines ${c.startLine}-${c.endLine}`;
+      if (c.symbol) region += `: ${c.symbol}`;
+    }
     console.log(
-      `${file}${c.sessionId.slice(0, 16).padEnd(18)}${agent}${c.phase.padEnd(14)}${age}`
+      `${file}${c.sessionId.slice(0, 16).padEnd(18)}${agent}${region.slice(0, 20).padEnd(22)}${age}`
     );
   }
   console.log('');
@@ -362,11 +370,27 @@ export async function handleFiles(options: CLIOptions): Promise<void> {
  */
 export async function handleWhoOwns(filePath: string | undefined, options: CLIOptions): Promise<void> {
   if (!filePath) {
-    console.error('Usage: port-daddy who-owns <file-path>');
+    console.error('Usage: port-daddy who-owns <file-path>[:<startLine>-<endLine>]');
     process.exit(1);
   }
 
-  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/files/who-owns?path=${encodeURIComponent(filePath)}`);
+  // Parse optional range syntax: "src/routes.ts:10-50"
+  let actualPath = filePath;
+  let startLine: number | undefined;
+  let endLine: number | undefined;
+  const rangeMatch = filePath.match(/^(.+):(\d+)-(\d+)$/);
+  if (rangeMatch) {
+    actualPath = rangeMatch[1];
+    startLine = parseInt(rangeMatch[2], 10);
+    endLine = parseInt(rangeMatch[3], 10);
+  }
+
+  let url = `${PORT_DADDY_URL}/files/who-owns?path=${encodeURIComponent(actualPath)}`;
+  if (startLine !== undefined && endLine !== undefined) {
+    url += `&startLine=${startLine}&endLine=${endLine}`;
+  }
+
+  const res: PdFetchResponse = await pdFetch(url);
   const data = await res.json();
 
   if (!res.ok) {
@@ -385,6 +409,9 @@ export async function handleWhoOwns(filePath: string | undefined, options: CLIOp
     agentId: string | null;
     phase: string;
     claimedAt: number;
+    startLine: number | null;
+    endLine: number | null;
+    symbol: string | null;
   }>;
 
   if (isQuiet(options)) {
@@ -392,15 +419,22 @@ export async function handleWhoOwns(filePath: string | undefined, options: CLIOp
     return;
   }
 
+  const displayPath = startLine ? `${actualPath}:${startLine}-${endLine}` : actualPath;
   if (!owners || owners.length === 0) {
-    console.log(`${filePath}: unclaimed`);
+    console.log(`${displayPath}: unclaimed`);
     return;
   }
 
-  console.log(`${filePath}: claimed by ${owners.length} session(s)`);
+  console.log(`${displayPath}: claimed by ${owners.length} session(s)`);
   for (const o of owners) {
     const agent = o.agentId ? ` (agent: ${o.agentId})` : '';
-    console.log(`  ${o.sessionId}: ${o.purpose} [${o.phase}]${agent}`);
+    let region = '';
+    if (o.startLine != null && o.endLine != null) {
+      region = ` [lines ${o.startLine}-${o.endLine}${o.symbol ? ': ' + o.symbol : ''}]`;
+    } else {
+      region = ' [whole file]';
+    }
+    console.log(`  ${o.sessionId}: ${o.purpose} [${o.phase}]${agent}${region}`);
   }
 }
 

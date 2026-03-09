@@ -892,11 +892,27 @@ interface NotesResponse {
   count: number;
 }
 
+/** Region-level file claim descriptor */
+interface FileRegion {
+  path: string;
+  startLine?: number;
+  endLine?: number;
+  symbol?: string;
+}
+
 /** Matches the actual POST /sessions/:id/files response */
 interface FileClaimResponse {
   success: boolean;
   claimed: string[];
-  conflicts: Array<{ path: string; sessionId: string; purpose: string; claimedAt: number }>;
+  conflicts: Array<{
+    filePath: string;
+    sessionId: string;
+    purpose: string;
+    claimedAt: number;
+    startLine?: number | null;
+    endLine?: number | null;
+    symbol?: string | null;
+  }>;
 }
 
 /** Matches the actual DELETE /sessions/:id/files response */
@@ -1917,17 +1933,34 @@ class PortDaddy {
   }
 
   /**
-   * Claim files for a session.
+   * Claim files for a session. Supports whole-file and region-level claims.
    */
-  async claimFiles(sessionId: string, files: string[], force?: boolean): Promise<FileClaimResponse> {
-    return this._request('POST', `/sessions/${sessionId}/files`, { files, force }) as Promise<FileClaimResponse>;
+  async claimFiles(
+    sessionId: string,
+    files: string[],
+    options?: { regions?: FileRegion[]; force?: boolean } | boolean
+  ): Promise<FileClaimResponse> {
+    // Backward compat: third arg used to be just `force: boolean`
+    let force: boolean | undefined;
+    let regions: FileRegion[] | undefined;
+    if (typeof options === 'boolean') {
+      force = options;
+    } else if (options) {
+      force = options.force;
+      regions = options.regions;
+    }
+    return this._request('POST', `/sessions/${sessionId}/files`, { files, regions, force }) as Promise<FileClaimResponse>;
   }
 
   /**
-   * Release files from a session.
+   * Release files from a session. Supports whole-file and region-level releases.
    */
-  async releaseFiles(sessionId: string, files: string[]): Promise<FileReleaseResponse> {
-    return this._request('DELETE', `/sessions/${sessionId}/files`, { files }) as Promise<FileReleaseResponse>;
+  async releaseFiles(
+    sessionId: string,
+    files: string[],
+    options?: { regions?: FileRegion[] }
+  ): Promise<FileReleaseResponse> {
+    return this._request('DELETE', `/sessions/${sessionId}/files`, { files, regions: options?.regions }) as Promise<FileReleaseResponse>;
   }
 
   // ──────────────────────────────────────────────────────────────

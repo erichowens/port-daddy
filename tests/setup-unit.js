@@ -200,13 +200,18 @@ export function createTestDb() {
     CREATE INDEX IF NOT EXISTS idx_sessions_identity_project ON sessions(identity_project);
 
     CREATE TABLE IF NOT EXISTS session_files (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
       file_path TEXT NOT NULL,
+      start_line INTEGER,
+      end_line INTEGER,
+      symbol TEXT,
       claimed_at INTEGER NOT NULL,
-      released_at INTEGER,
-      PRIMARY KEY (session_id, file_path)
+      released_at INTEGER
     );
     CREATE INDEX IF NOT EXISTS idx_session_files_path ON session_files(file_path);
+    CREATE INDEX IF NOT EXISTS idx_session_files_session ON session_files(session_id);
+    CREATE INDEX IF NOT EXISTS idx_session_files_region ON session_files(file_path, start_line, end_line);
 
     CREATE TABLE IF NOT EXISTS session_notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

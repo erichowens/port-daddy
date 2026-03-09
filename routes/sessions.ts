@@ -42,12 +42,17 @@ interface SessionsRouteDeps {
       type?: string;
       since?: number;
     }): Record<string, unknown>;
-    claimFiles(sessionId: string, files: string[]): Record<string, unknown>;
-    releaseFiles(sessionId: string, files: string[]): Record<string, unknown>;
+    claimFiles(sessionId: string, files: string[], options?: {
+      regions?: Array<{ path: string; startLine?: number; endLine?: number; symbol?: string }>;
+      force?: boolean;
+    }): Record<string, unknown>;
+    releaseFiles(sessionId: string, files: string[], options?: {
+      regions?: Array<{ path: string; startLine?: number; endLine?: number }>;
+    }): Record<string, unknown>;
     getFileConflicts(files: string[]): Record<string, unknown>;
     setPhase(sessionId: string, phase: string): Record<string, unknown>;
     listAllActiveClaims(): Record<string, unknown>;
-    getClaimOwner(filePath: string): Record<string, unknown>;
+    getClaimOwner(filePath: string, range?: { startLine?: number; endLine?: number }): Record<string, unknown>;
     list(options?: {
       status?: string;
       agentId?: string | null;
@@ -389,18 +394,48 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
     try {
       const sessionIdParam = req.params.id;
       const sessionId = typeof sessionIdParam === 'string' ? sessionIdParam : sessionIdParam[0];
-      const { files, force } = req.body;
+      const { files, regions, force } = req.body;
 
-      if (!files || !Array.isArray(files) || files.length === 0) {
+      const hasFiles = files && Array.isArray(files) && files.length > 0;
+      const hasRegions = regions && Array.isArray(regions) && regions.length > 0;
+
+      if (!hasFiles && !hasRegions) {
         return res.status(400).json({
           success: false,
-          error: 'files must be a non-empty array',
+          error: 'files or regions must be provided',
           code: 'VALIDATION_ERROR'
         });
       }
 
-      // Check for conflicts if force=false
-      if (!force) {
+      // Validate regions if provided
+      if (hasRegions) {
+        for (const region of regions) {
+          if (!region.path || typeof region.path !== 'string') {
+            return res.status(400).json({
+              success: false,
+              error: 'each region must have a non-empty path',
+              code: 'VALIDATION_ERROR'
+            });
+          }
+          if (region.startLine !== undefined && (typeof region.startLine !== 'number' || region.startLine < 1)) {
+            return res.status(400).json({
+              success: false,
+              error: 'startLine must be a positive integer (1-indexed)',
+              code: 'VALIDATION_ERROR'
+            });
+          }
+          if (region.endLine !== undefined && region.startLine !== undefined && region.endLine < region.startLine) {
+            return res.status(400).json({
+              success: false,
+              error: 'endLine must be >= startLine',
+              code: 'VALIDATION_ERROR'
+            });
+          }
+        }
+      }
+
+      // Check for conflicts if force=false (whole-file only — region conflicts are advisory inline)
+      if (hasFiles && !force) {
         const conflictCheck = sessions.getFileConflicts(files);
         if (conflictCheck.conflicts && Array.isArray(conflictCheck.conflicts) && conflictCheck.conflicts.length > 0) {
           return res.status(409).json({
@@ -413,7 +448,7 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
         }
       }
 
-      const result = sessions.claimFiles(sessionId, files);
+      const result = sessions.claimFiles(sessionId, files || [], { regions, force });
 
       if (!result.success) {
         return res.status(404).json({ ...result, code: 'SESSION_NOT_FOUND' });
@@ -422,6 +457,7 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
       logger.info('session_files_claimed', {
         sessionId,
         filesCount: Array.isArray(result.claimed) ? result.claimed.length : 0,
+        regionsCount: hasRegions ? regions.length : 0,
         conflictsCount: Array.isArray(result.conflicts) ? result.conflicts.length : 0
       });
 
@@ -450,21 +486,29 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
       const sessionId = typeof sessionIdParam === 'string' ? sessionIdParam : sessionIdParam[0];
 
       // Support both query params and request body
-      let files: string[];
+      let files: string[] = [];
+      let regions: Array<{ path: string; startLine?: number; endLine?: number }> | undefined;
+
       const pathsParam = req.query.paths;
       if (pathsParam && typeof pathsParam === 'string') {
         files = pathsParam.split(',');
       } else if (req.body.files && Array.isArray(req.body.files)) {
         files = req.body.files;
-      } else {
+      }
+
+      if (req.body.regions && Array.isArray(req.body.regions)) {
+        regions = req.body.regions;
+      }
+
+      if (files.length === 0 && (!regions || regions.length === 0)) {
         return res.status(400).json({
           success: false,
-          error: 'files must be provided via query param ?paths=file1,file2 or body { files: [] }',
+          error: 'files or regions must be provided via query param ?paths=file1,file2 or body { files: [], regions: [] }',
           code: 'VALIDATION_ERROR'
         });
       }
 
-      const result = sessions.releaseFiles(sessionId, files);
+      const result = sessions.releaseFiles(sessionId, files, { regions });
 
       if (!result.success) {
         return res.status(404).json({ ...result, code: 'SESSION_NOT_FOUND' });
@@ -562,7 +606,18 @@ export function createSessionsRoutes(deps: SessionsRouteDeps): Router {
         });
       }
 
-      const result = sessions.getClaimOwner(pathParam);
+      // Optional range filter
+      const startLineParam = req.query.startLine;
+      const endLineParam = req.query.endLine;
+      let range: { startLine: number; endLine: number } | undefined;
+      if (typeof startLineParam === 'string' && typeof endLineParam === 'string') {
+        range = {
+          startLine: parseInt(startLineParam, 10),
+          endLine: parseInt(endLineParam, 10),
+        };
+      }
+
+      const result = sessions.getClaimOwner(pathParam, range);
       res.json(result);
 
     } catch (error) {

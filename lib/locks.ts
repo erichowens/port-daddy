@@ -71,7 +71,6 @@ export function createLocks(db: Database.Database) {
     extend: db.prepare('UPDATE locks SET expires_at = ? WHERE name = ?'),
     list: db.prepare('SELECT * FROM locks ORDER BY acquired_at DESC'),
     listByOwner: db.prepare('SELECT * FROM locks WHERE owner = ?'),
-    extend: db.prepare('UPDATE locks SET expires_at = ? WHERE name = ?'),
   };
 
   function safeJsonParse(value: string | null): Record<string, unknown> | null {
