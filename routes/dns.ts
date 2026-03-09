@@ -29,6 +29,12 @@ interface DnsRouteDeps {
     cleanup(): Record<string, unknown>;
     status(): Record<string, unknown>;
   };
+  resolver?: {
+    setup(): { success: boolean; alreadySetUp?: boolean };
+    teardown(): { success: boolean; wasSetUp: boolean };
+    sync(): { success: boolean; entries: number };
+    status(): { isSetUp: boolean; hostsFilePath: string; entries: number; fileExists: boolean };
+  };
   activityLog?: {
     log(type: string, opts: { details: string; metadata: Record<string, unknown> }): void;
   };
@@ -41,7 +47,7 @@ interface DnsRouteDeps {
  * @returns Express router
  */
 export function createDnsRoutes(deps: DnsRouteDeps): Router {
-  const { logger, metrics, dns } = deps;
+  const { logger, metrics, dns, resolver } = deps;
   const router = Router();
 
   // =========================================================================
@@ -70,7 +76,13 @@ export function createDnsRoutes(deps: DnsRouteDeps): Router {
   // =========================================================================
   router.get('/dns/status', (_req: Request, res: Response) => {
     try {
-      const result = dns.status();
+      const result = dns.status() as Record<string, unknown>;
+      // Include resolver status if available
+      if (resolver) {
+        result.resolver = resolver.status();
+      } else {
+        result.resolver = { configured: false };
+      }
       res.json(result);
 
     } catch (error) {
@@ -92,6 +104,85 @@ export function createDnsRoutes(deps: DnsRouteDeps): Router {
     } catch (error) {
       metrics.errors++;
       logger.error('dns_cleanup_failed', { error: (error as Error).message });
+      res.status(500).json({ error: 'internal server error' });
+    }
+  });
+
+  // =========================================================================
+  // POST /dns/setup - Initialize /etc/hosts managed section
+  // =========================================================================
+  router.post('/dns/setup', (_req: Request, res: Response) => {
+    try {
+      if (!resolver) {
+        return res.status(501).json({ error: 'Resolver not configured', code: 'NOT_CONFIGURED' });
+      }
+
+      const result = resolver.setup();
+      logger.info('dns_resolver_setup', result);
+      res.json(result);
+
+    } catch (error) {
+      metrics.errors++;
+      logger.error('dns_resolver_setup_failed', { error: (error as Error).message });
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  // =========================================================================
+  // POST /dns/teardown - Remove /etc/hosts managed section
+  // =========================================================================
+  router.post('/dns/teardown', (_req: Request, res: Response) => {
+    try {
+      if (!resolver) {
+        return res.status(501).json({ error: 'Resolver not configured', code: 'NOT_CONFIGURED' });
+      }
+
+      const result = resolver.teardown();
+      logger.info('dns_resolver_teardown', result);
+      res.json(result);
+
+    } catch (error) {
+      metrics.errors++;
+      logger.error('dns_resolver_teardown_failed', { error: (error as Error).message });
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  // =========================================================================
+  // POST /dns/sync - Rebuild /etc/hosts from DNS registry
+  // =========================================================================
+  router.post('/dns/sync', (_req: Request, res: Response) => {
+    try {
+      if (!resolver) {
+        return res.status(501).json({ error: 'Resolver not configured', code: 'NOT_CONFIGURED' });
+      }
+
+      const result = resolver.sync();
+      logger.info('dns_resolver_sync', result);
+      res.json(result);
+
+    } catch (error) {
+      metrics.errors++;
+      logger.error('dns_resolver_sync_failed', { error: (error as Error).message });
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  // =========================================================================
+  // GET /dns/resolver - Resolver status
+  // =========================================================================
+  router.get('/dns/resolver', (_req: Request, res: Response) => {
+    try {
+      if (!resolver) {
+        return res.json({ configured: false });
+      }
+
+      const status = resolver.status();
+      res.json({ configured: true, ...status });
+
+    } catch (error) {
+      metrics.errors++;
+      logger.error('dns_resolver_status_failed', { error: (error as Error).message });
       res.status(500).json({ error: 'internal server error' });
     }
   });

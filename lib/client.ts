@@ -2279,6 +2279,34 @@ class PortDaddy {
   async dnsStatus(): Promise<DnsStatusResponse> {
     return this._request('GET', '/dns/status') as Promise<DnsStatusResponse>;
   }
+
+  /**
+   * Initialize the /etc/hosts managed section for DNS resolution.
+   */
+  async dnsSetup(): Promise<DnsSetupResponse> {
+    return this._request('POST', '/dns/setup') as Promise<DnsSetupResponse>;
+  }
+
+  /**
+   * Remove the /etc/hosts managed section.
+   */
+  async dnsTeardown(): Promise<DnsTeardownResponse> {
+    return this._request('POST', '/dns/teardown') as Promise<DnsTeardownResponse>;
+  }
+
+  /**
+   * Rebuild /etc/hosts from the DNS registry.
+   */
+  async dnsSync(): Promise<DnsSyncResponse> {
+    return this._request('POST', '/dns/sync') as Promise<DnsSyncResponse>;
+  }
+
+  /**
+   * Get DNS resolver status (hosts file setup, entry count).
+   */
+  async dnsResolverStatus(): Promise<DnsResolverStatusResponse> {
+    return this._request('GET', '/dns/resolver') as Promise<DnsResolverStatusResponse>;
+  }
 }
 
 // =============================================================================
@@ -2338,6 +2366,29 @@ interface DnsStatusResponse {
   success: boolean;
   bonjourAvailable: boolean;
   recordCount: number;
+}
+
+interface DnsSetupResponse {
+  success: boolean;
+  alreadySetUp?: boolean;
+}
+
+interface DnsTeardownResponse {
+  success: boolean;
+  wasSetUp: boolean;
+}
+
+interface DnsSyncResponse {
+  success: boolean;
+  entries: number;
+}
+
+interface DnsResolverStatusResponse {
+  configured: boolean;
+  isSetUp?: boolean;
+  hostsFilePath?: string;
+  entries?: number;
+  fileExists?: boolean;
 }
 
 // =============================================================================
@@ -2415,6 +2466,10 @@ export type {
   DnsGetResponse,
   DnsCleanupResponse,
   DnsStatusResponse,
+  DnsSetupResponse,
+  DnsTeardownResponse,
+  DnsSyncResponse,
+  DnsResolverStatusResponse,
   DnsRecord,
   BeginSugarOptions,
   BeginSugarResponse,

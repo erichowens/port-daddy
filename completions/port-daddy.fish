@@ -266,6 +266,10 @@ for prog in port-daddy pd
     complete -c $prog -n "__pd_using_command dns" -x -a 'lookup' -d 'Lookup by hostname'
     complete -c $prog -n "__pd_using_command dns" -x -a 'cleanup' -d 'Remove stale DNS records'
     complete -c $prog -n "__pd_using_command dns" -x -a 'status' -d 'DNS system status'
+    complete -c $prog -n "__pd_using_command dns" -x -a 'setup' -d 'Initialize /etc/hosts managed section'
+    complete -c $prog -n "__pd_using_command dns" -x -a 'teardown' -d 'Remove /etc/hosts managed section'
+    complete -c $prog -n "__pd_using_command dns" -x -a 'sync' -d 'Rebuild /etc/hosts from DNS registry'
+    complete -c $prog -n "__pd_using_command dns" -l resolve -d 'Also add to /etc/hosts'
     complete -c $prog -n "__pd_using_command dns" -l port -d 'Port number' -x
     complete -c $prog -n "__pd_using_command dns" -l hostname -d 'Custom hostname (must end in .local)' -x
     complete -c $prog -n "__pd_using_command dns" -l pattern -d 'Filter by identity pattern' -x

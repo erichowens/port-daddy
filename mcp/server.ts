@@ -149,7 +149,7 @@ const TOOL_CATEGORIES: Record<string, { description: string; tools: string[] }> 
   },
   'dns': {
     description: 'Local DNS for service discovery',
-    tools: ['dns_register', 'dns_unregister', 'dns_list', 'dns_lookup', 'dns_cleanup', 'dns_status'],
+    tools: ['dns_register', 'dns_unregister', 'dns_list', 'dns_lookup', 'dns_cleanup', 'dns_status', 'dns_setup', 'dns_teardown', 'dns_sync'],
   },
   'briefing': {
     description: 'Generate project briefing files for .portdaddy/',
@@ -858,6 +858,30 @@ const TOOLS = [
       properties: {},
     },
   },
+  {
+    name: 'dns_setup',
+    description: '[Advanced] Set up /etc/hosts resolution for Port Daddy DNS records.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
+    name: 'dns_teardown',
+    description: '[Advanced] Remove Port Daddy managed section from /etc/hosts.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
+    name: 'dns_sync',
+    description: '[Advanced] Rebuild /etc/hosts from DNS registry.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
 
   // ── Tunnels ──────────────────────────────────────────────────────────
   {
@@ -1288,6 +1312,21 @@ async function handleTool(
 
     case 'dns_status': {
       res = await GET('/dns/status');
+      break;
+    }
+
+    case 'dns_setup': {
+      res = await POST('/dns/setup');
+      break;
+    }
+
+    case 'dns_teardown': {
+      res = await POST('/dns/teardown');
+      break;
+    }
+
+    case 'dns_sync': {
+      res = await POST('/dns/sync');
       break;
     }
 

@@ -348,7 +348,7 @@ _port_daddy() {
     # Subcommands: list, register, unregister, lookup, cleanup, status
     # -----------------------------------------------------------------------
     dns)
-      local dns_subcmds="list ls register add unregister rm remove lookup cleanup status help"
+      local dns_subcmds="list ls register add unregister rm remove lookup cleanup status setup teardown sync help"
       case "$prev" in
         dns)
           # First arg: subcommand
@@ -357,7 +357,7 @@ _port_daddy() {
           ;;
         register|add)
           if [[ "$cur" == -* ]]; then
-            _pd_opts '--port --hostname'
+            _pd_opts '--port --hostname --resolve'
           else
             local services; services="$(_pd_service_ids)"
             # shellcheck disable=SC2207
@@ -372,7 +372,7 @@ _port_daddy() {
         list|ls)
           _pd_opts '--pattern --limit --json --quiet'
           ;;
-        cleanup|status|help)
+        cleanup|status|setup|teardown|sync|help)
           _pd_opts ''
           ;;
         --port|--hostname|--pattern|--limit)

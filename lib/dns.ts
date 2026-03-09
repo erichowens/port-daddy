@@ -16,6 +16,14 @@ interface ActivityLogger {
   log(type: string, opts: { details: string; metadata: Record<string, unknown> }): void;
 }
 
+// Optional resolver interface -- injected after creation via setResolver()
+interface Resolver {
+  addEntry(hostname: string, ip?: string): { success: boolean; alreadyExists?: boolean; updated?: boolean };
+  removeEntry(hostname: string): { success: boolean; notFound?: boolean };
+  sync(): { success: boolean; entries: number };
+  isSetUp(): boolean;
+}
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -153,9 +161,60 @@ export function createDns(db: Database.Database) {
   // ---------------------------------------------------------------------------
 
   let activityLog: ActivityLogger | null = null;
+  let resolver: Resolver | null = null;
 
   function setActivityLog(logger: ActivityLogger): void {
     activityLog = logger;
+  }
+
+  function setResolver(r: Resolver): void {
+    resolver = r;
+  }
+
+  /**
+   * Safely call resolver — if it fails, log warning but don't break DNS operation.
+   */
+  function resolverAdd(hostname: string): void {
+    if (!resolver || !resolver.isSetUp()) return;
+    try {
+      resolver.addEntry(hostname);
+    } catch (err) {
+      // Resolver failure should never break DNS operations
+      if (activityLog) {
+        activityLog.log(ActivityType.DNS_REGISTER, {
+          details: `Resolver addEntry failed for ${hostname}: ${(err as Error).message}`,
+          metadata: { hostname, error: (err as Error).message },
+        });
+      }
+    }
+  }
+
+  function resolverRemove(hostname: string): void {
+    if (!resolver || !resolver.isSetUp()) return;
+    try {
+      resolver.removeEntry(hostname);
+    } catch (err) {
+      if (activityLog) {
+        activityLog.log(ActivityType.DNS_UNREGISTER, {
+          details: `Resolver removeEntry failed for ${hostname}: ${(err as Error).message}`,
+          metadata: { hostname, error: (err as Error).message },
+        });
+      }
+    }
+  }
+
+  function resolverSync(): void {
+    if (!resolver || !resolver.isSetUp()) return;
+    try {
+      resolver.sync();
+    } catch (err) {
+      if (activityLog) {
+        activityLog.log(ActivityType.DNS_CLEANUP, {
+          details: `Resolver sync failed: ${(err as Error).message}`,
+          metadata: { error: (err as Error).message },
+        });
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -212,6 +271,8 @@ export function createDns(db: Database.Database) {
         });
       }
 
+      resolverAdd(hostname);
+
       return {
         success: true,
         identity: trimmedIdentity,
@@ -238,6 +299,8 @@ export function createDns(db: Database.Database) {
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }
+
+    resolverAdd(hostname);
 
     if (activityLog) {
       activityLog.log(ActivityType.DNS_REGISTER, {
@@ -275,6 +338,8 @@ export function createDns(db: Database.Database) {
     }
 
     stmts.deleteByIdentity.run(trimmedIdentity);
+
+    resolverRemove(existing.hostname);
 
     if (activityLog) {
       activityLog.log(ActivityType.DNS_UNREGISTER, {
@@ -364,6 +429,10 @@ export function createDns(db: Database.Database) {
     }
     const cleaned = result.changes;
 
+    if (cleaned > 0) {
+      resolverSync();
+    }
+
     if (activityLog && cleaned > 0) {
       activityLog.log(ActivityType.DNS_CLEANUP, {
         details: `DNS cleanup: removed ${cleaned} stale record(s)`,
@@ -396,6 +465,7 @@ export function createDns(db: Database.Database) {
     cleanup,
     status,
     setActivityLog,
+    setResolver,
     // Exported for testing
     identityToHostname,
     validateHostname,

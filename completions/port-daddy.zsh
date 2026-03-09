@@ -256,6 +256,9 @@ _pd_cmd_dns() {
     'lookup:lookup by hostname'
     'cleanup:remove stale DNS records'
     'status:DNS system status'
+    'setup:initialize /etc/hosts managed section'
+    'teardown:remove /etc/hosts managed section'
+    'sync:rebuild /etc/hosts from DNS registry'
     'help:show help'
   )
 
@@ -270,6 +273,7 @@ _pd_cmd_dns() {
       _arguments \
         '--port[port number]:port:' \
         '--hostname[custom hostname]:hostname:' \
+        '--resolve[also add to /etc/hosts]' \
         '(-j --json)'{-j,--json}'[JSON output]' \
         '(-q --quiet)'{-q,--quiet}'[suppress output]' \
         '1:service identity:_pd_complete_services'
@@ -293,7 +297,7 @@ _pd_cmd_dns() {
         '(-j --json)'{-j,--json}'[JSON output]' \
         '(-q --quiet)'{-q,--quiet}'[suppress output]'
       ;;
-    cleanup|status|help)
+    cleanup|status|setup|teardown|sync|help)
       _arguments \
         '(-j --json)'{-j,--json}'[JSON output]' \
         '(-q --quiet)'{-q,--quiet}'[suppress output]'

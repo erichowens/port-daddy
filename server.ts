@@ -37,6 +37,7 @@ import { createResurrection } from './lib/resurrection.js';
 import { createChangelog } from './lib/changelog.js';
 import { createTunnel } from './lib/tunnel.js';
 import { createDns } from './lib/dns.js';
+import { createResolver } from './lib/resolver.js';
 import { createBriefing } from './lib/briefing.js';
 import { createSugar } from './lib/sugar.js';
 import { initDatabase, closeDatabase, resolveDbPath } from './lib/db.js';
@@ -220,6 +221,8 @@ const changelog = createChangelog(db);
 const tunnel = createTunnel(db);
 const dns = createDns(db);
 dns.setActivityLog(activityLog);
+const resolver = createResolver(db);
+dns.setResolver(resolver);
 const briefing = createBriefing(db, { sessions, agents, resurrection, activityLog, services, messaging });
 const sugar = createSugar({ agents, sessions, activityLog });
 
@@ -495,7 +498,7 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
 app.use(createRoutes({
   db, logger, metrics, config,
   services, messaging, locks, health, agents, activityLog, webhooks, projects, sessions,
-  agentInbox, resurrection, changelog, tunnel, dns, briefing, sugar,
+  agentInbox, resurrection, changelog, tunnel, dns, resolver, briefing, sugar,
   VERSION, CODE_HASH, STARTED_AT, __dirname,
   cleanupStale, getSystemPorts
 }));

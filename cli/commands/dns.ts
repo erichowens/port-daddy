@@ -3,11 +3,14 @@
  *
  * Usage:
  *   pd dns list [--pattern <glob>] [--limit <n>]
- *   pd dns register <identity> --port <n> [--hostname <name.local>]
+ *   pd dns register <identity> --port <n> [--hostname <name.local>] [--resolve]
  *   pd dns unregister <identity>
  *   pd dns lookup <hostname>
  *   pd dns cleanup
  *   pd dns status
+ *   pd dns setup        Initialize /etc/hosts managed section (needs sudo)
+ *   pd dns teardown     Remove /etc/hosts managed section
+ *   pd dns sync         Rebuild /etc/hosts from DNS registry
  */
 
 import { pdFetch, PORT_DADDY_URL } from '../utils/fetch.js';
@@ -44,10 +47,14 @@ export async function handleDns(
     console.error('  lookup <hostname>                 Lookup by hostname');
     console.error('  cleanup                           Remove stale records');
     console.error('  status                            DNS system status');
+    console.error('  setup                             Init /etc/hosts managed section');
+    console.error('  teardown                          Remove /etc/hosts managed section');
+    console.error('  sync                              Rebuild /etc/hosts from registry');
     console.error('');
     console.error('Options:');
     console.error('  --port <n>           Port number (required for register)');
     console.error('  --hostname <name>    Custom hostname (must end in .local)');
+    console.error('  --resolve            Also add to /etc/hosts (setup if needed)');
     console.error('  --pattern <glob>     Filter by identity pattern');
     console.error('  --limit <n>          Max records to return (default: 100)');
     console.error('  -j, --json           Output as JSON');
@@ -83,6 +90,18 @@ export async function handleDns(
 
     case 'status':
       await dnsStatus(options);
+      break;
+
+    case 'setup':
+      await dnsSetup(options);
+      break;
+
+    case 'teardown':
+      await dnsTeardown(options);
+      break;
+
+    case 'sync':
+      await dnsSync(options);
       break;
 
     default:
@@ -158,6 +177,17 @@ async function dnsRegister(identity: string | undefined, options: CLIOptions): P
     process.exit(1);
   }
 
+  // If --resolve flag, ensure /etc/hosts is set up first
+  if (options.resolve) {
+    const setupRes: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/dns/setup`, { method: 'POST' });
+    if (!setupRes.ok) {
+      const setupData = await setupRes.json();
+      console.error(maritimeStatus('error', (setupData.error as string) || 'Failed to setup resolver'));
+      console.error('Hint: /etc/hosts requires sudo. Run: sudo pd dns setup');
+      process.exit(1);
+    }
+  }
+
   const body: Record<string, unknown> = { port };
   if (options.hostname) body.hostname = options.hostname;
 
@@ -181,6 +211,9 @@ async function dnsRegister(identity: string | undefined, options: CLIOptions): P
   } else {
     const action = data.updated ? 'Updated' : 'Registered';
     console.log(`${action}: ${data.hostname} -> port ${data.port}`);
+    if (options.resolve) {
+      console.log(`  Resolved: ${data.hostname} -> 127.0.0.1 in /etc/hosts`);
+    }
   }
 }
 
@@ -292,5 +325,96 @@ async function dnsStatus(options: CLIOptions): Promise<void> {
   } else {
     console.log(`DNS records: ${data.recordCount}`);
     console.log(`Bonjour/mDNS: ${data.bonjourAvailable ? 'available' : 'not available'}`);
+    const r = data.resolver as Record<string, unknown> | undefined;
+    if (r) {
+      console.log(`Resolver: ${r.isSetUp ? 'active' : 'not set up'}${r.isSetUp ? ` (${r.entries} entries in /etc/hosts)` : ''}`);
+    }
+  }
+}
+
+/**
+ * Setup /etc/hosts managed section
+ */
+async function dnsSetup(options: CLIOptions): Promise<void> {
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/dns/setup`, {
+    method: 'POST',
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to setup resolver'));
+    if ((data.error as string)?.includes('EACCES') || (data.error as string)?.includes('permission')) {
+      console.error('Hint: /etc/hosts requires elevated privileges.');
+      console.error('  Run the daemon with sudo, or manually add the markers:');
+      console.error('    echo "# BEGIN PORT DADDY MANAGED" | sudo tee -a /etc/hosts');
+      console.error('    echo "# END PORT DADDY MANAGED" | sudo tee -a /etc/hosts');
+    }
+    process.exit(1);
+  }
+
+  if (isJson(options)) {
+    console.log(JSON.stringify(data, null, 2));
+  } else if (isQuiet(options)) {
+    console.log('ok');
+  } else {
+    if (data.alreadySetUp) {
+      console.log('Resolver already set up in /etc/hosts');
+    } else {
+      console.log('Resolver initialized in /etc/hosts');
+      console.log('DNS entries will now auto-resolve on this machine.');
+    }
+  }
+}
+
+/**
+ * Teardown /etc/hosts managed section
+ */
+async function dnsTeardown(options: CLIOptions): Promise<void> {
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/dns/teardown`, {
+    method: 'POST',
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to teardown resolver'));
+    process.exit(1);
+  }
+
+  if (isJson(options)) {
+    console.log(JSON.stringify(data, null, 2));
+  } else if (isQuiet(options)) {
+    console.log('ok');
+  } else {
+    if (data.wasSetUp) {
+      console.log('Resolver removed from /etc/hosts');
+    } else {
+      console.log('Resolver was not set up — nothing to remove');
+    }
+  }
+}
+
+/**
+ * Sync /etc/hosts from DNS registry
+ */
+async function dnsSync(options: CLIOptions): Promise<void> {
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/dns/sync`, {
+    method: 'POST',
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to sync resolver'));
+    process.exit(1);
+  }
+
+  if (isJson(options)) {
+    console.log(JSON.stringify(data, null, 2));
+  } else if (isQuiet(options)) {
+    console.log(data.entries);
+  } else {
+    console.log(`Resolver synced: ${data.entries} entries written to /etc/hosts`);
   }
 }
