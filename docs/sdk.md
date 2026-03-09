@@ -328,6 +328,91 @@ await pd.tunnelStop('myapp:api');
 
 ---
 
+## DNS Records
+
+```typescript
+// Register a DNS record for a service
+const record = await pd.dnsRegister('myapp:api', { hostname: 'api.local' });
+// { identity: 'myapp:api', hostname: 'api.local', port: 3100 }
+
+// List all DNS records
+const records = await pd.dnsList();
+
+// Get a specific DNS record
+const record = await pd.dnsGet('myapp:api');
+
+// Remove a DNS record
+await pd.dnsRemove('myapp:api');
+
+// Check resolver status
+const status = await pd.dnsStatus();
+// { active: true, entries: 5, hostsFile: '/etc/hosts' }
+
+// Clean up stale records
+await pd.dnsCleanup();
+```
+
+---
+
+## DNS Resolver (/etc/hosts)
+
+```typescript
+// Set up /etc/hosts resolver (requires sudo)
+await pd.dnsSetup();
+
+// Sync DNS records to /etc/hosts
+await pd.dnsSync();
+
+// Tear down resolver entries
+await pd.dnsTeardown();
+
+// Get resolver configuration
+const config = await pd.dnsResolver();
+```
+
+---
+
+## Briefing
+
+```typescript
+// Get project briefing
+const briefing = await pd.briefing('myapp');
+// { project: 'myapp', agents: [...], sessions: [...], signals: [...], notes: [...] }
+
+// Create a briefing entry
+await pd.createBriefing({ project: 'myapp', content: 'Sprint 3 focus: auth system' });
+```
+
+---
+
+## Integration Signals
+
+```typescript
+// Declare readiness
+await pd.integrationReady(sessionId, 'api');
+
+// Declare dependency
+await pd.integrationNeeds(sessionId, 'api');
+
+// List all signals
+const signals = await pd.integrationList();
+```
+
+---
+
+## Session Phases
+
+```typescript
+// Advance session phase
+await pd.sessionPhase(sessionId, 'implementing');
+
+// Get session with phase info
+const session = await pd.getSession(sessionId);
+// session.phase === 'implementing'
+```
+
+---
+
 ## Error Handling
 
 ```javascript

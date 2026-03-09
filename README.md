@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://npmjs.com/package/port-daddy"><img src="https://img.shields.io/npm/v/port-daddy.svg" alt="npm version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/npm/l/port-daddy.svg" alt="license"></a>
-  <a href="https://github.com/curiositech/port-daddy"><img src="https://img.shields.io/badge/tests-1283%20passing-brightgreen" alt="tests"></a>
+  <a href="https://github.com/curiositech/port-daddy"><img src="https://img.shields.io/badge/tests-2845%20passing-brightgreen" alt="tests"></a>
   <a href="package.json"><img src="https://img.shields.io/node/v/port-daddy.svg" alt="node"></a>
   <a href="https://github.com/curiositech/port-daddy/tree/main/skills/port-daddy-cli"><img src="https://img.shields.io/badge/AI%20Agents-40%2B%20compatible-blueviolet" alt="AI Agent Skill"></a>
   <a href="package.json"><img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey" alt="platform"></a>
@@ -23,7 +23,7 @@ Port Daddy is a local daemon that manages dev server ports, starts your entire s
 
 One daemon. Many projects. Zero port conflicts.
 
-**Jump to:** [Just Want Stable Ports?](#just-want-stable-ports) | [Run Your Whole Stack](#run-your-whole-stack) | [Agent Coordination](#agent-coordination) | [Sessions & Notes](#sessions--notes) | [Changelog](#changelog) | [Local DNS](#local-dns-for-ports) | [CLI Reference](#cli-reference) | [API Reference](#api-reference)
+**Jump to:** [Just Want Stable Ports?](#just-want-stable-ports) | [Run Your Whole Stack](#run-your-whole-stack) | [Agent Coordination](#agent-coordination) | [Sessions & Notes](#sessions--notes) | [Changelog](#changelog) | [Local DNS](#local-dns-for-ports) | [Dashboard](#dashboard) | [Sugar Commands](#sugar-commands) | [CLI Reference](#cli-reference) | [API Reference](#api-reference)
 
 ---
 
@@ -429,6 +429,146 @@ pd dns list
 
 ---
 
+## Dashboard
+
+Port Daddy includes a full-featured web dashboard at `http://localhost:9876` with 15 panels:
+
+| Panel | What it shows |
+|-------|--------------|
+| Services | Active port claims with identity, port, DNS status |
+| Agents | Registered agents with heartbeat status and liveness |
+| Sessions | Active and recent sessions with phase progression |
+| Locks | Distributed locks with TTL countdown |
+| Messaging | Pub/sub channels with message counts |
+| DNS | DNS records and /etc/hosts resolver status |
+| Activity | Real-time activity log with filters |
+| Salvage | Dead agent resurrection queue by project |
+| Integration | Cross-agent readiness signals |
+| Briefing | Project briefing summaries |
+| Sugar Context | Current begin/done session state |
+| Ports | System port overview and conflicts |
+| Projects | Registered projects from `pd scan` |
+| Health | Service health checks and daemon status |
+| Notes | Recent notes timeline across all sessions |
+
+The dashboard uses a glassmorphism dark theme with a collapsible sidebar. Screenshots:
+
+![Dashboard Overview](screenshots/pd1.png)
+![Agent & Session Panels](screenshots/pd2.png)
+![DNS & Activity Panels](screenshots/pd3.png)
+![Messaging & Locks](screenshots/pd4.png)
+
+---
+
+## Session Phases
+
+Sessions progress through 6 phases for structured workflow tracking:
+
+| Phase | Meaning |
+|-------|---------|
+| `setup` | Initial configuration, claiming files |
+| `planning` | Reviewing context, deciding approach |
+| `implementing` | Writing code |
+| `testing` | Running tests, verifying |
+| `reviewing` | Code review, final checks |
+| `cleanup` | Releasing resources, writing notes |
+
+```bash
+pd session phase my-session implementing    # advance to implementing
+pd session phase my-session testing         # advance to testing
+```
+
+Phases are monotonically increasing -- you can only move forward, not backward.
+
+---
+
+## Region-Level File Claims
+
+File claims can specify exact regions within files using line numbers or symbol names:
+
+```bash
+# Claim specific lines
+pd session files claim my-session src/auth.ts --start-line 10 --end-line 50
+
+# Claim by symbol name
+pd session files claim my-session src/auth.ts --symbol "AuthService"
+
+# Check who owns a region
+pd who-owns src/auth.ts --line 25
+```
+
+Region claims enable multiple agents to work on the same file without conflicts, as long as their regions don't overlap.
+
+---
+
+## Global File Claims
+
+Check file ownership across all active sessions:
+
+```bash
+pd files                    # list all claimed files across sessions
+pd who-owns src/auth.ts     # which session owns this file?
+```
+
+---
+
+## Integration Signals
+
+Agents can declare readiness and dependencies:
+
+```bash
+pd integration ready my-session api     # "I'm done with the API"
+pd integration needs my-session api     # "I need the API to be ready"
+pd integration list                     # show all signals
+```
+
+When an agent marks something as `ready`, any agent waiting on that signal via `needs` is unblocked. This enables coordination without polling.
+
+---
+
+## Briefing System
+
+Get a project-level summary of what's happening:
+
+```bash
+pd briefing myapp    # summary of active agents, sessions, signals
+```
+
+The briefing includes active sessions, pending salvage, integration signals, and recent notes -- everything a new agent needs to get up to speed.
+
+---
+
+## Agent Liveness & Readiness
+
+Agents send heartbeats to prove they're alive. The adaptive reaper adjusts thresholds based on agent behavior:
+
+- **Stale**: No heartbeat for 10 minutes
+- **Dead**: No heartbeat for 20 minutes (enters salvage queue)
+
+Readiness checks verify agents are actually making progress, not just alive:
+
+```bash
+pd agent heartbeat --agent my-agent     # send heartbeat
+pd agents                               # see liveness status
+```
+
+---
+
+## Sugar Commands
+
+Compound operations that combine agent registration + session start in one call:
+
+```bash
+pd begin "Building auth system"           # register + start session
+pd done "Auth complete, tests passing"    # end session + unregister
+pd whoami                                 # show current agent/session context
+pd with-lock db-migrations -- npm run migrate  # run command under lock
+```
+
+These are the recommended way to start and end work. They handle cleanup automatically.
+
+---
+
 ## When NOT to Use Port Daddy
 
 Be honest with yourself:
@@ -539,6 +679,9 @@ The skill teaches agents to claim ports with semantic identities, coordinate via
 | `pd sessions` | List active sessions (`--all` for all) |
 | `pd note <content>` | Quick note (`--type TYPE`) |
 | `pd notes [session-id]` | View notes (`--limit N`, `--type TYPE`) |
+| `pd session phase <id> <phase>` | Advance session to next phase |
+| `pd files` | List all claimed files across sessions |
+| `pd who-owns <file>` | Check which session owns a file |
 
 ### Coordination
 
@@ -551,6 +694,10 @@ The skill teaches agents to claim ports with semantic identities, coordinate via
 | `pd locks` | List all active locks |
 | `pd channels` | List pub/sub channels |
 | `pd wait <id> [...]` | Wait for service(s) to become healthy |
+| `pd integration ready <session> <signal>` | Declare a signal as ready |
+| `pd integration needs <session> <signal>` | Declare a dependency on a signal |
+| `pd integration list` | List all integration signals |
+| `pd briefing <project>` | Get project briefing summary |
 
 ### Agents
 
@@ -610,6 +757,8 @@ The skill teaches agents to claim ports with semantic identities, coordinate via
 | `pd metrics` | Daemon metrics |
 | `pd config` | Resolved configuration |
 | `pd log` | Activity log (`--from`/`--to` for time ranges) |
+| `pd learn` | Interactive tutorial (12 lessons) |
+| `pd doctor` | Verify environment and daemon health |
 
 ### Key Options
 
@@ -669,6 +818,22 @@ GET    /ports/active            POST   /ports/cleanup
 POST   /tunnel/:id             DELETE /tunnel/:id
 GET    /tunnel/:id              GET    /tunnels
 GET    /tunnel/providers
+GET    /dns                     POST   /dns/:id
+GET    /dns/:id                 DELETE /dns/:id
+GET    /dns/status              POST   /dns/setup
+POST   /dns/teardown            POST   /dns/sync
+GET    /dns/resolver            POST   /dns/cleanup
+POST   /briefing                GET    /briefing/:project
+PUT    /sessions/:id/phase      POST   /sessions/:id/files
+DELETE /sessions/:id/files      GET    /sessions/:id/files
+GET    /changelog/session/:sessionId
+GET    /changelog/agent/:agentId
+GET    /changelog/:identity
+POST   /sugar/begin             POST   /sugar/done
+GET    /sugar/whoami
+POST   /agents/:id/inbox        GET    /agents/:id/inbox
+DELETE /agents/:id/inbox        GET    /agents/:id/inbox/stats
+GET    /wait/:id
 ```
 
 ---

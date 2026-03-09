@@ -105,7 +105,7 @@
       "sdk": [],
       "routes": ["POST /changelog", "GET /changelog", "GET /changelog/identities"],
       "completions": ["changelog"],
-      "docs": { "readme": true, "sdk": false },
+      "docs": { "readme": true, "sdk": true },
       "_note": "SDK methods not yet implemented"
     },
     "orchestration": {
@@ -190,6 +190,73 @@
       "routes": ["GET /wait/:param", "POST /wait"],
       "completions": ["wait"],
       "docs": { "readme": true, "sdk": true }
+    },
+    "session_phases": {
+      "description": "Session phase progression (setup → planning → implementing → testing → reviewing → cleanup)",
+      "cli": ["session phase"],
+      "sdk": ["sessionPhase"],
+      "routes": ["PUT /sessions/:param/phase"],
+      "completions": ["session"],
+      "docs": { "readme": true, "sdk": true }
+    },
+    "file_claims": {
+      "description": "Region-level and global file claims across sessions",
+      "cli": ["files", "who-owns"],
+      "sdk": [],
+      "routes": ["POST /sessions/:param/files", "DELETE /sessions/:param/files", "GET /sessions/:param/files"],
+      "completions": ["files", "who-owns"],
+      "docs": { "readme": true, "sdk": false },
+      "_note": "SDK methods may not exist yet"
+    },
+    "integration_signals": {
+      "description": "Cross-agent readiness and dependency signals",
+      "cli": ["integration"],
+      "sdk": ["integrationReady", "integrationNeeds", "integrationList"],
+      "routes": ["POST /integration/ready", "POST /integration/needs", "GET /integration"],
+      "completions": ["integration"],
+      "docs": { "readme": true, "sdk": true }
+    },
+    "briefing": {
+      "description": "Project-level briefing summaries",
+      "cli": ["briefing"],
+      "sdk": ["briefing", "createBriefing"],
+      "routes": ["POST /briefing", "GET /briefing/:param"],
+      "completions": ["briefing"],
+      "docs": { "readme": true, "sdk": true }
+    },
+    "sugar": {
+      "description": "Compound operations (begin/done/whoami/with-lock)",
+      "cli": ["begin", "done", "whoami", "with-lock"],
+      "sdk": ["begin", "done", "whoami"],
+      "routes": ["POST /sugar/begin", "POST /sugar/done", "GET /sugar/whoami"],
+      "completions": ["begin", "done", "whoami", "with-lock"],
+      "docs": { "readme": true, "sdk": true }
+    },
+    "tutorial": {
+      "description": "Interactive tutorial (12 lessons)",
+      "cli": ["learn"],
+      "sdk": [],
+      "routes": [],
+      "completions": ["learn"],
+      "docs": { "readme": true, "sdk": false },
+      "_note": "CLI-only, no SDK methods"
+    },
+    "dns": {
+      "description": "Local DNS for ports via /etc/hosts",
+      "cli": ["dns"],
+      "sdk": ["dnsRegister", "dnsList", "dnsGet", "dnsRemove", "dnsStatus", "dnsCleanup", "dnsSetup", "dnsSync", "dnsTeardown", "dnsResolver"],
+      "routes": ["GET /dns", "POST /dns/:param", "GET /dns/:param", "DELETE /dns/:param", "GET /dns/status", "POST /dns/setup", "POST /dns/teardown", "POST /dns/sync", "GET /dns/resolver", "POST /dns/cleanup"],
+      "completions": ["dns"],
+      "docs": { "readme": true, "sdk": true }
+    },
+    "inbox": {
+      "description": "Agent inbox messaging",
+      "cli": ["inbox"],
+      "sdk": [],
+      "routes": ["POST /agents/:param/inbox", "GET /agents/:param/inbox", "DELETE /agents/:param/inbox", "GET /agents/:param/inbox/stats"],
+      "completions": ["inbox"],
+      "docs": { "readme": true, "sdk": false },
+      "_note": "SDK methods not yet implemented"
     }
   }
 }
