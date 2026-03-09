@@ -779,6 +779,11 @@
         <span class="nav-icon"><svg viewBox="0 0 24 24"><use href="#icon-pulse"/></svg></span>
         <span class="nav-label">Integration</span>
       </div>
+      <div class="nav-item" data-panel="inbox" tabindex="0" role="tab">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><use href="#icon-message"/></svg></span>
+        <span class="nav-label">Inbox</span>
+        <span class="nav-badge" id="badge-inbox">0</span>
+      </div>
     </div>
 
     <div class="sidebar-section">
@@ -929,6 +934,18 @@
         <div id="integration-content"></div>
       </div>
 
+      <!-- Inbox Panel -->
+      <div class="panel" id="panel-inbox">
+        <div class="panel-header">
+          <div class="panel-title">Agent Inbox</div>
+          <div class="panel-actions">
+            <input type="text" id="inbox-agent-id" placeholder="Agent ID" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:4px 10px;border-radius:var(--radius-sm);font-family:inherit;font-size:0.85em;width:180px;">
+            <button class="cmd-btn" onclick="refreshInbox()">Load</button>
+          </div>
+        </div>
+        <div id="inbox-content"></div>
+      </div>
+
       <!-- Activity Panel -->
       <div class="panel" id="panel-activity">
         <div class="panel-header">
@@ -1060,9 +1077,10 @@
       var fn = {
         overview: refreshDashboard, services: refreshServices, agents: refreshAgents,
         sessions: refreshSessions, locks: refreshLocks, channels: refreshChannels,
-        dns: refreshDns, integration: refreshIntegration, activity: refreshActivity,
-        salvage: refreshSalvage, briefing: refreshBriefing, webhooks: refreshWebhooks,
-        projects: refreshProjects, changelog: refreshChangelog, config: refreshConfig
+        dns: refreshDns, integration: refreshIntegration, inbox: refreshInbox,
+        activity: refreshActivity, salvage: refreshSalvage, briefing: refreshBriefing,
+        webhooks: refreshWebhooks, projects: refreshProjects, changelog: refreshChangelog,
+        config: refreshConfig
       };
       if (fn[name]) fn[name]();
     }
@@ -1352,6 +1370,30 @@
       }).join('') + '</div>');
     }
 
+    /* ── Inbox ── */
+    async function refreshInbox() {
+      var agentId = document.getElementById('inbox-agent-id').value.trim();
+      if (!agentId) {
+        setHtml('inbox-content', '<div class="empty-state"><p>Enter an agent ID above to load inbox messages</p></div>');
+        return;
+      }
+      var data = await apiFetch('/agents/' + encodeURIComponent(agentId) + '/inbox');
+      var msgs = data ? (data.messages || []) : [];
+      updateBadge('inbox', msgs.filter(function(m) { return !m.read; }).length);
+      if (!msgs.length) {
+        setHtml('inbox-content', '<div class="empty-state"><p>No messages in inbox for <code>' + escHtml(agentId) + '</code></p></div>');
+        return;
+      }
+      setHtml('inbox-content', '<table><thead><tr><th>From</th><th>Message</th><th>Type</th><th>Read</th><th>Received</th></tr></thead><tbody>' +
+        msgs.map(function(m) {
+          return '<tr><td class="mono">' + escHtml(m.from || '--') + '</td>' +
+            '<td>' + escHtml(m.message || m.content || '') + '</td>' +
+            '<td><span class="badge badge-info">' + escHtml(m.type || 'message') + '</span></td>' +
+            '<td>' + (m.read ? '<span class="badge badge-success">read</span>' : '<span class="badge badge-warning">unread</span>') + '</td>' +
+            '<td>' + timeAgo(m.createdAt || m.timestamp) + '</td></tr>';
+        }).join('') + '</tbody></table>');
+    }
+
     /* ── Activity ── */
     async function refreshActivity() {
       var filter = document.getElementById('activity-filter').value;
@@ -1516,6 +1558,7 @@
       { cmd: 'status', hint: 'status' }, { cmd: 'channels', hint: 'channels' },
       { cmd: 'projects', hint: 'projects' }, { cmd: 'webhooks', hint: 'webhooks' },
       { cmd: 'config', hint: 'config' }, { cmd: 'ports', hint: 'ports' },
+      { cmd: 'inbox', hint: 'inbox <agent-id>' },
       { cmd: 'help', hint: 'help' }
     ];
 
@@ -1553,6 +1596,7 @@
           case 'ports': result = await (await fetch(API + '/ports/active')).json(); break;
           case 'health': result = await (await fetch(API + (target ? '/services/health/' + encodeURIComponent(target) : '/services/health'))).json(); break;
           case 'scan': result = await (await fetch(API + '/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).json(); break;
+          case 'inbox': result = target ? await (await fetch(API + '/agents/' + encodeURIComponent(target) + '/inbox')).json() : { error: 'Usage: inbox <agent-id>' }; break;
           case 'help':
             out.innerHTML += '<div>' + COMMANDS.map(function(c) { return '<span class="mono">' + c.cmd + '</span> — ' + c.hint; }).join('<br>') + '</div>';
             out.scrollTop = out.scrollHeight; return;
@@ -1577,7 +1621,7 @@
     document.getElementById('command-input').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
         var val = this.value.trim().toLowerCase();
-        var panels = ['dashboard','services','agents','sessions','locks','channels','dns','integration','activity','salvage','briefing','webhooks','projects','changelog','config'];
+        var panels = ['dashboard','services','agents','sessions','locks','channels','dns','integration','inbox','activity','salvage','briefing','webhooks','projects','changelog','config'];
         var match = panels.find(function(p) { return p.indexOf(val) === 0; });
         if (match) { switchPanel(match); this.value = ''; this.blur(); }
       }

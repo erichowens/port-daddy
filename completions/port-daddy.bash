@@ -105,6 +105,8 @@ _port_daddy() {
     begin b done whoami w with-lock n u d learn tutorial
     # Briefing & History
     briefing history
+    # Agent Inbox
+    inbox
     # System & Monitoring
     dashboard channels webhook webhooks metrics config health ports
     # Orchestration
@@ -1309,6 +1311,47 @@ _port_daddy() {
     # -----------------------------------------------------------------------
     learn|tutorial)
       _pd_opts ""
+      ;;
+
+    # -----------------------------------------------------------------------
+    # inbox  <agent-id> [subcommand]
+    # Subcommands: send, stats, clear, read-all, list
+    # -----------------------------------------------------------------------
+    inbox)
+      local inbox_subcommands='send stats clear read-all list'
+      local subcmd=""
+      for (( i = 1; i < cword; i++ )); do
+        local w="${words[$i]}"
+        if [[ "$w" == "inbox" ]]; then
+          if (( i + 1 < cword )); then
+            subcmd="${words[$((i+1))]}"
+          fi
+          break
+        fi
+      done
+
+      if [[ -z "$subcmd" ]]; then
+        if [[ "$cur" == -* ]]; then
+          _pd_opts ''
+        else
+          local aids; aids="$(_pd_agent_ids)"
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -W "$aids" -- "$cur") )
+        fi
+        return 0
+      fi
+
+      case "$subcmd" in
+        send)
+          _pd_opts '--message --from'
+          ;;
+        stats|list|read-all|clear)
+          _pd_opts ''
+          ;;
+        *)
+          _pd_opts ''
+          ;;
+      esac
       ;;
 
     # Unknown command: fall back to global options only.

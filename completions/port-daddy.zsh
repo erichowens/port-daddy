@@ -990,6 +990,50 @@ _pd_cmd_history() {
     '(-h --help)'{-h,--help}'[show help]'
 }
 
+_pd_cmd_inbox() {
+  local -a inbox_subcmds
+  inbox_subcmds=(
+    'send:send a message to an agent inbox'
+    'stats:get inbox stats for an agent'
+    'clear:clear all messages from an agent inbox'
+    'read-all:mark all messages as read'
+    'list:list messages in an agent inbox'
+  )
+
+  local state subcmd
+  _arguments -C \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '1:agent ID:_pd_complete_agents' \
+    '2:subcommand:->subcommand' \
+    '*::subcommand args:->args' \
+    && return
+
+  case "$state" in
+    subcommand)
+      _describe 'inbox subcommand' inbox_subcmds
+      ;;
+    args)
+      subcmd="${words[1]}"
+      case "$subcmd" in
+        send)
+          _arguments \
+            '--message[message content]:message:' \
+            '--from[sender agent ID]:agent ID:_pd_complete_agents' \
+            '(-j --json)'{-j,--json}'[JSON output]' \
+            '(-q --quiet)'{-q,--quiet}'[suppress output]'
+          ;;
+        stats|list|read-all|clear)
+          _arguments \
+            '(-j --json)'{-j,--json}'[JSON output]' \
+            '(-q --quiet)'{-q,--quiet}'[suppress output]'
+          ;;
+      esac
+      ;;
+  esac
+}
+
 # ---------------------------------------------------------------------------
 # Main completion entry point
 # ---------------------------------------------------------------------------
@@ -1057,6 +1101,8 @@ _port_daddy() {
     # Briefing & History
     'briefing:generate .portdaddy/ project briefing'
     'history:view recent project activity'
+    # Agent Inbox
+    'inbox:agent-to-agent direct messaging inbox'
     # System & Monitoring
     'dashboard:open web dashboard in browser'
     'channels:list pub/sub channels'
@@ -1164,6 +1210,7 @@ _port_daddy() {
         u)                      _pd_cmd_up ;;
         d)                      _pd_cmd_down ;;
         learn|tutorial)         _pd_cmd_learn ;;
+        inbox)                  _pd_cmd_inbox ;;
         version|help)       ;;
         *)                  ;;
       esac

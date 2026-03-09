@@ -96,7 +96,7 @@ set -l __pd_commands \
     'pub' 'publish' 'sub' 'subscribe' 'wait' 'lock' 'unlock' 'locks' \
     'agent' 'agents' 'log' 'activity' \
     'session' 'sessions' 'note' 'notes' \
-    'salvage' 'resurrection' 'changelog' 'dns' 'files' 'who-owns' 'integration' 'briefing' 'history' \
+    'salvage' 'resurrection' 'changelog' 'dns' 'files' 'who-owns' 'integration' 'briefing' 'history' 'inbox' \
     'begin' 'b' 'done' 'whoami' 'w' 'with-lock' 'n' 'u' 'd' 'learn' 'tutorial' \
     'up' 'down' \
     'dashboard' 'channels' 'webhook' 'webhooks' 'metrics' 'config' 'health' 'ports' \
@@ -161,6 +161,9 @@ for prog in port-daddy pd
     # Briefing & History
     complete -c $prog -n __pd_needs_command -a briefing -d 'Generate .portdaddy/ project briefing'
     complete -c $prog -n __pd_needs_command -a history -d 'View recent project activity'
+
+    # Agent Inbox
+    complete -c $prog -n __pd_needs_command -a inbox -d 'Agent-to-agent direct messaging inbox'
 
     # System & Monitoring
     complete -c $prog -n __pd_needs_command -a dashboard -d 'Open web dashboard'
@@ -441,6 +444,16 @@ for prog in port-daddy pd
     complete -c $prog -n "__pd_using_command history" -l limit -d 'Max entries' -x
     complete -c $prog -n "__pd_using_command history" -l type -d 'Activity type' -x -a 'claim release lock unlock pub sub agent heartbeat'
     complete -c $prog -n "__pd_using_command history" -l agent -d 'Filter by agent ID' -x -a '(__pd_agent_ids)'
+
+    # inbox subcommands
+    complete -c $prog -n "__pd_using_command inbox" -x -a 'send' -d 'Send a message to an agent inbox'
+    complete -c $prog -n "__pd_using_command inbox" -x -a 'stats' -d 'Get inbox stats for an agent'
+    complete -c $prog -n "__pd_using_command inbox" -x -a 'clear' -d 'Clear all messages from an agent inbox'
+    complete -c $prog -n "__pd_using_command inbox" -x -a 'read-all' -d 'Mark all messages as read'
+    complete -c $prog -n "__pd_using_command inbox" -x -a 'list' -d 'List messages in an agent inbox'
+    complete -c $prog -n "__pd_using_command inbox" -l message -d 'Message content' -x
+    complete -c $prog -n "__pd_using_command inbox" -l from -d 'Sender agent ID' -x -a '(__pd_agent_ids)'
+    complete -c $prog -n "__pd_using_command inbox" -x -a '(__pd_agent_ids)'
 
     # -----------------------------------------------------------------------
     # Fill parity gaps for existing commands
