@@ -6,42 +6,44 @@
   <link rel="icon" href="/favicon.png" type="image/png">
   <title>Port Daddy</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      /* Maritime Color Palette - Deep sea at night */
-      --bg-dark: #0a1628;
-      --bg-card: #0f1f35;
-      --bg-input: #071018;
-      --bg-elevated: #142a45;
-      /* Semantic Token Teal - THE primary accent */
-      --accent: #4a9d9e;
-      --accent-dim: #3a7d7e;
-      --accent-soft: #5aadae;
-      --accent-glow: rgba(74,157,158,0.15);
-      /* Brass/Gold for secondary highlights */
-      --brass: #d4a03c;
-      --brass-dim: #b8860b;
-      --brass-glow: rgba(212,160,60,0.15);
-      --text: #e0ddd8;
-      --text-dim: #9a9590;
-      --text-muted: #6a6560;
+      /* Signal Tower Design System — Dashboard (always dark) */
+      --bg-dark: #111113;
+      --bg-card: #1C1C1F;
+      --bg-input: #15151A;
+      --bg-elevated: #252529;
+      /* Signal Blue — Primary accent */
+      --accent: #0066CC;
+      --accent-dim: #0052a3;
+      --accent-soft: #3388DD;
+      --accent-glow: rgba(0,102,204,0.15);
+      /* Signal colors */
+      --brass: #E5A000;
+      --brass-dim: #c08800;
+      --brass-glow: rgba(229,160,0,0.15);
+      --text: #FAFAFA;
+      --text-dim: #8B8B96;
+      --text-muted: #6B6B76;
       /* Signal flag colors */
-      --success: #6dd194;      /* Charlie flag - affirmative */
-      --warning: #e5b655;      /* Lima flag - caution */
-      --danger: #e07070;       /* November flag - negative */
-      --info: #70a5e0;         /* Kilo flag - ready */
-      --border: #1a3050;
-      --border-light: #254060;
+      --success: #18794E;
+      --warning: #E5A000;
+      --danger: #CD2B31;
+      --info: #0066CC;
+      --purple: #6E56CF;
+      --border: #2C2C31;
+      --border-light: #3C3C42;
       --radius-sm: 6px;
-      --radius-md: 10px;
-      --radius-lg: 14px;
-      --shadow-sm: 0 2px 8px rgba(0,0,0,0.2);
-      --shadow-md: 0 4px 16px rgba(0,0,0,0.3);
+      --radius-md: 8px;
+      --radius-lg: 10px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
       --transition-fast: 0.15s ease;
       --transition-med: 0.25s ease;
     }
     body {
-      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+      font-family: 'Inter', system-ui, sans-serif;
       background: var(--bg-dark);
       color: var(--text);
       min-height: 100vh;
@@ -77,37 +79,38 @@
       padding: 16px 0 20px; margin-bottom: 20px;
       position: relative;
     }
-    /* Maritime wave border */
+    /* Signal flag color strip */
     .header::after {
       content: '';
       position: absolute;
       bottom: 0;
       left: 0;
       right: 0;
-      height: 4px;
-      background: repeating-linear-gradient(
+      height: 3px;
+      background: linear-gradient(
         90deg,
-        var(--accent) 0px,
-        var(--accent) 10px,
-        transparent 10px,
-        transparent 15px
+        #0066CC 0% 20%,
+        #18794E 20% 40%,
+        #E5A000 40% 60%,
+        #CD2B31 60% 80%,
+        #6E56CF 80% 100%
       );
-      opacity: 0.6;
+      opacity: 0.8;
     }
     .logo { display: flex; align-items: center; gap: 16px; }
     .logo-mark {
       width: 48px; height: 48px;
-      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
+      background: var(--accent);
       border-radius: 12px; display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 12px rgba(74,157,158,0.35);
+      box-shadow: 0 4px 12px rgba(0,102,204,0.35);
       transition: transform var(--transition-med), box-shadow var(--transition-med);
     }
-    .logo-mark:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(74,157,158,0.5); }
+    .logo-mark:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(0,102,204,0.5); }
     .logo-mark svg { width: 28px; height: 28px; stroke: var(--bg-dark); stroke-width: 2.5; }
     .logo-text h1 {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
       font-size: 1.8em; font-weight: 700; letter-spacing: -0.5px;
-      background: linear-gradient(135deg, var(--accent) 0%, #7fcfcf 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      color: var(--text);
     }
     .maritime-flag { display: flex; align-items: center; }
     .logo-text .tagline { color: var(--text-dim); font-size: 0.85em; font-weight: 400; }
@@ -119,14 +122,15 @@
       transition: border-color var(--transition-med);
     }
     .status-pill.online { border-color: rgba(109,209,148,0.3); }
-    /* Signal flag style status indicators */
-    .status-dot { width: 12px; height: 8px; border-radius: 2px; transition: all var(--transition-med); }
+    /* Status indicators */
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; transition: all var(--transition-med); }
     .status-dot.online {
-      background: linear-gradient(90deg, #0047ab 33%, #fff 33%, #fff 66%, #e31b23 66%);
+      background: var(--success);
+      box-shadow: 0 0 6px var(--success);
       animation: pulseGlow 2s infinite;
     }
     .status-dot.offline {
-      background: repeating-linear-gradient(90deg, #0047ab 0 4px, #fff 4px 8px);
+      background: var(--danger);
       box-shadow: 0 0 6px var(--danger);
     }
     .version-info { text-align: right; font-size: 0.8em; color: var(--text-muted); line-height: 1.5; }
@@ -144,7 +148,7 @@
     /* Stats Grid - Maritime Instrument Panel */
     .stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px; }
     .stat-card {
-      background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-dark) 100%);
+      background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-md); padding: 14px 16px;
       position: relative; overflow: hidden;
@@ -156,18 +160,23 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--accent), transparent);
-      opacity: 0.4;
+      height: 3px;
+      background: var(--accent);
     }
-    .stat-card:hover { border-color: var(--accent); transform: translateY(-1px); }
-    .stat-card:hover::before { opacity: 0.8; }
+    .stat-card:nth-child(1)::before { background: var(--info); }
+    .stat-card:nth-child(2)::before { background: var(--success); }
+    .stat-card:nth-child(3)::before { background: var(--purple); }
+    .stat-card:nth-child(4)::before { background: var(--warning); }
+    .stat-card:nth-child(5)::before { background: var(--danger); }
+    .stat-card:nth-child(6)::before { background: var(--accent); }
+    .stat-card:hover { border-color: var(--border-light); transform: translateY(-1px); }
     .stat-card .stat-icon-bg {
       position: absolute; top: -4px; right: -4px; width: 48px; height: 48px;
       opacity: 0.06; stroke-width: 1.5;
     }
     .stat-card .value {
-      font-size: 1.6em; font-weight: 700; color: var(--accent); line-height: 1.2;
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      font-size: 1.6em; font-weight: 700; color: var(--text); line-height: 1.2;
       transition: transform 0.2s ease;
     }
     .stat-card .value.updated { animation: countUp 0.3s ease; }
@@ -218,7 +227,7 @@
       display: flex; align-items: center; gap: 8px; position: relative;
     }
     .tab:hover { color: var(--text); background: rgba(255,255,255,0.02); }
-    .tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(212,160,60,0.06); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(0,102,204,0.06); }
     .tab-badge {
       font-size: 0.7em; background: var(--bg-input); color: var(--text-muted);
       padding: 1px 6px; border-radius: 8px; min-width: 18px; text-align: center;
@@ -232,13 +241,15 @@
     /* Tables */
     table { width: 100%; border-collapse: collapse; }
     th {
-      text-align: left; padding: 12px 16px; font-size: 0.8em;
-      color: var(--accent); text-transform: uppercase; letter-spacing: 0.8px;
-      border-bottom: 2px solid var(--border); font-weight: 600;
+      text-align: left; padding: 12px 16px; font-size: 0.75em;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px;
+      border-bottom: 1px solid var(--border); font-weight: 600;
+      font-family: 'Space Grotesk', system-ui, sans-serif;
     }
-    td { padding: 14px 16px; border-bottom: 1px solid rgba(42,42,64,0.6); font-size: 0.9em; line-height: 1.5; }
+    td { padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: 0.9em; line-height: 1.5; }
     tr { transition: background var(--transition-fast); }
-    tr:hover { background: rgba(255,255,255,0.02); }
+    tr:nth-child(even) { background: var(--bg-input); }
+    tr:hover { background: var(--bg-elevated); }
 
     /* Empty States */
     .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
@@ -249,10 +260,10 @@
     /* Port Badge */
     .port-badge {
       display: inline-flex; align-items: center; gap: 4px;
-      background: linear-gradient(135deg, rgba(212,160,60,0.15), rgba(212,160,60,0.05));
-      border: 1px solid rgba(212,160,60,0.25); color: var(--accent);
+      background: rgba(0,102,204,0.12);
+      border: 1px solid rgba(0,102,204,0.25); color: var(--accent);
       padding: 3px 10px; border-radius: 6px; font-size: 0.9em;
-      font-weight: 600; font-family: inherit; letter-spacing: 0.5px;
+      font-weight: 600; font-family: 'Geist Mono', 'SF Mono', monospace; letter-spacing: 0.5px;
     }
 
     /* Status Indicator */
@@ -261,12 +272,12 @@
       padding: 3px 10px; border-radius: 4px; font-size: 0.8em;
       font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
     }
-    .status-indicator.running { background: rgba(109,209,148,0.12); color: var(--success); }
+    .status-indicator.running { background: rgba(24,121,78,0.15); color: #2da96a; }
     .status-indicator.running::before {
       content: ''; width: 6px; height: 6px; border-radius: 50%;
-      background: var(--success); animation: pulseGlow 2s infinite;
+      background: #2da96a; animation: pulseGlow 2s infinite;
     }
-    .status-indicator.claimed { background: rgba(96,165,250,0.12); color: var(--info); }
+    .status-indicator.claimed { background: rgba(0,102,204,0.15); color: var(--info); }
     .status-indicator.claimed::before {
       content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--info);
     }
@@ -276,13 +287,13 @@
       display: inline-block; padding: 3px 10px; border-radius: 4px;
       font-size: 0.8em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
     }
-    .badge-success { background: rgba(74, 222, 128, 0.12); color: var(--success); }
-    .badge-warning { background: rgba(251, 191, 36, 0.12); color: var(--warning); }
-    .badge-danger { background: rgba(248, 113, 113, 0.12); color: var(--danger); }
-    .badge-info { background: rgba(96, 165, 250, 0.12); color: var(--info); }
+    .badge-success { background: rgba(24, 121, 78, 0.15); color: #2da96a; }
+    .badge-warning { background: rgba(229, 160, 0, 0.15); color: var(--warning); }
+    .badge-danger { background: rgba(205, 43, 49, 0.15); color: #e05555; }
+    .badge-info { background: rgba(0, 102, 204, 0.15); color: var(--info); }
     .badge-muted { background: rgba(255,255,255,0.05); color: var(--text-muted); }
 
-    code { background: var(--bg-input); padding: 2px 8px; border-radius: 4px; font-size: 0.9em; color: var(--accent); }
+    code { background: var(--bg-input); padding: 2px 8px; border-radius: 4px; font-size: 0.9em; color: var(--accent); font-family: 'Geist Mono', 'SF Mono', monospace; }
 
     /* Action Buttons */
     .action-btn {
@@ -309,11 +320,11 @@
     }
     .command-bar input::placeholder { color: var(--text-muted); }
     .command-bar button {
-      background: var(--accent); color: var(--bg-dark); border: none;
+      background: var(--accent); color: #fff; border: none;
       padding: 10px 20px; border-radius: var(--radius-sm); font-family: inherit;
       font-weight: 600; cursor: pointer; transition: all var(--transition-med);
     }
-    .command-bar button:hover { background: #e8b84a; transform: translateY(-1px); }
+    .command-bar button:hover { background: #0052a3; transform: translateY(-1px); }
     .command-bar button:active { transform: translateY(0); }
 
     /* Command Suggestions */
@@ -374,11 +385,11 @@
       color: var(--text-dim); transition: all var(--transition-med);
     }
     .activity-item:hover .activity-icon { border-color: var(--accent); color: var(--accent); }
-    .activity-icon.claim { border-color: rgba(109,209,148,0.3); color: var(--success); background: rgba(109,209,148,0.06); }
-    .activity-icon.release { border-color: rgba(96,165,250,0.3); color: var(--info); background: rgba(96,165,250,0.06); }
-    .activity-icon.lock { border-color: rgba(229,182,85,0.3); color: var(--warning); background: rgba(229,182,85,0.06); }
-    .activity-icon.agent { border-color: rgba(212,160,60,0.3); color: var(--accent); background: rgba(212,160,60,0.06); }
-    .activity-icon.daemon { border-color: rgba(224,112,112,0.3); color: var(--danger); background: rgba(224,112,112,0.06); }
+    .activity-icon.claim { border-color: rgba(24,121,78,0.3); color: #2da96a; background: rgba(24,121,78,0.08); }
+    .activity-icon.release { border-color: rgba(0,102,204,0.3); color: var(--info); background: rgba(0,102,204,0.08); }
+    .activity-icon.lock { border-color: rgba(229,160,0,0.3); color: var(--warning); background: rgba(229,160,0,0.08); }
+    .activity-icon.agent { border-color: rgba(110,86,207,0.3); color: var(--purple); background: rgba(110,86,207,0.08); }
+    .activity-icon.daemon { border-color: rgba(205,43,49,0.3); color: var(--danger); background: rgba(205,43,49,0.08); }
     .activity-content { flex: 1; min-width: 0; }
     .activity-content .type { font-weight: 600; color: var(--text); font-size: 0.9em; }
     .activity-content .details {
@@ -466,7 +477,7 @@
       padding: 20px 24px; border-bottom: 1px solid var(--border);
       display: flex; justify-content: space-between; align-items: center;
     }
-    .settings-header h2 { font-size: 1.2em; color: var(--accent); }
+    .settings-header h2 { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 1.2em; color: var(--text); }
     .settings-close {
       background: none; border: none; color: var(--text-dim);
       cursor: pointer; padding: 8px; transition: color var(--transition-fast);
@@ -517,11 +528,11 @@
     }
     .add-rule-form input:focus { border-color: var(--accent); outline: none; }
     .add-rule-form button {
-      background: var(--accent); color: var(--bg-dark); border: none;
+      background: var(--accent); color: #fff; border: none;
       padding: 8px 18px; border-radius: var(--radius-sm); font-family: inherit;
       font-weight: 600; cursor: pointer; transition: all var(--transition-med);
     }
-    .add-rule-form button:hover { background: #e8b84a; }
+    .add-rule-form button:hover { background: #0052a3; }
 
     /* Toast Notifications */
     .toast-container {
@@ -555,7 +566,7 @@
       max-height: 85vh; overflow-y: auto;
       box-shadow: 0 20px 60px rgba(0,0,0,0.5); animation: fadeIn 0.2s ease;
     }
-    .modal h3 { color: var(--accent); margin-bottom: 16px; font-size: 1.15em; }
+    .modal h3 { font-family: 'Space Grotesk', system-ui, sans-serif; color: var(--text); margin-bottom: 16px; font-size: 1.15em; }
     .modal p { color: var(--text-dim); font-size: 0.9em; margin-bottom: 16px; line-height: 1.6; }
     .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
     .modal-btn {
@@ -577,14 +588,15 @@
 
     .tutorial-output { color: var(--text); line-height: 1.7; }
     .tutorial-output h4 {
-      color: var(--accent); margin: 24px 0 10px 0; font-size: 1.05em;
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      color: var(--text); margin: 24px 0 10px 0; font-size: 1.05em;
       border-bottom: 1px solid var(--border); padding-bottom: 6px;
     }
     .tutorial-output h4:first-child { margin-top: 0; }
     .tutorial-output .cmd {
       background: var(--bg-card); padding: 10px 14px; border-radius: var(--radius-sm);
-      margin: 8px 0; font-size: 0.95em; color: #f0d890;
-      border-left: 3px solid var(--accent); font-family: inherit;
+      margin: 8px 0; font-size: 0.95em; color: var(--accent);
+      border-left: 3px solid var(--accent); font-family: 'Geist Mono', 'SF Mono', monospace;
       transition: background var(--transition-fast); cursor: default;
     }
     .tutorial-output .cmd:hover { background: var(--bg-elevated); }
@@ -616,7 +628,7 @@
     .danger-btn { border-color: var(--danger) !important; color: var(--danger) !important; }
     .danger-btn:hover { background: rgba(248, 113, 113, 0.1) !important; }
     .accent-btn { border-color: var(--accent) !important; color: var(--accent) !important; }
-    .accent-btn:hover { background: rgba(212, 160, 60, 0.12) !important; }
+    .accent-btn:hover { background: rgba(0, 102, 204, 0.12) !important; }
 
     .footer {
       text-align: center; padding: 20px; color: var(--text-muted);
@@ -629,18 +641,19 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 4px;
-      background: repeating-linear-gradient(
+      height: 3px;
+      background: linear-gradient(
         90deg,
-        var(--accent) 0px,
-        var(--accent) 10px,
-        transparent 10px,
-        transparent 15px
+        #0066CC 0% 20%,
+        #18794E 20% 40%,
+        #E5A000 40% 60%,
+        #CD2B31 60% 80%,
+        #6E56CF 80% 100%
       );
-      opacity: 0.4;
+      opacity: 0.6;
     }
     .footer a { color: var(--accent); text-decoration: none; transition: color var(--transition-fast); }
-    .footer a:hover { color: #e8b84a; }
+    .footer a:hover { color: var(--accent-soft); }
     .footer .farewell { color: var(--accent); font-style: italic; margin-bottom: 8px; }
 
     @media (max-width: 768px) {
@@ -712,8 +725,14 @@
         </div>
       </div>
       <div class="header-right">
-        <div class="maritime-flag" title="Signal flag: Tango (keeping clear)">
-          <div style="width:32px;height:24px;background:linear-gradient(90deg,#e31b23 0 33%,#fff 33% 66%,#0047ab 66%);border-radius:2px;box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>
+        <div class="maritime-flag" title="Signal Tower">
+          <div style="display:flex;gap:2px;">
+            <div style="width:6px;height:20px;background:#0066CC;border-radius:1px;"></div>
+            <div style="width:6px;height:20px;background:#18794E;border-radius:1px;"></div>
+            <div style="width:6px;height:20px;background:#E5A000;border-radius:1px;"></div>
+            <div style="width:6px;height:20px;background:#CD2B31;border-radius:1px;"></div>
+            <div style="width:6px;height:20px;background:#6E56CF;border-radius:1px;"></div>
+          </div>
         </div>
         <div class="status-pill" id="status-pill">
           <div class="status-dot online" id="status-dot"></div>
@@ -855,7 +874,7 @@
           <thead><tr><th>ID</th><th>Purpose</th><th>Status</th><th>Agent</th><th>Files</th><th>Age</th><th></th></tr></thead>
           <tbody id="sessions-body"><tr><td colspan="7" class="empty-state"><svg class="empty-state-icon"><use href="#icon-clipboard"/></svg><div class="empty-state-text">Loading...</div></td></tr></tbody>
         </table>
-        <h3 style="color:var(--accent);margin:24px 0 12px;font-size:1.05em">Recent Notes</h3>
+        <h3 style="font-family:'Space Grotesk',system-ui,sans-serif;color:var(--text);margin:24px 0 12px;font-size:1.05em">Recent Notes</h3>
         <div class="activity-feed" id="notes-feed"><div class="empty-state"><svg class="empty-state-icon"><use href="#icon-message"/></svg><div class="empty-state-text">No notes yet</div></div></div>
       </div>
 
@@ -891,7 +910,7 @@
       </div>
 
       <div class="tab-content" id="tab-config">
-        <h3 style="color:var(--accent);margin-bottom:16px;font-size:1.05em">Configuration Locations</h3>
+        <h3 style="font-family:'Space Grotesk',system-ui,sans-serif;color:var(--text);margin-bottom:16px;font-size:1.05em">Configuration Locations</h3>
         <div class="config-grid" id="config-grid">
           <div class="config-item"><div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>Database</div><code class="config-path" id="config-db">Loading...</code><div class="config-desc">SQLite database storing all services, locks, agents, and messages</div></div>
           <div class="config-item"><div class="config-label"><svg class="icon"><use href="#icon-folder"/></svg>Daemon PID</div><code class="config-path" id="config-pid">Loading...</code><div class="config-desc">Process ID file for the running daemon</div></div>
@@ -904,7 +923,7 @@
     </div>
 
     <div class="footer">
-      <div class="farewell">⚓ Fair winds and following seas ⚓</div>
+      <div class="farewell" style="color:var(--text-muted);font-style:italic;margin-bottom:8px;">Signal Tower</div>
       Auto-refreshes every 5s · <a href="https://github.com/curiositech/port-daddy">GitHub</a> · Port Daddy by <a href="https://curiositech.ai">Curiositech</a>
     </div>
   </div>
