@@ -176,13 +176,26 @@ export async function handleHealth(id: string | undefined, options: CLIOptions):
 
 /**
  * Handle `pd dashboard` command
+ *
+ * Default: launches the Ink terminal UI dashboard
+ * --web: opens the browser-based dashboard instead
  */
-export async function handleDashboard(): Promise<void> {
+export async function handleDashboard(opts: { web?: boolean } = {}): Promise<void> {
   const url = PORT_DADDY_URL.replace('http://', '').replace('https://', '');
   const dashUrl = `http://${url.includes(':') ? url : url + ':9876'}`;
-  console.log(`Opening dashboard: ${dashUrl}`);
-  const openCmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
-  spawn(openCmd, [dashUrl], { detached: true, stdio: 'ignore' }).unref();
+
+  if (opts.web) {
+    console.log(`Opening dashboard: ${dashUrl}`);
+    const openCmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
+    spawn(openCmd, [dashUrl], { detached: true, stdio: 'ignore' }).unref();
+    return;
+  }
+
+  // Launch Ink TUI — tsx handles the .tsx extension directly
+  const tuiPath = join(__dirname, '../../dashboard/tui.tsx');
+  const tsxBin = join(__dirname, '../../node_modules/.bin/tsx');
+  const child = spawn(process.execPath, [tsxBin, tuiPath], { stdio: 'inherit' });
+  await new Promise<void>(resolve => child.on('close', resolve));
 }
 
 /**

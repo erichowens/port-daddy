@@ -17,7 +17,9 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "allowJs": true,
-    "checkJs": false
+    "checkJs": false,
+    "jsx": "react-jsx",
+    "jsxImportSource": "react"
   },
   "include": [
     "lib/**/*.ts",
@@ -26,7 +28,9 @@
     "bin/**/*.ts",
     "mcp/**/*.ts",
     "server.ts",
-    "install-daemon.ts"
+    "install-daemon.ts",
+    "dashboard/**/*.tsx",
+    "dashboard/**/*.ts"
   ],
   "exclude": [
     "node_modules",

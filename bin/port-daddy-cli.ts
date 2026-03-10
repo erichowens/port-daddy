@@ -1891,7 +1891,7 @@ async function main(): Promise<void> {
 
       // New API-parity commands
       case 'dashboard':
-        await handleDashboard();
+        await handleDashboard({ web: !!(options['web'] ?? options['w']) });
         break;
 
       case 'channels':
