@@ -14,53 +14,81 @@
   <style>
     /* Hero */
     .hero {
-      padding: 8rem 1.5rem 5rem;
-      max-width: 1200px; margin: 0 auto;
-      position: relative;
+      padding: 7rem 1.5rem 5rem;
+      max-width: 1280px; margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: center;
     }
-    .hero-content { max-width: 640px; }
     .hero h1 {
       font-size: 3.5rem; font-weight: 700;
       letter-spacing: -0.04em; line-height: 1.1;
       margin-bottom: 1.5rem;
     }
     .hero p {
-      font-size: 1.15rem; color: var(--text-muted);
-      line-height: 1.7; margin-bottom: 2rem; max-width: 520px;
+      font-size: 1.1rem; color: var(--text-muted);
+      line-height: 1.7; margin-bottom: 2rem;
     }
     .hero-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 
     /* Signal flag accent bars */
-    .signal-bars {
-      display: flex; gap: 4px; margin-bottom: 2rem;
+    .signal-bars { display: flex; gap: 4px; margin-bottom: 2rem; }
+    .signal-bars span { height: 4px; width: 40px; border-radius: 2px; }
+
+    /* GIF Slider */
+    .hero-slider { display: flex; flex-direction: column; gap: 0.875rem; }
+    .slider-window {
+      border-radius: 10px; overflow: hidden;
+      border: 1px solid #2C2C31;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.2);
     }
-    .signal-bars span {
-      height: 4px; width: 48px; border-radius: 2px;
+    .slider-bar {
+      background: #1C1C1F; padding: 0.5rem 0.75rem;
+      display: flex; align-items: center; gap: 0.4rem;
+      border-bottom: 1px solid #2C2C31;
+    }
+    .slider-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .slider-dot.r { background: #c44536; }
+    .slider-dot.y { background: #d4a017; }
+    .slider-dot.g { background: #5a8f5a; }
+    .slider-bar-label {
+      font-family: var(--font-mono); font-size: 0.68rem;
+      color: #6B6B76; margin-left: auto;
+    }
+    .slider-track { background: #111113; }
+    .slider-track img { width: 100%; display: none; }
+    .slider-track img.active { display: block; }
+
+    .slider-controls {
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .slider-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      border: 1px solid var(--border); background: var(--bg-card);
+      color: var(--text-muted); cursor: pointer; padding: 0;
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .slider-btn:hover { color: var(--text); border-color: var(--text-muted); }
+    .slider-btn svg { width: 13px; height: 13px; }
+    .slider-pips { display: flex; gap: 5px; flex: 1; justify-content: center; }
+    .slider-pip {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--border); border: none; cursor: pointer;
+      padding: 0; transition: background 0.15s;
+    }
+    .slider-pip.active { background: var(--blue); width: 18px; border-radius: 3px; }
+    .slider-caption {
+      font-size: 0.75rem; color: var(--text-muted);
+      font-family: var(--font-mono); text-align: center; flex: 1;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
-    /* Terminal mockup */
-    .terminal {
-      background: #111113; border: 1px solid #2C2C31;
-      border-radius: 10px; overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-      max-width: 540px; margin-top: 3rem;
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; gap: 2.5rem; padding: 5rem 1.5rem 3rem; }
+      .hero h1 { font-size: 2.75rem; }
     }
-    .terminal-header {
-      display: flex; align-items: center; gap: 6px;
-      padding: 10px 14px; background: #1C1C1F; border-bottom: 1px solid #2C2C31;
-    }
-    .terminal-dot {
-      width: 10px; height: 10px; border-radius: 50%;
-    }
-    .terminal-body {
-      padding: 1.25rem 1.5rem;
-      font-family: var(--font-mono); font-size: 0.85rem;
-      line-height: 1.8; color: #E8E8EC;
-    }
-    .terminal-body .prompt { color: var(--blue); }
-    .terminal-body .comment { color: #6B6B76; }
-    .terminal-body .output { color: #8B8B96; }
-    .terminal-body .success { color: var(--green); }
 
     /* Features */
     .features {
@@ -150,10 +178,6 @@
     .step-content h4 { margin-bottom: 0.5rem; }
     .step-content p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem; }
 
-    @media (max-width: 768px) {
-      .hero h1 { font-size: 2.5rem; }
-      .hero { padding: 6rem 1.5rem 3rem; }
-    }
   </style>
 </head>
 <body>
@@ -190,34 +214,38 @@
           <span style="background: var(--purple);"></span>
         </div>
         <h1>Your ports.<br>My rules.<br>Zero conflicts.</h1>
-        <p>Port Daddy is the authoritative port manager for multi-agent development. Stable ports, agent coordination, DNS resolution, and a live dashboard -- all from a single daemon.</p>
+        <p>Port Daddy is the authoritative port manager for multi-agent development. Stable ports, agent coordination, pub/sub messaging, and dead-agent salvage — all from a single daemon.</p>
         <div class="hero-actions">
           <a href="tutorials/getting-started.html" class="btn btn-primary">Get Started</a>
           <a href="https://github.com/curiositech/port-daddy" target="_blank" class="btn">View on GitHub</a>
         </div>
       </div>
 
-      <div class="terminal">
-        <div class="terminal-header">
-          <div class="terminal-dot" style="background: #CD2B31;"></div>
-          <div class="terminal-dot" style="background: #E5A000;"></div>
-          <div class="terminal-dot" style="background: #18794E;"></div>
+      <div class="hero-slider">
+        <div class="slider-window">
+          <div class="slider-bar">
+            <div class="slider-dot r"></div>
+            <div class="slider-dot y"></div>
+            <div class="slider-dot g"></div>
+            <span class="slider-bar-label" id="slider-label">1 / 2</span>
+          </div>
+          <div class="slider-track">
+            <img src="img/demo-fleet.gif" class="active" alt="pd claim, pd find, pd ps demo" width="1000" height="560">
+            <img src="img/demo-agents.gif" alt="pd begin, pub/sub, salvage, lock demo" width="1000" height="560">
+          </div>
         </div>
-        <div class="terminal-body">
-<span class="comment"># Start a work session</span>
-<span class="prompt">$</span> pd begin "Building auth system"
-<span class="success">Agent registered. Session started.</span>
-
-<span class="comment"># Claim stable ports</span>
-<span class="prompt">$</span> pd claim myapp:api
-<span class="output">Port 3100 assigned to myapp:api</span>
-
-<span class="prompt">$</span> pd claim myapp:web
-<span class="output">Port 3101 assigned to myapp:web</span>
-
-<span class="comment"># End session</span>
-<span class="prompt">$</span> pd done "Auth complete, tests passing"
-<span class="success">Session ended. Agent unregistered.</span>
+        <div class="slider-controls">
+          <button class="slider-btn" id="slider-prev" aria-label="Previous demo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="slider-pips">
+            <button class="slider-pip active" aria-label="Demo 1"></button>
+            <button class="slider-pip" aria-label="Demo 2"></button>
+          </div>
+          <button class="slider-btn" id="slider-next" aria-label="Next demo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <span class="slider-caption" id="slider-caption">pd claim · pd find · pd ps — stable ports, zero conflicts</span>
         </div>
       </div>
     </section>
@@ -268,43 +296,6 @@
       </div>
     </section>
 
-    <!-- Live Demos -->
-    <section class="demos" id="demos">
-      <div class="demos-inner">
-        <div class="demos-header">
-          <div class="section-label">See It In Action</div>
-          <h2 class="section-title">Real commands. Real output.</h2>
-          <p class="section-subtitle">No mocks. These recordings run against a live Port Daddy daemon.</p>
-        </div>
-        <div class="demo-grid">
-          <div class="demo-card">
-            <div class="demo-label">Stable ports across your whole stack</div>
-            <p class="demo-desc">Claim once, same port forever. No more <code>EADDRINUSE</code> at 2am.</p>
-            <div class="demo-screen">
-              <div class="demo-screen-bar">
-                <div class="demo-dot r"></div>
-                <div class="demo-dot y"></div>
-                <div class="demo-dot g"></div>
-              </div>
-              <img src="img/demo-fleet.gif" alt="pd claim and pd find demo" loading="lazy" width="1000" height="560">
-            </div>
-          </div>
-          <div class="demo-card">
-            <div class="demo-label">Multi-agent coordination, built in</div>
-            <p class="demo-desc">Sessions, notes, pub/sub, locks, and dead-agent salvage — all from the CLI.</p>
-            <div class="demo-screen">
-              <div class="demo-screen-bar">
-                <div class="demo-dot r"></div>
-                <div class="demo-dot y"></div>
-                <div class="demo-dot g"></div>
-              </div>
-              <img src="img/demo-agents.gif" alt="pd begin, pd pub, pd salvage, pd lock demo" loading="lazy" width="1000" height="560">
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <section class="quick-start" id="quickstart">
       <h2>Quick Start</h2>
       <div class="install-steps">
@@ -347,5 +338,34 @@
     </div>
   </footer>
   <script src="js/theme.js"></script>
+  <script>
+    (function () {
+      var slides   = document.querySelectorAll('.slider-track img');
+      var pips     = document.querySelectorAll('.slider-pip');
+      var caption  = document.getElementById('slider-caption');
+      var label    = document.getElementById('slider-label');
+      var captions = [
+        'pd claim \u00b7 pd find \u00b7 pd ps \u2014 stable ports, zero conflicts',
+        'pd begin \u00b7 pub/sub \u00b7 pd salvage \u00b7 pd lock \u2014 multi-agent coordination'
+      ];
+      var current = 0;
+
+      function slideTo(n) {
+        slides[current].classList.remove('active');
+        pips[current].classList.remove('active');
+        current = (n + slides.length) % slides.length;
+        slides[current].classList.add('active');
+        pips[current].classList.add('active');
+        caption.textContent = captions[current];
+        label.textContent = (current + 1) + ' / ' + slides.length;
+      }
+
+      document.getElementById('slider-prev').addEventListener('click', function () { slideTo(current - 1); });
+      document.getElementById('slider-next').addEventListener('click', function () { slideTo(current + 1); });
+      pips.forEach(function (pip, i) { pip.addEventListener('click', function () { slideTo(i); }); });
+
+      setInterval(function () { slideTo(current + 1); }, 9000);
+    })();
+  </script>
 </body>
 </html>
