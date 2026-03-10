@@ -113,7 +113,9 @@ export function createServicesRoutes(deps: ServicesRouteDeps): Router {
       }
 
       if (port !== undefined) {
-        const portValidation = validatePreferredPort(port, PORT_RANGE_START, PORT_RANGE_END, RESERVED_PORTS);
+        // Range [PORT_RANGE_START-PORT_RANGE_END] is for auto-assignment only.
+        // Explicit preferred ports are allowed anywhere in the unprivileged range.
+        const portValidation = validatePreferredPort(port, 1024, 65535, RESERVED_PORTS);
         if (!portValidation.valid) {
           metrics.validation_failures++;
           return res.status(400).json({ error: (portValidation as { error: string }).error, code: 'VALIDATION_ERROR' });
