@@ -2442,6 +2442,41 @@ class PortDaddy {
   async dnsResolver(): Promise<DnsResolverStatusResponse> {
     return this.dnsResolverStatus();
   }
+
+  // ===========================================================================
+  // Spawn -- AI Agent Launcher
+  // ===========================================================================
+
+  /**
+   * Launch an AI agent with the given spec.
+   * Supports backends: ollama, claude, gemini, aider, custom.
+   * Auto-wires PD coordination (agent registration, session, heartbeat, done).
+   *
+   * @example
+   * const result = await pd.spawn({
+   *   backend: 'ollama',
+   *   model: 'llama3.2:8b',
+   *   task: 'Write a hello world in TypeScript',
+   * });
+   * console.log(result.output);
+   */
+  async spawn(spec: SpawnSpec): Promise<SpawnResult> {
+    return this._request('POST', '/spawn', spec as unknown as Record<string, unknown>) as Promise<SpawnResult>;
+  }
+
+  /**
+   * List all active (and recently completed) spawned agents.
+   */
+  async listSpawned(): Promise<ListSpawnedResponse> {
+    return this._request('GET', '/spawn') as Promise<ListSpawnedResponse>;
+  }
+
+  /**
+   * Kill a running spawned agent by ID.
+   */
+  async killSpawned(agentId: string): Promise<KillSpawnedResponse> {
+    return this._request('DELETE', `/spawn/${encodeURIComponent(agentId)}`) as Promise<KillSpawnedResponse>;
+  }
 }
 
 // =============================================================================
@@ -2679,6 +2714,57 @@ interface ChangelogIdentitiesResponse {
   count: number;
 }
 
+// =============================================================================
+// Spawn types
+// =============================================================================
+
+interface SpawnSpec {
+  backend: 'ollama' | 'claude' | 'gemini' | 'aider' | 'custom';
+  model?: string;
+  identity?: string;
+  purpose?: string;
+  task: string;
+  files?: string[];
+  workdir?: string;
+  env?: Record<string, string>;
+  timeout?: number;
+}
+
+interface SpawnResult {
+  success: boolean;
+  agentId: string;
+  backend: SpawnSpec['backend'];
+  model: string;
+  status: 'running' | 'completed' | 'failed' | 'killed';
+  output: string | null;
+  error: string | null;
+  startedAt: number;
+  completedAt: number | null;
+}
+
+interface SpawnedAgent {
+  agentId: string;
+  backend: SpawnSpec['backend'];
+  model: string;
+  status: 'running' | 'completed' | 'failed' | 'killed';
+  identity: string | null;
+  purpose: string | null;
+  startedAt: number;
+  completedAt: number | null;
+}
+
+interface ListSpawnedResponse {
+  success: boolean;
+  agents: SpawnedAgent[];
+  count: number;
+}
+
+interface KillSpawnedResponse {
+  success: boolean;
+  agentId: string;
+  message: string;
+}
+
 export { PortDaddy, PortDaddyError, ConnectionError };
 export type {
   WaitResponse,
@@ -2720,5 +2806,10 @@ export type {
   ListChangelogOptions,
   ListChangelogResponse,
   ChangelogIdentitiesResponse,
+  SpawnSpec,
+  SpawnResult,
+  SpawnedAgent,
+  ListSpawnedResponse,
+  KillSpawnedResponse,
 };
 export default PortDaddy;

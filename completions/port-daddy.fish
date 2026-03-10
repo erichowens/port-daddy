@@ -97,7 +97,7 @@ set -l __pd_commands \
     'agent' 'agents' 'log' 'activity' \
     'session' 'sessions' 'note' 'notes' \
     'salvage' 'resurrection' 'changelog' 'dns' 'files' 'who-owns' 'integration' 'briefing' 'history' 'inbox' \
-    'begin' 'b' 'done' 'whoami' 'w' 'with-lock' 'n' 'u' 'd' 'learn' 'tutorial' \
+    'begin' 'b' 'done' 'whoami' 'w' 'with-lock' 'n' 'u' 'd' 'learn' 'tutorial' 'spawn' 'spawned' 'watch' \
     'up' 'down' \
     'dashboard' 'channels' 'webhook' 'webhooks' 'metrics' 'config' 'health' 'ports' \
     'scan' 's' 'projects' 'p' 'doctor' 'diagnose' \
@@ -164,6 +164,11 @@ for prog in port-daddy pd
 
     # Agent Inbox
     complete -c $prog -n __pd_needs_command -a inbox -d 'Agent-to-agent direct messaging inbox'
+
+    # AI Agent Spawner + Watch
+    complete -c $prog -n __pd_needs_command -a spawn -d 'Launch an AI agent (Ollama/Claude/Gemini/Aider/custom)'
+    complete -c $prog -n __pd_needs_command -a spawned -d 'List active spawned agents'
+    complete -c $prog -n __pd_needs_command -a watch -d 'Subscribe to a channel and run a script on each message'
 
     # System & Monitoring
     complete -c $prog -n __pd_needs_command -a dashboard -d 'Open web dashboard'
@@ -514,4 +519,18 @@ for prog in port-daddy pd
     # n (alias for note)
     complete -c $prog -n "__pd_using_command n" -s c -l content -d 'Note content' -x
     complete -c $prog -n "__pd_using_command n" -s t -l type -d 'Note type' -x -a 'note handoff commit warning'
+
+    # spawn
+    complete -c $prog -n "__pd_using_command spawn" -l backend -d 'AI backend' -x -a 'ollama claude gemini aider custom'
+    complete -c $prog -n "__pd_using_command spawn" -l model -d 'Model name override' -x
+    complete -c $prog -n "__pd_using_command spawn" -l identity -d 'PD semantic identity (project:stack:context)' -x -a '(__pd_service_ids)'
+    complete -c $prog -n "__pd_using_command spawn" -l purpose -d 'Human-readable task description' -x
+    complete -c $prog -n "__pd_using_command spawn" -l files -d 'Files to pass to aider' -r
+    complete -c $prog -n "__pd_using_command spawn" -l workdir -d 'Working directory' -r
+    complete -c $prog -n "__pd_using_command spawn" -l timeout -d 'Timeout in milliseconds' -x
+
+    # watch
+    complete -c $prog -n "__pd_using_command watch" -l exec -d 'Shell command to run on each message' -x
+    complete -c $prog -n "__pd_using_command watch" -l once -d 'Exit after first message'
+    complete -c $prog -n "__pd_using_command watch" -x -a '(__pd_channels)'
 end

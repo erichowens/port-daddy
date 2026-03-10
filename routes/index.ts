@@ -28,6 +28,7 @@ import { createTunnelRoutes } from './tunnel.js';
 import { createDnsRoutes } from './dns.js';
 import { createBriefingRoutes } from './briefing.js';
 import { createSugarRoutes } from './sugar.js';
+import { createSpawnRoutes } from './spawn.js';
 
 // Each route factory defines its own deps interface (e.g. ServicesRouteDeps,
 // InfoRouteDeps). Rather than duplicating those 10 interfaces here, we use a
@@ -69,6 +70,7 @@ export function createRoutes(deps: AnyDeps): Router {
   router.use(createDnsRoutes(deps as unknown as Parameters<typeof createDnsRoutes>[0]));
   router.use(createBriefingRoutes(deps as unknown as Parameters<typeof createBriefingRoutes>[0]));
   router.use(createSugarRoutes(deps as unknown as Parameters<typeof createSugarRoutes>[0]));
+  router.use(createSpawnRoutes(deps as unknown as Parameters<typeof createSpawnRoutes>[0]));
 
   return router;
 }

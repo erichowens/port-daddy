@@ -819,6 +819,46 @@
         "readme": true,
         "sdk": false
       }
+    },
+    "spawn": {
+      "description": "Launch AI agents (Ollama, Claude, Gemini, Aider) with Port Daddy coordination",
+      "cli": [
+        "spawn",
+        "spawned"
+      ],
+      "sdk": [
+        "spawn",
+        "listSpawned",
+        "killSpawned"
+      ],
+      "routes": [
+        "POST /spawn",
+        "DELETE /spawn/:param",
+        "GET /spawn"
+      ],
+      "completions": [
+        "spawn",
+        "spawned"
+      ],
+      "docs": {
+        "readme": true,
+        "sdk": true
+      }
+    },
+    "watch": {
+      "description": "Subscribe to a channel and run a script on each message",
+      "cli": [
+        "watch"
+      ],
+      "sdk": [],
+      "routes": [],
+      "completions": [
+        "watch"
+      ],
+      "docs": {
+        "readme": true,
+        "sdk": false
+      }
     }
   }
 }

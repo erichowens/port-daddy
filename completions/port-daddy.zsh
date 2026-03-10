@@ -990,6 +990,62 @@ _pd_cmd_history() {
     '(-h --help)'{-h,--help}'[show help]'
 }
 
+_pd_cmd_spawn() {
+  local -a spawn_subcmds
+  spawn_subcmds=(
+    'kill:kill a running spawned agent'
+  )
+
+  local state subcmd
+  _arguments -C \
+    '--backend[AI backend to use]:backend:(ollama claude gemini aider custom)' \
+    '--model[model name override]:model:' \
+    '--identity[PD semantic identity (project:stack:context)]:identity:_pd_complete_services' \
+    '--purpose[human-readable task description]:purpose:' \
+    '--files[files to pass to aider]:file:_files' \
+    '--workdir[working directory]:directory:_directories' \
+    '--timeout[timeout in milliseconds]:milliseconds:' \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '1:subcommand or task:->subcommand' \
+    '*::subcommand args:->args' \
+    && return
+
+  case "$state" in
+    subcommand)
+      _alternative \
+        'subcommands:subcommand:_describe "subcommand" spawn_subcmds' \
+        'task:task description:'
+      ;;
+    args)
+      subcmd="${words[1]}"
+      case "$subcmd" in
+        kill)
+          _arguments \
+            '1:agent ID:'
+          ;;
+      esac
+      ;;
+  esac
+}
+
+_pd_cmd_spawned() {
+  _arguments \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]'
+}
+
+_pd_cmd_watch() {
+  _arguments \
+    '--exec[shell command to run on each message]:command:_command_names' \
+    '--once[exit after first message]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '1:channel:_pd_complete_channels'
+}
+
 _pd_cmd_inbox() {
   local -a inbox_subcmds
   inbox_subcmds=(
@@ -1103,6 +1159,10 @@ _port_daddy() {
     'history:view recent project activity'
     # Agent Inbox
     'inbox:agent-to-agent direct messaging inbox'
+    # AI Agent Spawner + Watch
+    'spawn:launch an AI agent (Ollama/Claude/Gemini/Aider/custom)'
+    'spawned:list active spawned agents'
+    'watch:subscribe to a channel and run a script on each message'
     # System & Monitoring
     'dashboard:open web dashboard in browser'
     'channels:list pub/sub channels'
@@ -1211,6 +1271,9 @@ _port_daddy() {
         d)                      _pd_cmd_down ;;
         learn|tutorial)         _pd_cmd_learn ;;
         inbox)                  _pd_cmd_inbox ;;
+        spawn)                  _pd_cmd_spawn ;;
+        spawned)                _pd_cmd_spawned ;;
+        watch)                  _pd_cmd_watch ;;
         version|help)       ;;
         *)                  ;;
       esac
