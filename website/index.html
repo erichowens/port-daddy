@@ -12,36 +12,106 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%E2%9A%93</text></svg>">
   <link rel="stylesheet" href="css/shared.css">
   <style>
-    /* Hero */
+    /* Hero — full-width, install-CTA centered */
     .hero {
       padding: 7rem 1.5rem 5rem;
-      max-width: 1280px; margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 4rem;
-      align-items: center;
+      text-align: center;
     }
+    .hero-inner { max-width: 680px; margin: 0 auto; }
     .hero h1 {
-      font-size: 3.5rem; font-weight: 700;
-      letter-spacing: -0.04em; line-height: 1.1;
-      margin-bottom: 1.5rem;
+      font-size: 4rem; font-weight: 800;
+      letter-spacing: -0.05em; line-height: 1.05;
+      margin-bottom: 1.25rem;
     }
-    .hero p {
-      font-size: 1.1rem; color: var(--text-muted);
-      line-height: 1.7; margin-bottom: 2rem;
+    .hero-desc {
+      font-size: 1.15rem; color: var(--text-muted);
+      line-height: 1.7; margin-bottom: 2.5rem;
+      max-width: 560px; margin-left: auto; margin-right: auto;
     }
-    .hero-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .hero-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; margin-top: 1.5rem; }
 
-    /* Signal flag accent bars */
-    .signal-bars { display: flex; gap: 4px; margin-bottom: 2rem; }
-    .signal-bars span { height: 4px; width: 40px; border-radius: 2px; }
+    /* Signal flag strips */
+    .signal-flags { display: flex; gap: 0; margin-bottom: 2rem; justify-content: center; }
+    .signal-flags .sf {
+      height: 5px; width: 48px;
+    }
+
+    /* ── Install CTA ── */
+    .install-hero {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      max-width: 540px;
+      margin: 0 auto 1.25rem;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    }
+    .install-tabs {
+      display: flex; gap: 4px; margin-bottom: 0.75rem;
+      background: var(--bg); border-radius: 8px; padding: 3px;
+      width: fit-content;
+    }
+    .install-tab {
+      padding: 0.3rem 0.8rem; border-radius: 6px; border: none;
+      background: transparent; color: var(--text-muted);
+      font-family: var(--font-mono); font-size: 0.8rem;
+      cursor: pointer; transition: background 0.12s, color 0.12s;
+    }
+    .install-tab.active {
+      background: var(--bg-card);
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .install-cmd-wrap {
+      display: flex; align-items: center; gap: 0.5rem;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.6rem 0.75rem 0.6rem 1rem;
+    }
+    .install-cmd {
+      flex: 1; font-family: var(--font-mono); font-size: 1.05rem;
+      color: var(--text); background: none; border: none;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-weight: 500;
+    }
+    .install-cmd .cmd-prefix { color: var(--text-muted); user-select: none; }
+    .copy-btn {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.35rem 0.75rem; border-radius: 6px;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--text-muted); font-size: 0.8rem;
+      cursor: pointer; white-space: nowrap; flex-shrink: 0;
+      transition: background 0.12s, color 0.12s;
+    }
+    .copy-btn:hover { background: var(--bg-card); color: var(--text); }
+    .copy-btn.copied { color: var(--green); border-color: var(--green); }
+    .copy-btn svg { width: 13px; height: 13px; }
+    .copy-btn .icon-check { display: none; }
+    .copy-btn.copied .icon-copy { display: none; }
+    .copy-btn.copied .icon-check { display: block; }
+    .copy-btn .copy-label::after { content: 'Copy'; }
+    .copy-btn.copied .copy-label::after { content: 'Copied!'; }
+    .install-includes {
+      margin: 0.75rem 0 0; font-size: 0.8rem; color: var(--text-muted);
+      text-align: center;
+    }
+    .install-includes strong { color: var(--text); }
+
+    /* See It In Action — GIF demos */
+    .demos {
+      padding: 5rem 1.5rem;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .demos-inner { max-width: 1100px; margin: 0 auto; }
+    .demos-header { margin-bottom: 2.5rem; text-align: center; }
 
     /* GIF Slider */
-    .hero-slider { display: flex; flex-direction: column; gap: 0.875rem; }
+    .hero-slider { display: flex; flex-direction: column; gap: 0.875rem; max-width: 900px; margin: 0 auto; }
     .slider-window {
       border-radius: 10px; overflow: hidden;
       border: 1px solid #2C2C31;
-      box-shadow: 0 16px 48px rgba(0,0,0,0.2);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.3);
     }
     .slider-bar {
       background: #1C1C1F; padding: 0.5rem 0.75rem;
@@ -59,10 +129,7 @@
     .slider-track { background: #111113; }
     .slider-track img { width: 100%; display: none; }
     .slider-track img.active { display: block; }
-
-    .slider-controls {
-      display: flex; align-items: center; gap: 0.75rem;
-    }
+    .slider-controls { display: flex; align-items: center; gap: 0.75rem; }
     .slider-btn {
       display: inline-flex; align-items: center; justify-content: center;
       width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
@@ -85,9 +152,9 @@
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
-    @media (max-width: 900px) {
-      .hero { grid-template-columns: 1fr; gap: 2.5rem; padding: 5rem 1.5rem 3rem; }
+    @media (max-width: 640px) {
       .hero h1 { font-size: 2.75rem; }
+      .install-cmd { font-size: 0.9rem; }
     }
 
     /* Features */
@@ -205,47 +272,76 @@
 
   <main>
     <section class="hero">
-      <div class="hero-content">
-        <div class="signal-bars">
-          <span style="background: var(--blue);"></span>
-          <span style="background: var(--green);"></span>
-          <span style="background: var(--amber);"></span>
-          <span style="background: var(--red);"></span>
-          <span style="background: var(--purple);"></span>
+      <div class="hero-inner">
+        <div class="signal-flags">
+          <span class="sf" style="background:#0066CC;"></span>
+          <span class="sf" style="background:#18794E;"></span>
+          <span class="sf" style="background:#E5A000;"></span>
+          <span class="sf" style="background:#CD2B31;"></span>
+          <span class="sf" style="background:#6E56CF;"></span>
         </div>
+
         <h1>Your ports.<br>My rules.<br>Zero conflicts.</h1>
-        <p>Port Daddy is the authoritative port manager for multi-agent development. Stable ports, agent coordination, pub/sub messaging, and dead-agent salvage — all from a single daemon.</p>
+        <p class="hero-desc">Port Daddy is the authoritative port manager for multi-agent development. Stable ports, agent coordination, pub/sub messaging, and dead-agent salvage — all from one daemon.</p>
+
+        <!-- BIG INSTALL CTA -->
+        <div class="install-hero">
+          <div class="install-tabs">
+            <button class="install-tab active" data-cmd="npm install -g port-daddy" onclick="switchTab(this)">npm</button>
+            <button class="install-tab" data-cmd="npx port-daddy" onclick="switchTab(this)">npx</button>
+          </div>
+          <div class="install-cmd-wrap">
+            <code class="install-cmd"><span class="cmd-prefix">$ </span><span id="install-cmd-text">npm install -g port-daddy</span></code>
+            <button class="copy-btn" id="copy-btn" onclick="copyInstall()" aria-label="Copy install command">
+              <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span class="copy-label"></span>
+            </button>
+          </div>
+          <p class="install-includes">Installs <strong>CLI</strong>, <strong>MCP server</strong>, and <strong>Claude Code skills</strong> — ready to use immediately.</p>
+        </div>
+
         <div class="hero-actions">
           <a href="tutorials/getting-started.html" class="btn btn-primary">Get Started</a>
           <a href="https://github.com/curiositech/port-daddy" target="_blank" class="btn">View on GitHub</a>
         </div>
       </div>
+    </section>
 
-      <div class="hero-slider">
-        <div class="slider-window">
-          <div class="slider-bar">
-            <div class="slider-dot r"></div>
-            <div class="slider-dot y"></div>
-            <div class="slider-dot g"></div>
-            <span class="slider-bar-label" id="slider-label">1 / 2</span>
-          </div>
-          <div class="slider-track">
-            <img src="img/demo-fleet.gif" class="active" alt="pd claim, pd find, pd ps demo" width="1000" height="560">
-            <img src="img/demo-agents.gif" alt="pd begin, pub/sub, salvage, lock demo" width="1000" height="560">
-          </div>
+    <!-- See It In Action -->
+    <section class="demos" id="demos">
+      <div class="demos-inner">
+        <div class="demos-header">
+          <div class="section-label">See It In Action</div>
+          <h2 class="section-title">Real commands. Real output.</h2>
+          <p class="section-subtitle">Every frame is captured from a live Port Daddy daemon — no fake terminals.</p>
         </div>
-        <div class="slider-controls">
-          <button class="slider-btn" id="slider-prev" aria-label="Previous demo">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <div class="slider-pips">
-            <button class="slider-pip active" aria-label="Demo 1"></button>
-            <button class="slider-pip" aria-label="Demo 2"></button>
+        <div class="hero-slider">
+          <div class="slider-window">
+            <div class="slider-bar">
+              <div class="slider-dot r"></div>
+              <div class="slider-dot y"></div>
+              <div class="slider-dot g"></div>
+              <span class="slider-bar-label" id="slider-label">1 / 2</span>
+            </div>
+            <div class="slider-track">
+              <img src="img/demo-fleet.gif" class="active" alt="pd claim, pd find, pd ps demo" width="1000" height="600">
+              <img src="img/demo-agents.gif" alt="pd begin, pub/sub, salvage, lock demo" width="1000" height="600">
+            </div>
           </div>
-          <button class="slider-btn" id="slider-next" aria-label="Next demo">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-          <span class="slider-caption" id="slider-caption">pd claim · pd find · pd ps — stable ports, zero conflicts</span>
+          <div class="slider-controls">
+            <button class="slider-btn" id="slider-prev" aria-label="Previous demo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div class="slider-pips">
+              <button class="slider-pip active" aria-label="Demo 1"></button>
+              <button class="slider-pip" aria-label="Demo 2"></button>
+            </div>
+            <button class="slider-btn" id="slider-next" aria-label="Next demo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <span class="slider-caption" id="slider-caption">pd claim · pd find · pd ps — stable ports, zero conflicts</span>
+          </div>
         </div>
       </div>
     </section>
@@ -339,6 +435,25 @@
   </footer>
   <script src="js/theme.js"></script>
   <script>
+    // ── Install CTA ──────────────────────────────────────────────────────────
+    function switchTab(btn) {
+      document.querySelectorAll('.install-tab').forEach(function(t) { t.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('install-cmd-text').textContent = btn.getAttribute('data-cmd');
+      document.getElementById('copy-btn').classList.remove('copied');
+    }
+
+    function copyInstall() {
+      var activeTab = document.querySelector('.install-tab.active');
+      var cmd = activeTab.getAttribute('data-cmd');
+      navigator.clipboard.writeText(cmd).then(function() {
+        var btn = document.getElementById('copy-btn');
+        btn.classList.add('copied');
+        setTimeout(function() { btn.classList.remove('copied'); }, 2000);
+      });
+    }
+
+    // ── Slider ───────────────────────────────────────────────────────────────
     (function () {
       var slides   = document.querySelectorAll('.slider-track img');
       var pips     = document.querySelectorAll('.slider-pip');

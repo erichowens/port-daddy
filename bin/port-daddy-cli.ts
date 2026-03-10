@@ -33,7 +33,8 @@ import { createServices } from '../lib/services.js';
 import { createLocks } from '../lib/locks.js';
 import { createSessions } from '../lib/sessions.js';
 import { createActivityLog } from '../lib/activity.js';
-import { status as maritimeStatus, highlightChannel, flag } from '../lib/maritime.js';
+import { status as maritimeStatus, highlightChannel, flag, SignalFlags, ANSI as marANSI } from '../lib/maritime.js';
+import { BANNER, TAGLINE } from '../lib/banner.js';
 
 // Command modules (extracted from this file)
 import {
@@ -180,8 +181,8 @@ interface CLIOptions {
 // Output Helpers (TTY-aware)
 // =============================================================================
 
-/** Whether stdout is a terminal (not a pipe or redirect) */
-const IS_TTY: boolean = process.stderr.isTTY ?? false;
+/** Whether stdout is a terminal (not a pipe or redirect). FORCE_COLOR enables for scripted demos. */
+const IS_TTY: boolean = (process.stderr.isTTY ?? false) || !!process.env.FORCE_COLOR;
 
 /** Print a Unicode separator line (only in TTY mode) */
 function separator(width: number = 75): void {
@@ -929,20 +930,32 @@ async function executeDirectMode(
         return true;
       }
 
-      console.error('');
-      console.error('ID'.padEnd(35) + 'PORT'.padEnd(8) + 'STATUS'.padEnd(12));
-      console.error('\u2500'.repeat(55));
+      if (IS_TTY) {
+        // Maritime signal flag banner
+        const fl = [SignalFlags.charlie, SignalFlags.november, SignalFlags.kilo, SignalFlags.uniform, SignalFlags.alpha];
+        for (let row = 0; row < 2; row++) {
+          console.error('  ' + fl.map(f => f()[row]).join('   '));
+        }
+        console.error('');
+      }
+
+      console.error(
+        marANSI.fgGray + 'ID'.padEnd(35) + 'PORT'.padEnd(8) + 'STATUS'.padEnd(12) + 'URL' + marANSI.reset
+      );
+      console.error(marANSI.fgGray + '\u2500'.repeat(75) + marANSI.reset);
 
       const services = result.services as Array<{ id: string; port: number; status: string }>;
       for (const s of services) {
+        const statusColor = s.status === 'assigned' ? marANSI.fgGreen : marANSI.fgYellow;
         console.error(
-          s.id.padEnd(35) +
-          String(s.port).padEnd(8) +
-          s.status.padEnd(12)
+          marANSI.fgCyan + s.id.padEnd(35) + marANSI.reset +
+          marANSI.fgGreen + marANSI.bold + String(s.port).padEnd(8) + marANSI.reset +
+          statusColor + s.status.padEnd(12) + marANSI.reset +
+          marANSI.fgGray + `http://localhost:${s.port}` + marANSI.reset
         );
       }
       console.error('');
-      console.error(`Total: ${result.count} service(s)`);
+      console.error(marANSI.fgGray + `Total: ${result.count} service(s)` + marANSI.reset);
       return true;
     }
 
@@ -1470,6 +1483,10 @@ async function main(): Promise<void> {
   const command: string | undefined = args[0];
 
   if (!command || command === '--help' || command === '-h') {
+    if (IS_TTY) {
+      console.error(BANNER);
+      console.error(`  ${TAGLINE}\n`);
+    }
     // 5d: First-run detection — hint about pd learn if .portdaddy/ doesn't exist
     const portdaddyDir = join(process.cwd(), '.portdaddy');
     if (!existsSync(portdaddyDir)) {

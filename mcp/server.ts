@@ -29,6 +29,7 @@ import {
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
 import * as http from 'node:http';
+import * as net from 'node:net';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -87,6 +88,18 @@ async function api(
 }
 
 /** Convenience wrappers */
+/** Probe a TCP port — resolves true if something is already listening. */
+function isPortInUse(port: number): Promise<boolean> {
+  return new Promise(resolve => {
+    const sock = new net.Socket();
+    sock.setTimeout(400);
+    sock.on('connect', () => { sock.destroy(); resolve(true); });
+    sock.on('timeout', () => { sock.destroy(); resolve(false); });
+    sock.on('error', () => resolve(false));
+    sock.connect(port, '127.0.0.1');
+  });
+}
+
 const GET = (path: string) => api('GET', path);
 const POST = (path: string, body?: Record<string, unknown>) => api('POST', path, body);
 const PUT = (path: string, body?: Record<string, unknown>) => api('PUT', path, body);
@@ -1727,6 +1740,17 @@ async function handleTool(
       }
       if (args.expires) body.expires = args.expires;
       res = await POST('/claim', body);
+      // Warn the agent if the assigned port is already occupied by another process
+      if (res.ok && res.data && typeof res.data === 'object') {
+        const data = res.data as Record<string, unknown>;
+        const assignedPort = data.port as number | undefined;
+        if (assignedPort) {
+          const occupied = await isPortInUse(assignedPort);
+          if (occupied) {
+            data.warning = `⚠️  Port ${assignedPort} is already in use by another process. Stop that process before starting your service, or release this port and claim a different one.`;
+          }
+        }
+      }
       break;
     }
 
