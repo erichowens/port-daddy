@@ -107,6 +107,8 @@ _port_daddy() {
     briefing history
     # Agent Inbox
     inbox
+    # AI Agent Spawner + Watch
+    spawn spawned watch
     # System & Monitoring
     dashboard channels webhook webhooks metrics config health ports
     # Orchestration
@@ -1355,6 +1357,67 @@ _port_daddy() {
       ;;
 
     # Unknown command: fall back to global options only.
+    # -----------------------------------------------------------------------
+    # spawn  [kill <id>] [--backend B] [--model M] [--identity ID]
+    #        [--purpose P] [--files f1 f2...] -- <task>
+    # -----------------------------------------------------------------------
+    spawn)
+      case "$prev" in
+        spawn)
+          if [[ "$cur" == -* ]]; then
+            _pd_opts '--backend --model --identity --purpose --files --workdir --timeout'
+          else
+            # shellcheck disable=SC2207
+            COMPREPLY=( $(compgen -W "kill" -- "$cur") )
+          fi
+          ;;
+        kill)
+          COMPREPLY=()  # agent IDs — no live lookup for spawned agents
+          ;;
+        --backend)
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -W "ollama claude gemini aider custom" -- "$cur") )
+          ;;
+        --model|--identity|--purpose|--workdir|--timeout)
+          COMPREPLY=()  # Free-form
+          ;;
+        --files)
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -f -- "$cur") )
+          ;;
+        *) _pd_opts '--backend --model --identity --purpose --files --workdir --timeout' ;;
+      esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # spawned  [--json] [--quiet]  — list spawned agents
+    # -----------------------------------------------------------------------
+    spawned)
+      _pd_opts ''
+      ;;
+
+    # -----------------------------------------------------------------------
+    # watch  <channel> --exec <script> [--once]
+    # -----------------------------------------------------------------------
+    watch)
+      case "$prev" in
+        watch)
+          if [[ "$cur" == -* ]]; then
+            _pd_opts '--exec --once'
+          else
+            local channels; channels="$(_pd_channels)"
+            # shellcheck disable=SC2207
+            COMPREPLY=( $(compgen -W "$channels" -- "$cur") )
+          fi
+          ;;
+        --exec)
+          # shellcheck disable=SC2207
+          COMPREPLY=( $(compgen -f -- "$cur") )
+          ;;
+        *) _pd_opts '--exec --once' ;;
+      esac
+      ;;
+
     # -----------------------------------------------------------------------
     *)
       if [[ "$cur" == -* ]]; then

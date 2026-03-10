@@ -24,3 +24,4 @@ export * from './briefing.js';
 export * from './sugar.js';
 export * from './tutorial.js';
 export * from './inbox.js';
+export * from './spawn.js';

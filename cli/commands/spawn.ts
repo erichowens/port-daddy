@@ -1,0 +1,305 @@
+/**
+ * CLI Spawn Commands — AI Agent Launcher + Watch
+ *
+ * Handles: spawn, spawned, watch
+ */
+
+import { pdFetch } from '../utils/fetch.js';
+import { createWatch } from '../../lib/watch.js';
+import { CLIOptions, isQuiet, isJson } from '../types.js';
+import { IS_TTY, relativeTime } from '../utils/output.js';
+import { status as maritimeStatus } from '../../lib/maritime.js';
+import type { PdFetchResponse } from '../utils/fetch.js';
+
+// =============================================================================
+// handleSpawn — pd spawn --backend ollama -- "my task"
+// =============================================================================
+
+export async function handleSpawn(
+  args: string[],
+  options: CLIOptions,
+): Promise<void> {
+  // Check for 'kill' subcommand: pd spawn kill <agentId>
+  if (args[0] === 'kill') {
+    const agentId = args[1];
+    if (!agentId) {
+      console.error('Usage: pd spawn kill <agentId>');
+      process.exit(1);
+    }
+
+    const res: PdFetchResponse = await pdFetch(`/spawn/${encodeURIComponent(agentId)}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error(maritimeStatus('error', (data.error as string) || `Failed to kill agent ${agentId}`));
+      process.exit(1);
+    }
+
+    if (isJson(options)) {
+      console.log(JSON.stringify(data, null, 2));
+      return;
+    }
+
+    if (!isQuiet(options)) {
+      console.error(maritimeStatus('success', `Agent ${agentId} killed`));
+    }
+    return;
+  }
+
+  // Collect task: everything after '--' separator
+  const doubleDashIdx = process.argv.indexOf('--');
+  let task: string | undefined;
+  if (doubleDashIdx !== -1) {
+    task = process.argv.slice(doubleDashIdx + 1).join(' ');
+  }
+
+  // Fall back to positional args (before any flags)
+  if (!task && args.length > 0) {
+    task = args.join(' ');
+  }
+
+  const backend = (options.backend as string) || 'ollama';
+
+  const validBackends = ['ollama', 'claude', 'gemini', 'aider', 'custom'];
+  if (!validBackends.includes(backend)) {
+    console.error(`Invalid backend "${backend}". Valid: ${validBackends.join(', ')}`);
+    process.exit(1);
+  }
+
+  if (!task) {
+    console.error('Usage: pd spawn --backend <backend> -- <task>');
+    console.error('       pd spawn --backend claude -- "Write a hello world program"');
+    console.error('');
+    console.error('Backends: ollama, claude, gemini, aider, custom');
+    console.error('');
+    console.error('Options:');
+    console.error('  --backend <name>    AI backend to use (default: ollama)');
+    console.error('  --model <name>      Model override');
+    console.error('  --identity <id>     PD semantic identity (project:stack:context)');
+    console.error('  --purpose <text>    Human-readable task description');
+    console.error('  -j, --json          JSON output');
+    console.error('  -q, --quiet         Suppress output');
+    console.error('');
+    console.error('Subcommands:');
+    console.error('  pd spawn kill <id>  Kill a running spawned agent');
+    process.exit(1);
+  }
+
+  const body: Record<string, unknown> = {
+    backend,
+    task,
+  };
+
+  if (options.model) body.model = options.model;
+  if (options.identity) body.identity = options.identity;
+  if (options.purpose) body.purpose = options.purpose;
+
+  // Aider: collect --files from options
+  if (options.files) {
+    if (typeof options.files === 'string') {
+      body.files = [options.files];
+    } else if (Array.isArray(options.files)) {
+      body.files = options.files;
+    }
+  }
+
+  if (options.workdir) body.workdir = options.workdir;
+  if (options.timeout) body.timeout = parseInt(options.timeout as string, 10);
+
+  if (IS_TTY && !isQuiet(options) && !isJson(options)) {
+    console.error(maritimeStatus('ready', `Spawning ${backend} agent...`));
+  }
+
+  const res: PdFetchResponse = await pdFetch('/spawn', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to spawn agent'));
+    process.exit(1);
+  }
+
+  if (isJson(options)) {
+    console.log(JSON.stringify(data, null, 2));
+    return;
+  }
+
+  if (isQuiet(options)) {
+    console.log(data.agentId);
+    return;
+  }
+
+  const statusLabel: 'success' | 'error' | 'warning' = data.status === 'completed' ? 'success' : data.status === 'failed' ? 'error' : 'warning';
+  console.error(maritimeStatus(statusLabel, `Agent ${data.agentId as string}: ${data.status as string}`));
+  console.error(`  Backend: ${data.backend as string}`);
+  if (data.model) console.error(`  Model: ${data.model as string}`);
+  if (data.identity) console.error(`  Identity: ${data.identity as string}`);
+  if (data.completedAt && data.startedAt) {
+    const duration = (data.completedAt as number) - (data.startedAt as number);
+    console.error(`  Duration: ${relativeTime(duration)}`);
+  }
+  if (data.error) {
+    console.error(`  Error: ${data.error as string}`);
+  }
+  if (data.output && typeof data.output === 'string') {
+    console.error('');
+    console.error('--- Output ---');
+    console.log(data.output);
+  }
+}
+
+// =============================================================================
+// handleSpawned — pd spawned
+// =============================================================================
+
+export async function handleSpawned(
+  _args: string[],
+  options: CLIOptions,
+): Promise<void> {
+  const res: PdFetchResponse = await pdFetch('/spawn', {
+    method: 'GET',
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error(maritimeStatus('error', (data.error as string) || 'Failed to list spawned agents'));
+    process.exit(1);
+  }
+
+  if (isJson(options)) {
+    console.log(JSON.stringify(data, null, 2));
+    return;
+  }
+
+  const agents = (data.agents || []) as Array<{
+    agentId: string;
+    backend: string;
+    model: string;
+    status: string;
+    identity: string | null;
+    purpose: string | null;
+    startedAt: number;
+    completedAt: number | null;
+  }>;
+
+  if (agents.length === 0) {
+    if (!isQuiet(options)) {
+      console.error('No spawned agents');
+    }
+    return;
+  }
+
+  if (isQuiet(options)) {
+    for (const a of agents) {
+      console.log(`${a.agentId}\t${a.backend}\t${a.status}`);
+    }
+    return;
+  }
+
+  console.error('');
+  console.error(
+    'AGENT ID'.padEnd(20) +
+    'BACKEND'.padEnd(10) +
+    'MODEL'.padEnd(25) +
+    'STATUS'.padEnd(12) +
+    'AGE'
+  );
+  console.error('\u2500'.repeat(80));
+
+  const now = Date.now();
+  for (const a of agents) {
+    const age = relativeTime(now - a.startedAt);
+    console.error(
+      a.agentId.slice(0, 19).padEnd(20) +
+      a.backend.padEnd(10) +
+      (a.model || '').slice(0, 24).padEnd(25) +
+      a.status.padEnd(12) +
+      age
+    );
+  }
+  console.error('');
+  console.error(`Total: ${agents.length} agent(s)`);
+}
+
+// =============================================================================
+// handleWatch — pd watch <channel> --exec <script>
+// =============================================================================
+
+export async function handleWatch(
+  channel: string | undefined,
+  options: CLIOptions,
+): Promise<void> {
+  if (!channel) {
+    console.error('Usage: pd watch <channel> --exec <script>');
+    console.error('');
+    console.error('Subscribes to a pub/sub channel and runs a script on each message.');
+    console.error('');
+    console.error('Options:');
+    console.error('  --exec <script>    Shell command to run on each message (required)');
+    console.error('  --once             Exit after first message');
+    console.error('');
+    console.error('Environment variables set when exec runs:');
+    console.error('  PD_MESSAGE          Full message JSON string');
+    console.error('  PD_MESSAGE_CONTENT  Message content field');
+    console.error('  PD_CHANNEL          Channel name');
+    console.error('  PD_TIMESTAMP        ISO timestamp');
+    console.error('');
+    console.error('Examples:');
+    console.error('  pd watch deployments --exec ./deploy.sh');
+    console.error('  pd watch alerts --exec "echo Deploy triggered: $PD_MESSAGE_CONTENT"');
+    process.exit(1);
+  }
+
+  const exec = options.exec as string | undefined;
+  if (!exec) {
+    console.error(maritimeStatus('error', '--exec is required'));
+    console.error('Example: pd watch deployments --exec ./handle-message.sh');
+    process.exit(1);
+  }
+
+  const once = !!options.once;
+
+  if (IS_TTY && !isQuiet(options)) {
+    console.error(maritimeStatus('ready', `Watching channel "${channel}" — exec: ${exec}`));
+    if (once) console.error('  (--once: will exit after first message)');
+    console.error('  Press Ctrl+C to stop');
+  }
+
+  const watcher = createWatch();
+  const handle = watcher.watch(channel, { exec, once });
+
+  // Handle SIGINT/SIGTERM gracefully
+  const cleanup = () => {
+    handle.stop();
+    if (IS_TTY && !isQuiet(options)) {
+      console.error('\n' + maritimeStatus('stop', 'Watch stopped'));
+    }
+    process.exit(0);
+  };
+
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+
+  // Keep the process alive until stopped
+  await new Promise<void>((resolve) => {
+    if (once) {
+      // Poll for once+fired state (handle doesn't expose fired state directly)
+      const checkInterval = setInterval(() => {
+        // The watch will stop itself when once=true and message received
+        // We rely on the process naturally ending when the SSE connection closes
+        clearInterval(checkInterval);
+        resolve();
+      }, 100);
+    }
+    // For non-once mode, stay alive indefinitely via signal handler
+  });
+}

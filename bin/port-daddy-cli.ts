@@ -77,6 +77,8 @@ import {
   handleWhoOwns,
   // Briefing history
   handleHistory,
+  // Spawn + Watch
+  handleSpawn, handleSpawned, handleWatch,
 } from '../cli/commands/index.js';
 
 const __dirname: string = dirname(fileURLToPath(import.meta.url));
@@ -804,6 +806,7 @@ const ALL_COMMANDS: string[] = [
   'salvage', 'resurrection', 'changelog', 'tunnel',
   'services', 'dns', 'briefing', 'integration',
   'b', 'w', 'who-owns', 'history', 'tutorial', 'files',
+  'spawn', 'spawned', 'watch',
 ];
 
 /** Simple Levenshtein distance for short strings */
@@ -1956,6 +1959,20 @@ async function main(): Promise<void> {
 
       case 'with-lock':
         await handleWithLock(positional[0], positional.slice(1), options);
+        break;
+
+      // Spawn — AI agent launcher
+      case 'spawn':
+        await handleSpawn(positional, options);
+        break;
+
+      case 'spawned':
+        await handleSpawned(positional, options);
+        break;
+
+      // Watch — ambient agent kernel (SSE subscriber)
+      case 'watch':
+        await handleWatch(positional[0], options);
         break;
 
       // Tutorial
