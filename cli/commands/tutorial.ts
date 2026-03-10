@@ -596,13 +596,13 @@ async function lesson13Inbox(): Promise<void> {
   }).catch(() => {});
 
   // Bob checks stats
-  const statsResp = await pdFetch(`/agents/${encodeURIComponent(bobId)}/inbox/stats`).catch(() => ({ ok: false, data: {} }));
-  const stats = statsResp.data as { total?: number; unread?: number };
+  const statsResp = await pdFetch(`/agents/${encodeURIComponent(bobId)}/inbox/stats`).catch(() => null);
+  const stats = (statsResp?.ok ? await statsResp.json() : {}) as { total?: number; unread?: number };
   process.stderr.write(`  Bob's inbox: total=${stats?.total ?? '?'}, unread=${stats?.unread ?? '?'}\n\n`);
 
   // Bob reads
-  const readResp = await pdFetch(`/agents/${encodeURIComponent(bobId)}/inbox`).catch(() => ({ ok: false, data: {} }));
-  const inbox = readResp.data as { messages?: Array<{ from?: string; content: string; type: string }> };
+  const readResp = await pdFetch(`/agents/${encodeURIComponent(bobId)}/inbox`).catch(() => null);
+  const inbox = (readResp?.ok ? await readResp.json() : {}) as { messages?: Array<{ from?: string; content: string; type: string }> };
   for (const msg of (inbox?.messages ?? [])) {
     process.stderr.write(`  ${ANSI.fgGreen}[${msg.type}]${ANSI.reset} From ${msg.from ?? 'unknown'}: ${msg.content}\n`);
   }
