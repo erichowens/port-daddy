@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Port Daddy v3.5 Research Synthesis</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #21262d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent-blue: #58a6ff;
+      --accent-cyan: #39d0d8;
+      --accent-green: #56d364;
+      --accent-yellow: #d29922;
+      --accent-red: #f85149;
+      --accent-purple: #bc8cff;
+      --callout-blue-bg: rgba(88, 166, 255, 0.08);
+      --callout-red-bg: rgba(248, 81, 73, 0.08);
+      --callout-purple-bg: rgba(188, 140, 255, 0.08);
+      --font-mono: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', ui-monospace, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .sidebar-title {
+      padding: 0 20px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    .sidebar a {
+      display: block;
+      padding: 6px 20px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .sidebar a:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .sidebar a.active { color: var(--accent-blue); }
+    .sidebar-section {
+      padding: 12px 20px 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--border);
+    }
+
+    .content { padding: 48px 64px; max-width: 900px; }
+
+    h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+    h2 { font-size: 22px; font-weight: 600; margin: 48px 0 16px; color: var(--text); padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    h3 { font-size: 16px; font-weight: 600; margin: 28px 0 12px; color: var(--accent-cyan); }
+
+    p { margin-bottom: 16px; }
+    a { color: var(--accent-blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent-cyan);
+    }
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      overflow-x: auto;
+      margin: 16px 0 24px;
+    }
+    pre code { background: none; border: none; padding: 0; font-size: 13px; color: var(--text); }
+
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13px; }
+    th { text-align: left; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; }
+    td { padding: 10px 12px; border: 1px solid var(--border); }
+    tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+    .callout { border-radius: 8px; padding: 16px 20px; margin: 20px 0; border-left: 3px solid; font-size: 14px; }
+    .callout-geeked-out { background: var(--callout-blue-bg); border-color: var(--accent-blue); }
+    .callout-circled { background: var(--callout-red-bg); border-color: var(--accent-red); }
+    .callout-cross-ref { background: var(--callout-purple-bg); border-color: var(--accent-purple); }
+    .callout-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; display: block; }
+    .callout-geeked-out .callout-label { color: var(--accent-blue); }
+    .callout-circled .callout-label { color: var(--accent-red); }
+    .callout-cross-ref .callout-label { color: var(--accent-purple); }
+
+    .archetype-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 20px 0; }
+    .archetype-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .archetype-number { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-bottom: 4px; }
+    .archetype-name { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .archetype-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    .protocol-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 20px 0; }
+    .protocol-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+    .protocol-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 8px; border-radius: 4px; margin-bottom: 12px; }
+    .badge-mcp { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
+    .badge-a2a { background: rgba(86,211,100,0.15); color: var(--accent-green); }
+    .badge-acp { background: rgba(57,208,216,0.15); color: var(--accent-cyan); }
+    .badge-ap  { background: rgba(188,140,255,0.15); color: var(--accent-purple); }
+
+    /* CSS-only pheromone trail animation */
+    .pheromone-demo {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      margin: 20px 0;
+      overflow: hidden;
+      position: relative;
+      height: 120px;
+    }
+    .trail { position: absolute; height: 3px; background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent); border-radius: 2px; opacity: 0; }
+    .trail-1 { top: 30%; width: 60%; left: 10%; animation: trailAnim 4s ease-in-out infinite; }
+    .trail-2 { top: 50%; width: 40%; left: 30%; animation: trailAnim 4s ease-in-out 1.3s infinite; }
+    .trail-3 { top: 70%; width: 70%; left: 5%;  animation: trailAnim 4s ease-in-out 2.6s infinite; }
+    .ant { position: absolute; width: 8px; height: 8px; background: var(--accent-green); border-radius: 50%; }
+    .ant-1 { top: calc(30% - 4px); animation: antMove 4s ease-in-out 0s infinite; }
+    .ant-2 { top: calc(50% - 4px); animation: antMove 4s ease-in-out 1.3s infinite; }
+    .ant-3 { top: calc(70% - 4px); animation: antMove 4s ease-in-out 2.6s infinite; }
+    @keyframes trailAnim {
+      0%   { opacity: 0; transform: scaleX(0); transform-origin: left; }
+      20%  { opacity: 0.7; transform: scaleX(1); }
+      80%  { opacity: 0.4; transform: scaleX(1); }
+      100% { opacity: 0; }
+    }
+    @keyframes antMove {
+      0%   { left: 10%; opacity: 1; }
+      80%  { left: 80%; opacity: 1; }
+      100% { left: 80%; opacity: 0; }
+    }
+    .pheromone-label { position: absolute; bottom: 12px; right: 16px; font-size: 11px; color: var(--muted); font-style: italic; }
+
+    /* Cost calculator */
+    .calculator { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin: 20px 0; }
+    .calc-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .calc-field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .calc-field input[type=range] { width: 100%; accent-color: var(--accent-blue); }
+    .calc-field select {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 14px;
+    }
+    .calc-val { font-family: var(--font-mono); font-size: 13px; color: var(--accent-cyan); display: block; margin-top: 4px; }
+    .calc-results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .calc-result { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px; text-align: center; }
+    .calc-result-backend { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .calc-result-cost { font-size: 22px; font-weight: 700; font-family: var(--font-mono); }
+    .cost-cheap { color: var(--accent-green); }
+    .cost-mid   { color: var(--accent-yellow); }
+    .cost-pricey { color: var(--accent-red); }
+
+    /* Recommendations */
+    .rec-list { counter-reset: rec; }
+    .rec-item {
+      counter-increment: rec;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 20px 20px 20px 68px; margin-bottom: 12px; position: relative;
+    }
+    .rec-item::before {
+      content: counter(rec); position: absolute; left: 20px; top: 20px;
+      width: 32px; height: 32px; background: var(--accent-blue); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px; color: var(--bg); line-height: 32px; text-align: center;
+    }
+    .rec-title { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+    .rec-sprint { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+    .rec-desc { margin-top: 8px; font-size: 14px; color: var(--muted); }
+
+    /* Header */
+    .header { padding: 0 0 24px; margin-bottom: 40px; border-bottom: 1px solid var(--border); }
+    .header-meta { color: var(--muted); font-size: 13px; margin-top: 8px; }
+    .header-badge {
+      display: inline-flex; align-items: center; background: rgba(88,166,255,0.1);
+      border: 1px solid rgba(88,166,255,0.2); color: var(--accent-blue);
+      padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; margin-right: 8px;
+    }
+
+    section { scroll-margin-top: 24px; }
+
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .content { padding: 24px; }
+      .archetype-grid, .protocol-grid, .calc-controls, .calc-results { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <nav class="sidebar">
+    <div class="sidebar-title">Research Synthesis</div>
+    <div class="sidebar-section">Overview</div>
+    <a href="#executive-summary">Executive Summary</a>
+    <div class="sidebar-section">Protocols</div>
+    <a href="#protocol-landscape">Protocol Landscape</a>
+    <a href="#agent-archetypes">10 Agent Archetypes</a>
+    <div class="sidebar-section">Patterns</div>
+    <a href="#swarm-patterns">Swarm Patterns</a>
+    <a href="#always-on">Always-On Agents</a>
+    <a href="#harbors">Harbors / RBAC</a>
+    <div class="sidebar-section">Economics</div>
+    <a href="#cost-calculator">Cost Calculator</a>
+    <div class="sidebar-section">Features</div>
+    <a href="#pd-spawn">pd spawn Design</a>
+    <a href="#docs-audit">Docs Audit</a>
+    <a href="#recommendations">Recommendations</a>
+  </nav>
+
+  <main class="content">
+
+    <div class="header">
+      <span class="header-badge">Port Daddy v3.5</span>
+      <span class="header-badge">March 2026</span>
+      <h1>Research Synthesis</h1>
+      <p class="header-meta">Multi-agent patterns &middot; Local LLMs &middot; Documentation audit &middot; Strategic direction</p>
+    </div>
+
+    <section id="executive-summary">
+      <h2>Executive Summary</h2>
+      <p>Three research streams converged this sprint. The findings are more bullish than expected.</p>
+      <p><strong>Multi-agent systems (2026):</strong> The industry has converged on a two-layer stack &mdash; MCP for agent-infrastructure, A2A for agent-agent. Both are under the Linux Foundation. The 10 canonical archetypes (Orchestrator, Planner, Executor, Critic&hellip;) provide a shared vocabulary for swarm design. The dominant failure mode: &ldquo;Bag of Agents&rdquo; &mdash; N agents with overlapping responsibilities and no archetype assignment. Port Daddy&rsquo;s session + salvage system naturally enforces archetype clarity: agents declare purpose at registration, and dead agents leave a readable audit trail.</p>
+      <p><strong>Local LLMs:</strong> Running 10 agents for an hour costs $0.07 with Ollama (electricity only). The key discovery: <strong>don&rsquo;t spawn the <code>claude</code> CLI as a subprocess</strong> &mdash; 7&times; token overhead from MCP re-init. Use <code>@anthropic-ai/sdk</code> directly. <code>lib/spawner.ts</code> is ~200 lines. Port Daddy already has everything else.</p>
+      <p><strong>Docs:</strong> Tutorials 06 and 08 are stubs (13% quality score). Zero tutorials have screenshots. The API reference doesn&rsquo;t exist &mdash; it&rsquo;s a link to GitHub. All fixable this sprint.</p>
+      <div class="callout callout-geeked-out">
+        <span class="callout-label">Geeked Out</span>
+        The A2A Agent Card pattern (<code>/.well-known/agent.json</code>) is the single most exciting finding. When spawned agents serve Agent Cards, Port Daddy becomes a <strong>capability registry</strong> &mdash; other agents ask &ldquo;who can do X?&rdquo; and get a live list. PD goes from port manager to service mesh for agents. One sprint away.
+      </div>
+    </section>
+
+    <section id="protocol-landscape">
+      <h2>Protocol Landscape</h2>
+      <p>Four protocols compete for the agent communication stack. Two are dominant; two are niche.</p>
+      <div class="protocol-grid">
+        <div class="protocol-card">
+          <span class="protocol-badge badge-mcp">MCP</span>
+          <h3 style="margin-top:0;color:var(--accent-blue)">Model Context Protocol</h3>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:8px">Anthropic &rarr; Linux Foundation. Agent &harr; Infrastructure. Pull-based: agents declare needs, server provides. The de-facto standard for tool use.</p>
+          <p style="font-size:13px"><strong>Port Daddy uses this today.</strong> Our MCP server is how Claude agents connect to PD.</p>
+        </div>
+        <div class="protocol-card">
+          <span class="protocol-badge badge-a2a">A2A</span>
+          <h3 style="margin-top:0;color:var(--accent-green)">Agent-to-Agent Protocol</h3>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:8px">Google &rarr; Linux Foundation. Agent &harr; Agent. Push-based task delegation. Agent Cards at <code>/.well-known/agent.json</code> for capability discovery.</p>
+          <p style="font-size:13px"><strong>PD should serve Agent Cards</strong> for spawned agents. Right long-term design.</p>
+        </div>
+        <div class="protocol-card">
+          <span class="protocol-badge badge-acp">ACP</span>
+          <h3 style="margin-top:0;color:var(--accent-cyan)">Agent Comm. Protocol</h3>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:8px">IBM. Lightweight A2A alternative, fewer primitives, REST-first. For simple agent pipelines.</p>
+          <p style="font-size:13px">Watch list only. No action needed for PD v3.x.</p>
+        </div>
+        <div class="protocol-card">
+          <span class="protocol-badge badge-ap">Agent Protocol</span>
+          <h3 style="margin-top:0;color:var(--accent-purple)">Agent Protocol</h3>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:8px">HuggingFace / Community. Standardized client-side interface. Defines task lifecycle: create &rarr; step &rarr; complete.</p>
+          <p style="font-size:13px">Useful reference for <code>pd spawn</code> task lifecycle design.</p>
+        </div>
+      </div>
+      <div class="callout callout-circled">
+        <span class="callout-label">Critical Finding</span>
+        A2A&rsquo;s binary message parts mean agents can exchange embedding vectors directly &mdash; not just text. This enables semantic memory passing without re-encoding. PD notes already accept arbitrary content; future tooling can attach embeddings enabling semantic search across agent memory.
+      </div>
+    </section>
+
+    <section id="agent-archetypes">
+      <h2>10 Agent Archetypes</h2>
+      <p>The &ldquo;Bag of Agents&rdquo; anti-pattern: N agents with overlapping responsibilities, no archetype assignment, constant coordination failures. Solution: name archetypes upfront.</p>
+      <div class="archetype-grid">
+        <div class="archetype-card">
+          <div class="archetype-number">01</div>
+          <div class="archetype-name" style="color:var(--accent-blue)">Orchestrator</div>
+          <div class="archetype-desc">Receives goals, decomposes, delegates to workers. Never does direct work. The &ldquo;conductor&rdquo; of the swarm.</div>
+        </div>
+        <div class="archetype-card">
+          <div class="archetype-number">02</div>
+          <div class="archetype-name" style="color:var(--accent-cyan)">Planner</div>
+          <div class="archetype-desc">Converts goals into step-by-step task graphs. Produces DAGs. Distinct from Orchestrator: plans, doesn&rsquo;t direct.</div>
+        </div>
+        <div class="archetype-card">
+          <div class="archetype-number">03</div>
+          <div class="archetype-name" style="color:var(--accent-green)">Executor</div>
+          <div class="archetype-desc">Runs atomic tasks. No planning, pure execution. Highly parallelizable. The &ldquo;worker.&rdquo; Should be stateless between tasks.</div>
+        </div>
+        <div class="archetype-card">
+          <div class="archetype-number">04</div>
+          <div class="archetype-name" style="color:var(--accent-red)">Critic</div>
+          <div class="archetype-desc">Reviews outputs against quality criteria. Adversarial by design. Essential for preventing &ldquo;yes-man&rdquo; loops in homogeneous swarms.</div>
+        </div>
+        <div class="archetype-card">
+          <div class="archetype-number">05</div>
+          <div class="archetype-name" style="color:var(--accent-yellow)">Evaluator</div>
+          <div class="archetype-desc">Scores outputs with rubrics. Produces numbers, not prose. Enables automatic quality gates; routes back to Executors if score is too low.</div>
+        </div>
+        <div class="archetype-card">
+          <div class="archetype-number">06</div>
+          <div class="archetype-name" style="color:var(--accent-purple)">Synthesizer</div>
+          <div class="archetype-desc">Combines outputs from multiple workers into coherent results. Resolves contradictions. Creates the final artifact humans see.</div>
+        </div>
+        <div class="archetype-card">
+          <div class="archetype-number">07</div>
+          <div class="archetype-name" style="color:var(--accent-blue)">Retriever</div>
+          <div class="archetype-desc">Queries stores (docs, code, vector memory) to provide context. Manages RAG pipelines. Pre-fetches relevant context before Executor starts.</div>
+        </div>
+        <div class="archetype-card">
+          <div class="archetype-number">08</div>
+          <div class="archetype-name" style="color:var(--accent-cyan)">Memory Keeper</div>
+          <div class="archetype-desc">Maintains persistent state across sessions and restarts. Port Daddy itself fills this role for session + port state.</div>
+        </div>
+        <div class="archetype-card">
+          <div class="archetype-number">09</div>
+          <div class="archetype-name" style="color:var(--accent-green)">Mediator</div>
+          <div class="archetype-desc">Resolves conflicts between agents: resource contention, scheduling disagreements. PD&rsquo;s lock system is a Mediator primitive.</div>
+        </div>
+        <div class="archetype-card">
+          <div class="archetype-number">10</div>
+          <div class="archetype-name" style="color:var(--accent-yellow)">Monitor</div>
+          <div class="archetype-desc">Observability. Tracks agent health, detects failures, triggers salvage. PD&rsquo;s resurrection queue is Monitor infrastructure. <code>pd watch</code> is the Monitor agent.</div>
+        </div>
+      </div>
+      <div class="callout callout-cross-ref">
+        <span class="callout-label">Cross-Reference</span>
+        <code>pd begin --identity myapp:orchestrator --purpose "Plan auth refactor"</code> now has a semantic home in this taxonomy. The identity&rsquo;s stack component maps directly to archetype: <code>myapp:executor</code>, <code>myapp:critic</code>, <code>myapp:synthesizer</code>. Consider documenting this in the next tutorial sprint.
+      </div>
+    </section>
+
+    <section id="swarm-patterns">
+      <h2>Swarm Patterns</h2>
+      <h3>Ant Colony Optimization</h3>
+      <p>Biological pheromone trails map to shared message queues. Agents follow high-quality paths:</p>
+      <div class="pheromone-demo">
+        <div class="trail trail-1"></div>
+        <div class="trail trail-2"></div>
+        <div class="trail trail-3"></div>
+        <div class="ant ant-1"></div>
+        <div class="ant ant-2"></div>
+        <div class="ant ant-3"></div>
+        <span class="pheromone-label">Pheromone trail simulation (CSS-only)</span>
+      </div>
+      <pre><code># Agent publishes quality score ("pheromone") after completing a task
+pd pub task-solutions '{"task":"auth","quality":0.92,"approach":"JWT"}'
+
+# Next agents read scores before picking approaches
+pd sub task-solutions   # pick highest-quality past approach
+
+# Low-quality approaches "evaporate" when channel TTL expires</code></pre>
+
+      <h3>Stigmergy (Indirect Coordination)</h3>
+      <p>Agents coordinate without direct messaging by modifying shared state. Port Daddy&rsquo;s file claims + pub/sub are already a stigmergy substrate: Agent A claims <code>src/auth.ts</code> &rarr; Agent B detects claim and picks a different file. No direct agent-to-agent calls needed.</p>
+
+      <div class="callout callout-geeked-out">
+        <span class="callout-label">Geeked Out</span>
+        <strong>Heterogeneous swarms outperform homogeneous ones.</strong> A swarm of 4 specialized models (Planner + 2 Executors + Critic) beats 4 identical GPT-4o instances on complex tasks, even when individual specialized models are individually weaker. This validates <code>pd spawn</code>&rsquo;s multi-backend design: mix Ollama (cheap, fast) + Claude Haiku (reasoning) + Aider (git-native coding).
+      </div>
+    </section>
+
+    <section id="always-on">
+      <h2>Always-On Agents</h2>
+      <p>The ambient agent pattern: a persistent process that subscribes to events and dispatches agents when conditions match &mdash; without human prompting.</p>
+      <table>
+        <tr><th>Capability</th><th>Status</th><th>Notes</th></tr>
+        <tr><td>SSE subscriptions</td><td style="color:var(--accent-green)">Exists</td><td><code>/msg/:channel/subscribe</code></td></tr>
+        <tr><td>Agent heartbeats + resurrection</td><td style="color:var(--accent-green)">Exists</td><td>Full salvage queue infrastructure</td></tr>
+        <tr><td>Inbound webhooks</td><td style="color:var(--accent-green)">Exists</td><td>Webhook system already in v3.4</td></tr>
+        <tr><td>Sessions + notes</td><td style="color:var(--accent-green)">Exists</td><td>Per-agent audit trail</td></tr>
+        <tr><td>SSE reconnect loop in SDK</td><td style="color:var(--accent-yellow)">Missing</td><td>Needed in <code>lib/client.ts</code></td></tr>
+        <tr><td><code>pd watch &lt;ch&gt; --exec &lt;script&gt;</code></td><td style="color:var(--accent-red)">Missing</td><td>The minimal ambient kernel</td></tr>
+        <tr><td>Scheduled triggers (cron)</td><td style="color:var(--accent-red)">Missing</td><td>v4.1</td></tr>
+      </table>
+      <p><code>pd watch</code> is the kernel. Every &ldquo;always-on&rdquo; pattern builds on it.</p>
+    </section>
+
+    <section id="harbors">
+      <h2>Harbors / RBAC for Agents</h2>
+      <p>Current PD problem: any agent can read/write any channel, claim any file. Fine for solo development; breaks down with untrusted agent code or multi-tenant environments.</p>
+      <h3>Design Sketch (v4.0)</h3>
+      <pre><code># Create a permission namespace
+pd harbor create myapp:security-review \
+  --cap "code:read,security:scan,notes:write" \
+  --expires 2h
+
+# Agents enter the harbor (scoped JWT tokens issued)
+pd harbor enter myapp:security-review --agent reviewer-1
+
+# Operations outside capabilities return 403
+pd harbor leave myapp:security-review --agent reviewer-1
+
+# List all harbors
+pd harbors</code></pre>
+      <div class="callout callout-circled">
+        <span class="callout-label">Not This Sprint</span>
+        Harbors require JWT-based capability tokens + enforcement middleware. Needs careful crypto design. Plan for v4.0. Meanwhile, <code>pd spawn</code>&rsquo;s identity scoping (<code>project:stack:context</code>) provides soft harbor semantics without enforcement.
+      </div>
+    </section>
+
+    <section id="cost-calculator">
+      <h2>Cost Calculator</h2>
+      <p>How much does running your agent swarm actually cost? Drag the sliders.</p>
+      <div class="calculator">
+        <div class="calc-controls">
+          <div class="calc-field">
+            <label for="num-agents">Number of agents</label>
+            <input type="range" id="num-agents" min="1" max="20" value="5">
+            <span class="calc-val" id="num-agents-val">5 agents</span>
+          </div>
+          <div class="calc-field">
+            <label for="duration">Session duration</label>
+            <input type="range" id="duration" min="1" max="16" step="1" value="4">
+            <span class="calc-val" id="duration-val">4 hours</span>
+          </div>
+          <div class="calc-field">
+            <label for="token-intensity">Token intensity</label>
+            <select id="token-intensity">
+              <option value="50000">Light (50K tokens/hr)</option>
+              <option value="200000" selected>Medium (200K tokens/hr)</option>
+              <option value="500000">Heavy (500K tokens/hr)</option>
+            </select>
+          </div>
+          <div class="calc-field">
+            <label>&nbsp;</label>
+            <button onclick="calcUpdate()" style="width:100%;background:var(--accent-blue);color:var(--bg);border:none;padding:9px 16px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">Recalculate</button>
+          </div>
+        </div>
+        <div class="calc-results" id="calc-results"></div>
+      </div>
+    </section>
+
+    <section id="pd-spawn">
+      <h2><code>pd spawn</code> Design</h2>
+      <p>The minimal implementation: <code>lib/spawner.ts</code> (~200 lines) + routes + CLI. PD already has everything else.</p>
+      <h3>CLI Syntax</h3>
+      <pre><code># Ollama: local, free, fast iteration
+pd spawn --backend ollama --model llama3.2:8b \
+  --identity myapp:coder --purpose "Refactor auth" \
+  -- "Fix login bug in src/auth.ts"
+
+# Claude: best reasoning, direct SDK (NOT CLI subprocess)
+pd spawn --backend claude --model claude-haiku-4-5-20251001 \
+  --identity myapp:reviewer \
+  -- "Review PR #42 for security issues"
+
+# Aider: git-native coding agent, makes commits
+pd spawn --backend aider --model gemini/gemini-2.0-flash-exp \
+  -- src/auth.ts src/middleware.ts
+
+# Management
+pd spawned                     # list running agents
+pd spawn kill &lt;agentId&gt;        # stop a spawned agent</code></pre>
+
+      <h3>Auto-Wired Coordination</h3>
+      <p>Every spawned agent automatically: registers with PD, calls <code>pd.begin()</code>, sends heartbeat every 30s, writes each LLM response as a note, calls <code>pd.done()</code> on exit. If killed unexpectedly: marked stale &rarr; resurrection queue after 10 min.</p>
+
+      <div class="callout callout-cross-ref">
+        <span class="callout-label">Cross-Reference</span>
+        A spawned agent that crashes is automatically recoverable: another agent can <code>pd salvage claim &lt;id&gt;</code> and continue from its notes. This is the coordination flywheel: every new feature strengthens every existing feature.
+      </div>
+    </section>
+
+    <section id="docs-audit">
+      <h2>Documentation Audit</h2>
+      <table>
+        <tr>
+          <th>Tutorial</th><th>Title</th><th>Code</th><th>Step-by-Step</th><th>Troubleshooting</th><th>Screenshots</th><th>SDK</th><th>Score</th>
+        </tr>
+        <tr><td>T01</td><td>Getting Started</td><td style="color:var(--accent-green)">Y</td><td style="color:var(--accent-green)">Y</td><td style="color:var(--accent-yellow)">partial</td><td style="color:var(--accent-red)">N</td><td style="color:var(--accent-green)">Y</td><td style="font-family:var(--font-mono)">73%</td></tr>
+        <tr><td>T02</td><td>Multi-Agent Orchestration</td><td style="color:var(--accent-green)">Y</td><td style="color:var(--accent-green)">Y</td><td style="color:var(--accent-green)">Y</td><td style="color:var(--accent-red)">N</td><td style="color:var(--accent-green)">Y</td><td style="font-family:var(--font-mono)">85%</td></tr>
+        <tr><td>T03</td><td>Monorepo Mastery</td><td style="color:var(--accent-green)">Y</td><td style="color:var(--accent-green)">Y</td><td style="color:var(--accent-yellow)">partial</td><td style="color:var(--accent-red)">N</td><td style="color:var(--accent-green)">Y</td><td style="font-family:var(--font-mono)">75%</td></tr>
+        <tr><td>T06</td><td>DNS Resolver</td><td style="color:var(--accent-yellow)">partial</td><td style="color:var(--accent-red)">N</td><td style="color:var(--accent-red)">N</td><td style="color:var(--accent-red)">N</td><td style="color:var(--accent-red)">N</td><td style="font-family:var(--font-mono);color:var(--accent-red)">13%</td></tr>
+        <tr><td>T08</td><td>Session Phases</td><td style="color:var(--accent-yellow)">partial</td><td style="color:var(--accent-red)">N</td><td style="color:var(--accent-red)">N</td><td style="color:var(--accent-red)">N</td><td style="color:var(--accent-red)">N</td><td style="font-family:var(--font-mono);color:var(--accent-red)">13%</td></tr>
+      </table>
+      <p style="color:var(--muted);font-size:13px">T06 and T08 are clear outliers. Screenshots are 15% weight, 0% coverage across all 9 tutorials.</p>
+      <div class="callout callout-geeked-out">
+        <span class="callout-label">Quick Win</span>
+        <code>pd learn</code> is an interactive CLI tutorial that&rsquo;s completely undiscovered &mdash; not mentioned anywhere on the website. Adding one card to the tutorials index page surfaces it immediately. Zero implementation cost.
+      </div>
+    </section>
+
+    <section id="recommendations">
+      <h2>Strategic Recommendations</h2>
+      <div class="rec-list">
+        <div class="rec-item">
+          <div class="rec-title"><code>pd spawn</code> &mdash; Agent Launcher</div>
+          <div class="rec-sprint">v3.5 (this sprint)</div>
+          <p class="rec-desc">Highest leverage. PD already has sessions, notes, salvage, heartbeats. The inference layer is ~200 lines. Ships Ollama + Claude SDK + Aider + Gemini backends.</p>
+        </div>
+        <div class="rec-item">
+          <div class="rec-title"><code>pd watch</code> &mdash; Ambient Agent Kernel</div>
+          <div class="rec-sprint">v3.5 (this sprint)</div>
+          <p class="rec-desc">Without this, PD requires manual intervention to trigger agents. Subscribe to any channel; run any script on message. ~50 lines. PD as a reaction engine.</p>
+        </div>
+        <div class="rec-item">
+          <div class="rec-title">Agent Cards at <code>/.well-known/agent.json</code></div>
+          <div class="rec-sprint">v3.6 (next sprint)</div>
+          <p class="rec-desc">Spawned agents serve capability advertisements. Port Daddy becomes a capability registry. Other agents discover what&rsquo;s running and what it can do.</p>
+        </div>
+        <div class="rec-item">
+          <div class="rec-title">Tutorial Screenshots (Playwright Staged World)</div>
+          <div class="rec-sprint">v3.5 (this sprint)</div>
+          <p class="rec-desc">Build <code>scripts/stage-demo-world.ts</code> to populate daemon with realistic data; Playwright headless captures dashboard screenshots. 15% weight, 0% current coverage across 9 tutorials.</p>
+        </div>
+        <div class="rec-item">
+          <div class="rec-title">Harbors / Agent RBAC</div>
+          <div class="rec-sprint">v4.0 (2&ndash;3 sprints)</div>
+          <p class="rec-desc">JWT-based capability tokens + enforcement middleware. Requires careful crypto design. Don&rsquo;t rush it. Meanwhile, identity scoping provides soft harbor semantics.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+(function () {
+  var BACKENDS = [
+    { key: 'ollama',     label: 'Ollama (local)',    perM: 0.00004,  tier: 'cheap'  },
+    { key: 'gemini',     label: 'Gemini Flash',      perM: 0,        tier: 'cheap'  },
+    { key: 'haiku',      label: 'Claude Haiku',      perM: 1.5,      tier: 'mid'    },
+    { key: 'gpt4omini',  label: 'GPT-4o mini',       perM: 0.75,     tier: 'cheap'  },
+    { key: 'groq',       label: 'Groq (free tier)',  perM: 0,        tier: 'cheap'  },
+    { key: 'sonnet',     label: 'Claude Sonnet',     perM: 18,       tier: 'pricey' },
+  ];
+
+  function calcUpdate() {
+    var agents = parseInt(document.getElementById('num-agents').value, 10);
+    var hours  = parseInt(document.getElementById('duration').value, 10);
+    var tokensPerHr = parseInt(document.getElementById('token-intensity').value, 10);
+
+    document.getElementById('num-agents-val').textContent = agents + ' agent' + (agents !== 1 ? 's' : '');
+    document.getElementById('duration-val').textContent = hours + ' hour' + (hours !== 1 ? 's' : '');
+
+    var totalMillions = (agents * hours * tokensPerHr) / 1e6;
+    var container = document.getElementById('calc-results');
+
+    // Remove all child nodes safely
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+
+    BACKENDS.forEach(function (b) {
+      var raw = totalMillions * b.perM;
+      var display = raw < 0.01 ? (b.perM === 0 ? '$0 (free)' : '< $0.01') : '$' + raw.toFixed(2);
+
+      var card = document.createElement('div');
+      card.className = 'calc-result';
+
+      var nameEl = document.createElement('div');
+      nameEl.className = 'calc-result-backend';
+      nameEl.textContent = b.label;
+
+      var costEl = document.createElement('div');
+      costEl.className = 'calc-result-cost ' + b.tier;
+      costEl.textContent = display;
+
+      card.appendChild(nameEl);
+      card.appendChild(costEl);
+      container.appendChild(card);
+    });
+  }
+
+  // Attach live update listeners
+  document.getElementById('num-agents').addEventListener('input', calcUpdate);
+  document.getElementById('duration').addEventListener('input', calcUpdate);
+  document.getElementById('token-intensity').addEventListener('change', calcUpdate);
+
+  // Initial render
+  calcUpdate();
+
+  // Active nav link on scroll
+  var sections = document.querySelectorAll('section[id]');
+  var links = document.querySelectorAll('.sidebar a');
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) {
+        links.forEach(function (l) {
+          l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id);
+        });
+      }
+    });
+  }, { threshold: 0.3 });
+  sections.forEach(function (s) { observer.observe(s); });
+}());
+</script>
+
+</body>
+</html>
