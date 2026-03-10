@@ -214,21 +214,19 @@ Fish completions are historically the worst — double-check fish.
 
 **Update this section for every feature in progress.**
 
-### pd spawn + pd watch (v3.6)
-
-AI agent launcher and ambient trigger kernel. Being implemented in a worktree branch.
+### pd spawn + pd watch — DONE (v3.6)
 
 | Surface | Status | Notes |
 |---------|--------|-------|
-| `lib/spawner.ts` | 🚧 In Progress | createSpawner(), backends: ollama/claude/gemini/aider/custom |
-| `lib/watch.ts` | 🚧 In Progress | SSE subscriber, --exec, reconnect loop |
-| `routes/spawn.ts` | 🚧 In Progress | POST/GET/DELETE /spawn |
-| `cli/commands/spawn.ts` | 🚧 In Progress | pd spawn, pd spawned, pd watch |
-| `features.manifest.json` | ⬜ TODO | spawn + watch entries |
-| `completions/*.{bash,zsh,fish}` | ⬜ TODO | spawn, spawned, watch |
-| `lib/client.ts` | ⬜ TODO | spawn(), listSpawned(), killSpawned() |
+| `lib/spawner.ts` | ✅ DONE | createSpawner(), backends: ollama/claude/gemini/aider/custom, 434 lines |
+| `lib/watch.ts` | ✅ DONE | SSE subscriber, --exec, reconnect loop, 174 lines |
+| `routes/spawn.ts` | ✅ DONE | POST/GET/DELETE /spawn |
+| `cli/commands/spawn.ts` | ✅ DONE | pd spawn, pd spawned, pd watch |
+| `features.manifest.json` | ✅ DONE | spawn + watch entries added |
+| `completions/*.{bash,zsh,fish}` | ✅ DONE | spawn, spawned, watch in all 3 shells |
+| `lib/client.ts` | ✅ DONE | spawn(), listSpawned(), killSpawned() + typed interfaces |
 | `README.md` | ⬜ TODO | Document pd spawn + pd watch |
-| `CHANGELOG.md` | ⬜ TODO | Add entry when merged |
+| `CHANGELOG.md` | ⬜ TODO | Add entry for next release |
 
 **CLI syntax:**
 ```bash
