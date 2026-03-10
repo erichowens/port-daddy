@@ -607,6 +607,9 @@ describe('MCP --> Manifest (every MCP tool maps to a feature)', () => {
 
       // Meta-tool (progressive disclosure)
       'pd_discover': 'system',
+
+      // Launch hints
+      'get_launch_hints': 'launch_hints',
     };
 
     const unmapped = [];

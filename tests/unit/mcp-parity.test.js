@@ -170,6 +170,9 @@ const TOOL_FEATURE_MAP = {
 
   // Meta-tool (progressive disclosure)
   'pd_discover': 'system',
+
+  // Launch hints
+  'get_launch_hints': 'launch_hints',
 };
 
 /**

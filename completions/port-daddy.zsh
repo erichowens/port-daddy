@@ -1122,6 +1122,7 @@ _port_daddy() {
     'p:list or manage projects (alias for projects)'
     'doctor:run environment diagnostics'
     'diagnose:run environment diagnostics (alias for doctor)'
+    'hints:show salvage queue and onboarding nudges for the current project'
     # Daemon lifecycle
     'start:start the Port Daddy daemon'
     'stop:stop the Port Daddy daemon'

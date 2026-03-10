@@ -9,7 +9,7 @@ import { existsSync, readFileSync, readdirSync, accessSync, constants } from 'no
 import { createHash } from 'node:crypto';
 import { spawnSync, spawn } from 'node:child_process';
 import type { SpawnSyncReturns } from 'node:child_process';
-import { status as maritimeStatus } from '../../lib/maritime.js';
+import { status as maritimeStatus, ANSI as marANSI } from '../../lib/maritime.js';
 import { pdFetch, PORT_DADDY_URL, SOCK_PATH } from '../utils/fetch.js';
 import { CLIOptions, isJson } from '../types.js';
 import { separator, tableHeader } from '../utils/output.js';
@@ -738,5 +738,60 @@ export async function handleDoctor(): Promise<void> {
   }
   if (passed < total) {
     process.exit(1);
+  }
+}
+
+/**
+ * Handle `pd hints` command
+ *
+ * Prints context-aware launch hints: salvage queue summary and new-folder nudges.
+ * Same data shown in the banner, but available on demand at any time.
+ */
+export async function handleHints(options: CLIOptions): Promise<void> {
+  const cwd = encodeURIComponent(process.cwd());
+  const res = await pdFetch(`${PORT_DADDY_URL}/launch-hints?cwd=${cwd}`);
+  const data = await res.json() as {
+    projectName?: string;
+    isNewFolder?: boolean;
+    salvage?: { total: number; inProject: number; recent: Array<{ id: string; purpose?: string; identity?: string; minutesAgo?: number }> };
+    nudges?: Array<{ type: string; message: string; cmd: string }>;
+  };
+
+  if (options.json || options.j) {
+    console.log(JSON.stringify(data, null, 2));
+    return;
+  }
+
+  const { salvage, nudges, isNewFolder, projectName } = data;
+  const inProject = salvage?.inProject ?? 0;
+  const total = salvage?.total ?? 0;
+
+  if (inProject > 0) {
+    const n = inProject;
+    console.error(marANSI.fgYellow + `${n} agent${n > 1 ? 's' : ''} from ${projectName || 'this project'} need salvaging` + marANSI.reset);
+    for (const a of (salvage?.recent ?? [])) {
+      const ago = a.minutesAgo != null ? ` (${a.minutesAgo}m ago)` : '';
+      const id = a.identity ? ` [${a.identity}]` : '';
+      console.error(marANSI.fgGray + `  ${a.purpose ?? a.id}${id}${ago}` + marANSI.reset);
+    }
+    console.error(marANSI.fgCyan + `→ pd salvage${projectName ? ` --project ${projectName}` : ''}` + marANSI.reset);
+    console.error('');
+  } else if (total > 0) {
+    console.error(marANSI.fgGray + `${total} agent${total > 1 ? 's' : ''} pending salvage across all projects  (pd salvage)` + marANSI.reset);
+    console.error('');
+  } else {
+    console.error(marANSI.fgGreen + 'No agents pending salvage.' + marANSI.reset);
+  }
+
+  if (isNewFolder) {
+    console.error(marANSI.fgCyan + 'New folder' + marANSI.reset + marANSI.fgGray + ' — run pd scan to register your services' + marANSI.reset);
+    console.error('');
+  }
+
+  if (nudges && nudges.length > 0) {
+    console.error(marANSI.fgGray + 'Nudges:' + marANSI.reset);
+    for (const nudge of nudges) {
+      console.error(`  ${marANSI.fgCyan}${nudge.cmd}${marANSI.reset}  ${marANSI.fgGray}${nudge.message}${marANSI.reset}`);
+    }
   }
 }

@@ -303,6 +303,7 @@ describe('Test Group 3: API -> CLI Parity', () => {
     dns: ['dns'],
     briefing: ['briefing'],
     sugar: ['begin', 'done', 'whoami'],
+    launchhints: ['hints'],
   };
 
   test('all route modules have at least one corresponding CLI command', () => {

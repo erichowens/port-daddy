@@ -100,7 +100,7 @@ set -l __pd_commands \
     'begin' 'b' 'done' 'whoami' 'w' 'with-lock' 'n' 'u' 'd' 'learn' 'tutorial' \
     'up' 'down' \
     'dashboard' 'channels' 'webhook' 'webhooks' 'metrics' 'config' 'health' 'ports' \
-    'scan' 's' 'projects' 'p' 'doctor' 'diagnose' \
+    'scan' 's' 'projects' 'p' 'doctor' 'diagnose' 'hints' \
     'start' 'stop' 'restart' 'status' 'install' 'uninstall' 'dev' 'ci-gate' 'mcp' \
     'version' 'help'
 
@@ -186,6 +186,7 @@ for prog in port-daddy pd
     complete -c $prog -n __pd_needs_command -a p -d 'List projects (alias)'
     complete -c $prog -n __pd_needs_command -a doctor -d 'Run environment diagnostics'
     complete -c $prog -n __pd_needs_command -a diagnose -d 'Run diagnostics (alias for doctor)'
+    complete -c $prog -n __pd_needs_command -a hints -d 'Show salvage queue and onboarding nudges for the current project'
 
     # Daemon lifecycle
     complete -c $prog -n __pd_needs_command -a start -d 'Start the daemon'

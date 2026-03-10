@@ -112,7 +112,7 @@ _port_daddy() {
     # Orchestration
     up down
     # Project (+ alias)
-    scan s projects p doctor diagnose
+    scan s projects p doctor diagnose hints
     # Daemon lifecycle
     start stop restart install uninstall dev ci-gate mcp
     # Info

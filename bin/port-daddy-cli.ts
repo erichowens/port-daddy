@@ -64,7 +64,7 @@ import {
   // Orchestration
   handleUp, handleDown,
   // Diagnostics
-  handleMetrics, handleConfigCmd, handleHealth, handlePorts, handleDashboard, handleDoctor, handleStatus, handleVersion,
+  handleMetrics, handleConfigCmd, handleHealth, handlePorts, handleDashboard, handleDoctor, handleStatus, handleVersion, handleHints,
   // Daemon
   handleDaemon, handleDev,
   // DNS, Briefing, Integration
@@ -204,6 +204,44 @@ function relativeTime(ms: number): string {
   if (hours < 24) return `${hours}h`;
   const days = Math.floor(hours / 24);
   return `${days}d`;
+}
+
+/** Print context-aware salvage and onboarding hints at launch (TTY only). */
+function printLaunchHints(hints: {
+  projectName?: string;
+  isNewFolder?: boolean;
+  salvage?: { total: number; inProject: number; recent: Array<{ id: string; purpose?: string | null; identity?: string | null; minutesAgo?: number | null }> };
+  nudges?: Array<{ type: string; message: string; cmd: string }>;
+}): void {
+  const { salvage, nudges, isNewFolder, projectName } = hints;
+  if (!salvage && !nudges?.length) return;
+
+  const inProject = salvage?.inProject ?? 0;
+  const total = salvage?.total ?? 0;
+  let printed = false;
+
+  if (inProject > 0) {
+    const n = inProject;
+    console.error(marANSI.fgYellow + `  ${n} agent${n > 1 ? 's' : ''} from ${projectName || 'this project'} need salvaging` + marANSI.reset);
+    for (const a of (salvage?.recent ?? [])) {
+      const ago = a.minutesAgo != null ? ` (${a.minutesAgo}m ago)` : '';
+      const id = a.identity ? ` [${a.identity}]` : '';
+      console.error(marANSI.fgGray + `    ${a.purpose ?? a.id}${id}${ago}` + marANSI.reset);
+    }
+    console.error(marANSI.fgCyan + `  → pd salvage${projectName ? ` --project ${projectName}` : ''}` + marANSI.reset);
+    printed = true;
+  } else if (total > 0) {
+    console.error(marANSI.fgGray + `  ${total} agent${total > 1 ? 's' : ''} pending salvage across all projects  (pd salvage)` + marANSI.reset);
+    printed = true;
+  }
+
+  if (isNewFolder) {
+    if (printed) console.error('');
+    console.error(marANSI.fgCyan + '  New folder' + marANSI.reset + marANSI.fgGray + ' — run pd scan to register your services' + marANSI.reset);
+    printed = true;
+  }
+
+  if (printed) console.error('');
 }
 
 // =============================================================================
@@ -735,7 +773,7 @@ const ALL_COMMANDS: string[] = [
   'n', 'u', 'd',
   'dashboard', 'channels', 'webhook', 'webhooks', 'metrics', 'config', 'health', 'ports',
   'start', 'stop', 'restart', 'status', 'install', 'uninstall', 'dev', 'ci-gate',
-  'doctor', 'diagnose', 'mcp', 'version', 'help',
+  'doctor', 'diagnose', 'hints', 'mcp', 'version', 'help',
   'salvage', 'resurrection', 'changelog', 'tunnel',
   'services', 'dns', 'briefing', 'integration',
   'b', 'w', 'who-owns', 'history', 'tutorial', 'files',
@@ -1487,11 +1525,35 @@ async function main(): Promise<void> {
       console.error(BANNER);
       console.error(`  ${TAGLINE}\n`);
     }
-    // 5d: First-run detection — hint about pd learn if .portdaddy/ doesn't exist
+
+    // Launch hints — best-effort, skip if daemon not running (500ms timeout)
+    if (IS_TTY) {
+      try {
+        const cwd = encodeURIComponent(process.cwd());
+        const resp = await Promise.race([
+          pdFetch(`/launch-hints?cwd=${cwd}`),
+          new Promise<null>((_, reject) => setTimeout(() => reject(new Error('timeout')), 500))
+        ]);
+        if (resp && resp.ok) {
+          const hints = await resp.json() as {
+            projectName?: string;
+            isNewFolder?: boolean;
+            salvage?: { total: number; inProject: number; recent: Array<{ id: string; purpose?: string; identity?: string; minutesAgo?: number }> };
+            nudges?: Array<{ type: string; message: string; cmd: string }>;
+          };
+          printLaunchHints(hints);
+        }
+      } catch {
+        // Daemon not running — silently skip
+      }
+    }
+
+    // Tier-1 fallback: if daemon wasn't available, show basic first-run hint
     const portdaddyDir = join(process.cwd(), '.portdaddy');
     if (!existsSync(portdaddyDir)) {
-      console.error('First time here? Run `pd learn` for an interactive tutorial.\n');
+      console.error(marANSI.fgGray + '  First time here? Run `pd learn` for an interactive tutorial.' + marANSI.reset + '\n');
     }
+
     console.log(buildHelp());
     process.exit(0);
   }
@@ -1780,6 +1842,10 @@ async function main(): Promise<void> {
       case 'doctor':
       case 'diagnose':
         await handleDoctor();
+        break;
+
+      case 'hints':
+        await handleHints(options);
         break;
 
       case 'version':

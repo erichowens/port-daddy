@@ -377,6 +377,7 @@ describe('Manifest Completeness', () => {
       dns: 'dns',
       briefing: 'briefing',
       sugar: 'sugar',
+      launchhints: 'launch_hints',
     };
 
     const unmapped = routeModules.filter(mod => {

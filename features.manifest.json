@@ -804,7 +804,7 @@
       }
     },
     "tutorial": {
-      "description": "Interactive tutorial \u2014 learn Port Daddy step by step",
+      "description": "Interactive tutorial — learn Port Daddy step by step",
       "cli": [
         "learn",
         "tutorial"
@@ -819,6 +819,26 @@
         "readme": true,
         "sdk": false
       }
+    },
+    "launch_hints": {
+      "description": "Context-aware startup hints: salvage queue summary and new-folder onboarding nudges",
+      "cli": [
+        "hints"
+      ],
+      "sdk": [],
+      "routes": [
+        "GET /launch-hints"
+      ],
+      "completions": [
+        "hints"
+      ],
+      "docs": {
+        "readme": false,
+        "sdk": false
+      },
+      "mcp": [
+        "get_launch_hints"
+      ]
     }
   }
 }

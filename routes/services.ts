@@ -7,6 +7,7 @@
 
 import { Router } from 'express';
 import type { Request, Response } from 'express';
+import * as net from 'node:net';
 import {
   validateIdentity,
   validateMetadata,
@@ -64,6 +65,18 @@ interface ServicesRouteDeps {
  * @param deps - Dependencies
  * @returns Express router
  */
+/** Returns true if something is already listening on the port. */
+function isOccupied(port: number): Promise<boolean> {
+  return new Promise(resolve => {
+    const sock = new net.Socket();
+    sock.setTimeout(400);
+    sock.on('connect', () => { sock.destroy(); resolve(true); });
+    sock.on('timeout', () => { sock.destroy(); resolve(false); });
+    sock.on('error', () => resolve(false));
+    sock.connect(port, '127.0.0.1');
+  });
+}
+
 export function createServicesRoutes(deps: ServicesRouteDeps): Router {
   const { logger, metrics, services, agents, activityLog, webhooks, config } = deps;
   const router = Router();

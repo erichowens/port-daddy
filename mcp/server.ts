@@ -193,8 +193,8 @@ const TOOL_CATEGORIES: Record<string, { description: string; tools: string[] }> 
     tools: ['activity_log', 'activity_summary', 'activity_stats', 'activity_range'],
   },
   'system': {
-    description: 'Daemon status, version, metrics, and config',
-    tools: ['daemon_status', 'get_version', 'get_metrics', 'get_config', 'wait_for_service'],
+    description: 'Daemon status, version, metrics, config, and launch hints',
+    tools: ['daemon_status', 'get_version', 'get_metrics', 'get_config', 'wait_for_service', 'get_launch_hints'],
   },
 };
 
@@ -1666,6 +1666,23 @@ const TOOLS = [
 
   // ── Meta-Tool (Progressive Disclosure) ─────────────────────────────
   {
+    name: 'get_launch_hints',
+    description:
+      '[Essential] Get context-aware startup hints for the current project: salvage queue summary ' +
+      '(dead agents whose work can be resumed), whether the folder is new to Port Daddy, and ' +
+      'ordered onboarding nudges. Call at the start of a session to check for dead agents ' +
+      'before starting fresh work.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        cwd: {
+          type: 'string',
+          description: 'Current working directory path. Used to filter salvage hints to the current project and detect new folders.',
+        },
+      },
+    },
+  },
+  {
     name: 'pd_discover',
     description:
       '[Essential] List available Port Daddy tool categories and their tools. ' +
@@ -1711,6 +1728,33 @@ async function handleTool(
       if (args.type) body.type = args.type;
       if (args.files) body.files = args.files;
       res = await POST('/sugar/begin', body);
+
+      // Attach salvage context — check if any dead agents share this project
+      if (res.status >= 200 && res.status < 300 && res.data && typeof res.data === 'object') {
+        try {
+          const identity = args.identity as string | undefined;
+          const project = identity?.split(':')?.[0];
+          const qs = project ? `?project=${encodeURIComponent(project)}` : '';
+          const salvageRes = await GET(`/salvage/pending${qs}`);
+          if (salvageRes.status >= 200 && salvageRes.status < 300 && salvageRes.data) {
+            const sd = salvageRes.data as { count?: number; agents?: Array<Record<string, unknown>> };
+            if ((sd.count ?? 0) > 0) {
+              const agents = (sd.agents ?? []).slice(0, 3).map(a => ({
+                id: a.id,
+                purpose: a.purpose ?? null,
+                identity: [a.identityProject, a.identityStack, a.identityContext].filter(Boolean).join(':') || null,
+              }));
+              (res.data as Record<string, unknown>).salvage_context = {
+                count: sd.count,
+                agents,
+                recommendation: `${sd.count} dead agent${(sd.count ?? 0) > 1 ? 's' : ''} from this project ${(sd.count ?? 0) > 1 ? 'are' : 'is'} in the salvage queue. Run pd_discover or use list_salvage_queue before starting fresh — you may be able to resume their work.`,
+              };
+            }
+          }
+        } catch {
+          // salvage context is best-effort — never fail begin_session over it
+        }
+      }
       break;
     }
 
@@ -1741,7 +1785,7 @@ async function handleTool(
       if (args.expires) body.expires = args.expires;
       res = await POST('/claim', body);
       // Warn the agent if the assigned port is already occupied by another process
-      if (res.ok && res.data && typeof res.data === 'object') {
+      if (res.status >= 200 && res.status < 300 && res.data && typeof res.data === 'object') {
         const data = res.data as Record<string, unknown>;
         const assignedPort = data.port as number | undefined;
         if (assignedPort) {
@@ -2366,6 +2410,13 @@ async function handleTool(
     }
 
     // ── Meta-Tool (Progressive Disclosure) ──────────────────────────────
+    case 'get_launch_hints': {
+      const cwd = args.cwd as string | undefined;
+      const qs = cwd ? `?cwd=${encodeURIComponent(cwd)}` : '';
+      res = await GET(`/launch-hints${qs}`);
+      break;
+    }
+
     case 'pd_discover': {
       const category = args.category as string | undefined;
       if (category) {
