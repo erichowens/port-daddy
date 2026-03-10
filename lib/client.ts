@@ -2229,6 +2229,131 @@ class PortDaddy {
     return this._request('GET', '/tunnel/providers') as Promise<TunnelProvidersResponse>;
   }
 
+  // ──────────────────────────────────────────────────────────────
+  // Inbox (direct agent-to-agent messaging)
+  // ──────────────────────────────────────────────────────────────
+
+  /**
+   * Send a message to an agent's inbox.
+   */
+  async inboxSend(agentId: string, content: string, options: { from?: string; type?: string } = {}): Promise<InboxSendResponse> {
+    return this._request('POST', `/agents/${encodeURIComponent(agentId)}/inbox`, { content, ...options }) as Promise<InboxSendResponse>;
+  }
+
+  /**
+   * List messages in an agent's inbox.
+   */
+  async inboxList(agentId: string, options: InboxListOptions = {}): Promise<InboxListResponse> {
+    const params = new URLSearchParams();
+    if (options.unreadOnly) params.append('unread', 'true');
+    if (options.limit) params.append('limit', String(options.limit));
+    if (options.since) params.append('since', String(options.since));
+    const qs = params.toString() ? '?' + params.toString() : '';
+    return this._request('GET', `/agents/${encodeURIComponent(agentId)}/inbox${qs}`) as Promise<InboxListResponse>;
+  }
+
+  /**
+   * Get inbox statistics (total and unread counts).
+   */
+  async inboxStats(agentId: string): Promise<InboxStatsResponse> {
+    return this._request('GET', `/agents/${encodeURIComponent(agentId)}/inbox/stats`) as Promise<InboxStatsResponse>;
+  }
+
+  /**
+   * Mark a specific message as read.
+   */
+  async inboxMarkRead(agentId: string, messageId: number): Promise<InboxMarkReadResponse> {
+    return this._request('PUT', `/agents/${encodeURIComponent(agentId)}/inbox/${messageId}/read`) as Promise<InboxMarkReadResponse>;
+  }
+
+  /**
+   * Mark all messages in an agent's inbox as read.
+   */
+  async inboxMarkAllRead(agentId: string): Promise<InboxMarkReadResponse> {
+    return this._request('PUT', `/agents/${encodeURIComponent(agentId)}/inbox/read-all`, {}) as Promise<InboxMarkReadResponse>;
+  }
+
+  /**
+   * Clear all messages from an agent's inbox.
+   */
+  async inboxClear(agentId: string): Promise<InboxClearResponse> {
+    return this._request('DELETE', `/agents/${encodeURIComponent(agentId)}/inbox`) as Promise<InboxClearResponse>;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // Changelog (hierarchical change tracking by identity)
+  // ──────────────────────────────────────────────────────────────
+
+  /**
+   * Add a changelog entry for an identity.
+   */
+  async addChangelog(options: AddChangelogOptions): Promise<AddChangelogResponse> {
+    return this._request('POST', '/changelog', options as unknown as Record<string, unknown>) as Promise<AddChangelogResponse>;
+  }
+
+  /**
+   * List changelog entries.
+   */
+  async listChangelog(options: ListChangelogOptions = {}): Promise<ListChangelogResponse> {
+    const params = new URLSearchParams();
+    if (options.limit) params.append('limit', String(options.limit));
+    if (options.since) params.append('since', String(options.since));
+    const qs = params.toString() ? '?' + params.toString() : '';
+    return this._request('GET', `/changelog${qs}`) as Promise<ListChangelogResponse>;
+  }
+
+  /**
+   * Get a specific changelog entry by numeric ID.
+   */
+  async getChangelog(id: number): Promise<{ success: boolean; entry: ChangelogEntry }> {
+    return this._request('GET', `/changelog/${id}`) as Promise<{ success: boolean; entry: ChangelogEntry }>;
+  }
+
+  /**
+   * List changelog entries for a specific identity.
+   */
+  async listChangelogByIdentity(identity: string, options: { limit?: number } = {}): Promise<ListChangelogResponse> {
+    const params = new URLSearchParams();
+    if (options.limit) params.append('limit', String(options.limit));
+    const qs = params.toString() ? '?' + params.toString() : '';
+    return this._request('GET', `/changelog/${encodeURIComponent(identity)}${qs}`) as Promise<ListChangelogResponse>;
+  }
+
+  /**
+   * List changelog entries for an identity including ancestor entries (tree view).
+   */
+  async listChangelogTree(identity: string, options: { limit?: number } = {}): Promise<ListChangelogResponse> {
+    const params = new URLSearchParams();
+    params.append('tree', 'true');
+    if (options.limit) params.append('limit', String(options.limit));
+    const qs = '?' + params.toString();
+    return this._request('GET', `/changelog/${encodeURIComponent(identity)}${qs}`) as Promise<ListChangelogResponse>;
+  }
+
+  /**
+   * List changelog entries for a specific session.
+   */
+  async listChangelogBySession(sessionId: string): Promise<ListChangelogResponse> {
+    return this._request('GET', `/changelog/session/${encodeURIComponent(sessionId)}`) as Promise<ListChangelogResponse>;
+  }
+
+  /**
+   * List changelog entries created by a specific agent.
+   */
+  async listChangelogByAgent(agentId: string, options: { limit?: number } = {}): Promise<{ success: boolean; agentId: string; entries: ChangelogEntry[]; count: number }> {
+    const params = new URLSearchParams();
+    if (options.limit) params.append('limit', String(options.limit));
+    const qs = params.toString() ? '?' + params.toString() : '';
+    return this._request('GET', `/changelog/agent/${encodeURIComponent(agentId)}${qs}`) as Promise<{ success: boolean; agentId: string; entries: ChangelogEntry[]; count: number }>;
+  }
+
+  /**
+   * List all identities that have changelog entries.
+   */
+  async changelogIdentities(): Promise<ChangelogIdentitiesResponse> {
+    return this._request('GET', '/changelog/identities') as Promise<ChangelogIdentitiesResponse>;
+  }
+
   // ===========================================================================
   // DNS
   // ===========================================================================
@@ -2448,6 +2573,102 @@ interface WhoamiSugarResponse {
   hint?: string;
 }
 
+// ──────────────────────────────────────────────────────────────
+// Inbox interfaces
+// ──────────────────────────────────────────────────────────────
+
+interface InboxMessage {
+  id: number;
+  agentId: string;
+  from: string | null;
+  content: string;
+  type: string;
+  read: boolean;
+  createdAt: number;
+}
+
+interface InboxListOptions {
+  unreadOnly?: boolean;
+  limit?: number;
+  since?: number;
+}
+
+interface InboxSendResponse {
+  success: boolean;
+  messageId: number;
+  agentId: string;
+}
+
+interface InboxListResponse {
+  success: boolean;
+  messages: InboxMessage[];
+  count: number;
+}
+
+interface InboxStatsResponse {
+  success: boolean;
+  total: number;
+  unread: number;
+}
+
+interface InboxMarkReadResponse {
+  success: boolean;
+  marked?: number;
+}
+
+interface InboxClearResponse {
+  success: boolean;
+  deleted: number;
+}
+
+// ──────────────────────────────────────────────────────────────
+// Changelog interfaces
+// ──────────────────────────────────────────────────────────────
+
+interface ChangelogEntry {
+  id: number;
+  identity: string;
+  sessionId: string | null;
+  agentId: string | null;
+  type: string;
+  summary: string;
+  description: string | null;
+  createdAt: number;
+}
+
+interface AddChangelogOptions {
+  identity: string;
+  summary: string;
+  type?: 'feature' | 'fix' | 'refactor' | 'docs' | 'chore' | 'breaking';
+  description?: string;
+  sessionId?: string;
+  agentId?: string;
+}
+
+interface AddChangelogResponse {
+  success: boolean;
+  id: number;
+  identity: string;
+  ancestors: string[];
+}
+
+interface ListChangelogOptions {
+  limit?: number;
+  since?: number;
+}
+
+interface ListChangelogResponse {
+  success: boolean;
+  entries: ChangelogEntry[];
+  count: number;
+}
+
+interface ChangelogIdentitiesResponse {
+  success: boolean;
+  identities: string[];
+  count: number;
+}
+
 export { PortDaddy, PortDaddyError, ConnectionError };
 export type {
   WaitResponse,
@@ -2476,5 +2697,18 @@ export type {
   DoneSugarOptions,
   DoneSugarResponse,
   WhoamiSugarResponse,
+  InboxMessage,
+  InboxListOptions,
+  InboxSendResponse,
+  InboxListResponse,
+  InboxStatsResponse,
+  InboxMarkReadResponse,
+  InboxClearResponse,
+  ChangelogEntry,
+  AddChangelogOptions,
+  AddChangelogResponse,
+  ListChangelogOptions,
+  ListChangelogResponse,
+  ChangelogIdentitiesResponse,
 };
 export default PortDaddy;
