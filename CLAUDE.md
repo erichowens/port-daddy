@@ -214,6 +214,37 @@ Fish completions are historically the worst — double-check fish.
 
 **Update this section for every feature in progress.**
 
+### pd spawn + pd watch (v3.6)
+
+AI agent launcher and ambient trigger kernel. Being implemented in a worktree branch.
+
+| Surface | Status | Notes |
+|---------|--------|-------|
+| `lib/spawner.ts` | 🚧 In Progress | createSpawner(), backends: ollama/claude/gemini/aider/custom |
+| `lib/watch.ts` | 🚧 In Progress | SSE subscriber, --exec, reconnect loop |
+| `routes/spawn.ts` | 🚧 In Progress | POST/GET/DELETE /spawn |
+| `cli/commands/spawn.ts` | 🚧 In Progress | pd spawn, pd spawned, pd watch |
+| `features.manifest.json` | ⬜ TODO | spawn + watch entries |
+| `completions/*.{bash,zsh,fish}` | ⬜ TODO | spawn, spawned, watch |
+| `lib/client.ts` | ⬜ TODO | spawn(), listSpawned(), killSpawned() |
+| `README.md` | ⬜ TODO | Document pd spawn + pd watch |
+| `CHANGELOG.md` | ⬜ TODO | Add entry when merged |
+
+**CLI syntax:**
+```bash
+pd spawn --backend ollama --model llama3.2:8b --identity myapp:coder -- "Fix the login bug"
+pd spawned                    # list running
+pd spawn kill <id>            # stop agent
+pd watch build-results --exec './analyze.sh'   # ambient trigger
+```
+
+### Uncharted Waters — DONE (v3.5)
+
+| Surface | Status | Notes |
+|---------|--------|-------|
+| `routes/launch.ts` | ✅ DONE | Added `uncharted_waters: true` field |
+| `bin/port-daddy-cli.ts` | ✅ DONE | Compass rose + UNCHARTED WATERS banner in printLaunchHints() |
+
 ### Context-Aware Salvage
 
 When an agent dies, other agents in the same project should be notified.
@@ -306,3 +337,6 @@ When an agent dies, other agents in the same project should be notified.
 | `/ports/cleanup` | POST | Release stale ports |
 | `/health` | GET | Daemon health check |
 | `/version` | GET | Version and code hash |
+| `/spawn` | POST/GET | Launch AI agent / list spawned agents |
+| `/spawn/:agentId` | DELETE | Kill a spawned agent |
+| `/launch-hints` | GET | Context-aware startup hints |
