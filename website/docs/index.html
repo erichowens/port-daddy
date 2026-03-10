@@ -24,10 +24,10 @@
       line-height: 1.7;
     }
     .install-block {
-      background: var(--navy);
+      background: #0F172A;
       border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 8px 30px rgba(30, 58, 95, 0.2);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
       margin-bottom: 1.5rem;
     }
     .install-block-header {
@@ -35,7 +35,7 @@
       align-items: center;
       gap: 0.5rem;
       padding: 0.75rem 1rem;
-      background: var(--navy-light);
+      background: #1E293B;
       border-bottom: 1px solid rgba(255,255,255,0.08);
     }
     .install-dot {
@@ -58,7 +58,7 @@
       gap: 0.75rem;
     }
     .install-prompt {
-      color: var(--teal-light);
+      color: #38BDF8;
       flex-shrink: 0;
       user-select: none;
     }
@@ -69,14 +69,15 @@
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      color: var(--teal);
+      color: var(--blue);
       font-weight: 500;
       font-size: 0.95rem;
       text-decoration: none;
       transition: color 0.2s;
     }
     .getting-started-link:hover {
-      color: var(--navy);
+      color: #004C99;
+      text-decoration: none;
     }
     .getting-started-link svg {
       width: 18px;
@@ -102,14 +103,14 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 0.9rem;
-      background: white;
+      background: var(--bg-card);
       border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 2px 12px rgba(30, 58, 95, 0.06);
+      box-shadow: var(--shadow);
       border: 1px solid var(--border);
     }
     .quick-ref-table thead th {
-      background: var(--navy);
+      background: var(--blue);
       color: white;
       padding: 0.85rem 1.25rem;
       text-align: left;
@@ -125,36 +126,36 @@
     .quick-ref-table tbody td {
       padding: 0.7rem 1.25rem;
       border-bottom: 1px solid var(--border);
-      color: var(--text-secondary);
+      color: var(--text-muted);
     }
     .quick-ref-table tbody tr:last-child td {
       border-bottom: none;
     }
     .quick-ref-table tbody tr:hover td {
-      background: var(--bg-secondary);
+      background: var(--bg);
     }
     .quick-ref-table code {
       font-family: var(--font-mono);
       font-size: 0.82rem;
-      background: var(--bg-secondary);
+      background: var(--bg);
       border: 1px solid var(--border);
       padding: 0.15em 0.45em;
       border-radius: 4px;
-      color: var(--navy);
+      color: var(--blue);
       white-space: nowrap;
     }
     .quick-ref-table tbody tr:hover code {
-      background: white;
+      background: var(--bg-card);
     }
 
     /* Category row in quick reference table */
     .quick-ref-table .category-row td {
-      background: var(--bg-secondary);
+      background: var(--bg);
       font-weight: 600;
       font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      color: var(--teal);
+      color: var(--blue);
       padding: 0.5rem 1.25rem;
       border-bottom: 1px solid var(--border);
     }
@@ -179,10 +180,10 @@
 </head>
 <body>
   <!-- Navigation -->
-  <nav>
-    <div class="nav-container">
-      <a href="../" class="logo">
-        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="../" class="nav-brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg>
         <span>Port Daddy</span>
       </a>
       <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Toggle navigation">
@@ -212,7 +213,7 @@
   </section>
 
   <!-- Getting Started -->
-  <section class="section" style="background: white; padding-top: 2.5rem; padding-bottom: 3rem;">
+  <section class="section" style="background: var(--bg-card); padding-top: 2.5rem; padding-bottom: 3rem;">
     <div class="getting-started">
       <span class="section-label">Getting Started</span>
       <h2 class="section-title" style="font-size: 1.75rem; margin-bottom: 0.75rem;">Up and running in three commands</h2>
@@ -345,11 +346,11 @@
   </section>
 
   <!-- Quick Reference -->
-  <section class="section" style="background: white; padding-top: 3rem; padding-bottom: 4rem;">
+  <section class="section" style="background: var(--bg-card); padding-top: 3rem; padding-bottom: 4rem;">
     <div class="quick-ref">
       <span class="section-label">Quick Reference</span>
       <h2 class="section-title" style="font-size: 1.75rem; margin-bottom: 0.5rem;">CLI Commands</h2>
-      <p class="section-subtitle" style="margin-bottom: 2rem;">Every <code style="font-family: var(--font-mono); font-size: 0.85em; background: var(--bg-secondary); border: 1px solid var(--border); padding: 0.15em 0.4em; border-radius: 4px; color: var(--navy);">pd</code> command at a glance. All commands support <code style="font-family: var(--font-mono); font-size: 0.85em; background: var(--bg-secondary); border: 1px solid var(--border); padding: 0.15em 0.4em; border-radius: 4px; color: var(--navy);">--json</code> and <code style="font-family: var(--font-mono); font-size: 0.85em; background: var(--bg-secondary); border: 1px solid var(--border); padding: 0.15em 0.4em; border-radius: 4px; color: var(--navy);">--quiet</code> flags.</p>
+      <p class="section-subtitle" style="margin-bottom: 2rem;">Every <code style="font-family: var(--font-mono); font-size: 0.85em; background: var(--bg-secondary); border: 1px solid var(--border); padding: 0.15em 0.4em; border-radius: 4px; color: var(--blue);">pd</code> command at a glance. All commands support <code style="font-family: var(--font-mono); font-size: 0.85em; background: var(--bg-secondary); border: 1px solid var(--border); padding: 0.15em 0.4em; border-radius: 4px; color: var(--navy);">--json</code> and <code style="font-family: var(--font-mono); font-size: 0.85em; background: var(--bg-secondary); border: 1px solid var(--border); padding: 0.15em 0.4em; border-radius: 4px; color: var(--navy);">--quiet</code> flags.</p>
 
       <table class="quick-ref-table">
         <thead>
@@ -461,8 +462,8 @@
     <div class="footer-container">
       <div class="footer-grid">
         <div class="footer-brand">
-          <a href="../" class="logo" style="color: white;">
-            <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg>
+          <a href="../" class="nav-brand" style="color: white;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg>
             <span>Port Daddy</span>
           </a>
           <p>Port management, service orchestration, and agent coordination for modern development workflows.</p>
