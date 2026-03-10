@@ -222,6 +222,18 @@
       stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
     }
     .cmd-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+    /* Terminal button — prominent, always-visible */
+    .cmd-btn.terminal-btn {
+      border-color: var(--accent); color: var(--accent);
+      font-weight: 600; padding: 6px 18px; font-size: 13px;
+      background: var(--accent-glow);
+    }
+    .cmd-btn.terminal-btn:hover { background: rgba(0,102,204,0.25); border-color: var(--accent-soft); color: var(--accent-soft); }
+    /* Semantic token coloring for scope:topic:qualifier identities */
+    .id-scope { color: #4a9d9e; font-weight: 600; }
+    .id-sep   { color: var(--text-muted); font-weight: 400; }
+    .id-topic { color: var(--brass); }
+    .id-qual  { color: #6DD998; }
 
     /* ── Panel Area ── */
     .panel-area {
@@ -833,7 +845,7 @@
         <input type="text" id="command-input" placeholder="Type a command... (Ctrl+K)" autocomplete="off">
         <span class="kbd">Ctrl+K</span>
       </div>
-      <button class="cmd-btn" onclick="openTerminal()" title="Terminal">
+      <button class="cmd-btn terminal-btn" onclick="openTerminal()" title="Terminal (Ctrl+`)">
         <svg viewBox="0 0 24 24"><use href="#icon-terminal"/></svg>
         Terminal
       </button>
@@ -1123,6 +1135,16 @@
       return '<span class="badge badge-' + (status || 'assigned') + '">' + (status || 'unknown') + '</span>';
     }
 
+    function highlightId(str) {
+      if (!str || str === '--') return '<span class="mono">' + escHtml(str) + '</span>';
+      var parts = str.split(':');
+      if (parts.length === 1) return '<span class="mono id-scope">' + escHtml(str) + '</span>';
+      var colors = ['id-scope', 'id-topic', 'id-qual'];
+      return '<span class="mono">' + parts.map(function(p, i) {
+        return '<span class="' + colors[Math.min(i, 2)] + '">' + escHtml(p) + '</span>';
+      }).join('<span class="id-sep">:</span>') + '</span>';
+    }
+
     function escHtml(s) {
       if (s == null) return '';
       var d = document.createElement('div');
@@ -1188,7 +1210,7 @@
         var color = { claim: 'teal', release: 'blue', session: 'green', lock: 'yellow', agent: 'green' }[a.type] || 'blue';
         return '<div class="activity-item"><div class="activity-dot ' + color + '"></div>' +
           '<div class="activity-text">' + escHtml(a.action || a.type) +
-          (a.identity ? ' <span class="mono">' + escHtml(a.identity) + '</span>' : '') + '</div>' +
+          (a.identity ? ' ' + highlightId(a.identity) : '') + '</div>' +
           '<div class="activity-time">' + fmtTime(a.timestamp) + '</div></div>';
       }).join('') : '<div class="empty-state"><p>No recent activity</p></div>');
 
@@ -1210,7 +1232,7 @@
       if (!svcs.length) { setHtml('services-table', '<div class="empty-state"><p>No services registered</p></div>'); return; }
       setHtml('services-table', '<table><thead><tr><th>ID</th><th>Port</th><th>PID</th><th>Status</th><th>Last Seen</th><th>Actions</th></tr></thead><tbody>' +
         svcs.map(function(s) {
-          return '<tr><td class="mono">' + escHtml(s.id) + '</td><td>' + (s.port || '--') + '</td><td>' + (s.pid || '--') + '</td><td>' + statusBadge(s.status) + '</td><td>' + timeAgo(s.last_seen || s.lastSeen) + '</td><td><button class="btn-sm danger" onclick="releaseService(\'' + escHtml(s.id).replace(/'/g, "\\'") + '\')">Release</button></td></tr>';
+          return '<tr><td>' + highlightId(s.id) + '</td><td>' + (s.port || '--') + '</td><td>' + (s.pid || '--') + '</td><td>' + statusBadge(s.status) + '</td><td>' + timeAgo(s.last_seen || s.lastSeen) + '</td><td><button class="btn-sm danger" onclick="releaseService(\'' + escHtml(s.id).replace(/'/g, "\\'") + '\')">Release</button></td></tr>';
         }).join('') + '</tbody></table>');
     }
 
@@ -1234,7 +1256,7 @@
       if (!agents.length) { setHtml('agents-table', '<div class="empty-state"><p>No registered agents</p></div>'); return; }
       setHtml('agents-table', '<table><thead><tr><th>ID</th><th>Name</th><th>Identity</th><th>Purpose</th><th>Last Heartbeat</th><th>Actions</th></tr></thead><tbody>' +
         agents.map(function(a) {
-          return '<tr><td class="mono">' + escHtml(a.id) + '</td><td>' + escHtml(a.name || '--') + '</td><td class="mono">' + escHtml(a.identity || '--') + '</td><td>' + escHtml(a.purpose || '--') + '</td><td>' + timeAgo(a.lastHeartbeat) + '</td><td><button class="btn-sm danger" onclick="removeAgent(\'' + escHtml(a.id) + '\')">Remove</button></td></tr>';
+          return '<tr><td>' + highlightId(a.id) + '</td><td>' + escHtml(a.name || '--') + '</td><td>' + highlightId(a.identity || '--') + '</td><td>' + escHtml(a.purpose || '--') + '</td><td>' + timeAgo(a.lastHeartbeat) + '</td><td><button class="btn-sm danger" onclick="removeAgent(\'' + escHtml(a.id) + '\')">Remove</button></td></tr>';
         }).join('') + '</tbody></table>');
     }
 
@@ -1257,7 +1279,7 @@
           var acts = s.status === 'active'
             ? '<div class="btn-actions"><button class="btn-sm danger" onclick="endSession(\'' + escHtml(s.id) + '\')">End</button><button class="btn-sm danger" onclick="abandonSession(\'' + escHtml(s.id) + '\')">Abandon</button><button class="btn-sm" onclick="viewNotes(\'' + escHtml(s.id) + '\')">Notes</button></div>'
             : '<button class="btn-sm" onclick="viewNotes(\'' + escHtml(s.id) + '\')">Notes</button>';
-          return '<tr><td class="mono">' + escHtml(s.id) + '</td><td class="mono">' + escHtml(s.agentId || '--') + '</td><td>' + statusBadge(s.status) + '</td><td>' + escHtml(s.purpose) + '</td><td>' + escHtml(s.phase || '--') + '</td><td>' + dur + '</td><td>' + acts + '</td></tr>';
+          return '<tr><td class="mono" style="font-size:0.8em;color:var(--text-muted)">' + escHtml(s.id.slice(0,8)) + '</td><td>' + highlightId(s.agentId || '--') + '</td><td>' + statusBadge(s.status) + '</td><td>' + escHtml(s.purpose) + '</td><td>' + escHtml(s.phase || '--') + '</td><td>' + dur + '</td><td>' + acts + '</td></tr>';
         }).join('') + '</tbody></table>');
     }
 
@@ -1353,7 +1375,7 @@
       if (!records.length) { setHtml('dns-table', '<div class="empty-state"><p>No DNS records</p></div>'); return; }
       setHtml('dns-table', '<table><thead><tr><th>Identity</th><th>Hostname</th><th>Port</th><th>Updated</th></tr></thead><tbody>' +
         records.map(function(r) {
-          return '<tr><td class="mono">' + escHtml(r.identity) + '</td><td style="color:var(--accent);font-weight:600;">' + escHtml(r.hostname) + '</td><td>' + r.port + '</td><td>' + timeAgo(r.updatedAt) + '</td></tr>';
+          return '<tr><td>' + highlightId(r.identity) + '</td><td style="color:var(--accent);font-weight:600;">' + escHtml(r.hostname) + '</td><td>' + r.port + '</td><td>' + timeAgo(r.updatedAt) + '</td></tr>';
         }).join('') + '</tbody></table>');
     }
 

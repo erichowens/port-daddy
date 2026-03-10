@@ -503,31 +503,37 @@ function buildHelp(): string {
     lines.push('');
   }
 
+  const K = flag('kilo');
+  const C = flag('charlie');
+  const A = marANSI.bold + marANSI.fgCyan;
+  const Z = marANSI.reset;
+  const G = marANSI.fgGreen;
+  const D = marANSI.fgGray;
   lines.push(
-    'Quick Start:',
-    '  pd begin "purpose"       Start working (registers agent + session)',
-    '  pd done "summary"        Finish up (ends session + unregisters)',
-    '  pd whoami                Show current context',
+    `${K} ${A}Quick Start:${Z}`,
+    `  ${G}pd begin${Z} "purpose"       Start working (registers agent + session)`,
+    `  ${G}pd done${Z} "summary"        Finish up (ends session + unregisters)`,
+    `  ${G}pd whoami${Z}                Show current context`,
     '',
-    'Port Management:',
-    '  pd claim <id>            Claim a port  (alias: c)',
-    '  pd release <id>          Release a port  (alias: r)',
-    '  pd find [pattern]        List services  (alias: f, l, ps)',
+    `${K} ${A}Port Management:${Z}`,
+    `  ${G}pd claim${Z} <id>            Claim a port  ${D}(alias: c)${Z}`,
+    `  ${G}pd release${Z} <id>          Release a port  ${D}(alias: r)${Z}`,
+    `  ${G}pd find${Z} [pattern]        List services  ${D}(alias: f, l, ps)${Z}`,
     '',
-    'Sessions & Notes:',
-    '  pd session start "why"   Start a session manually',
-    '  pd note "message"        Add a note to current session',
-    '  pd notes                 View recent notes',
+    `${K} ${A}Sessions & Notes:${Z}`,
+    `  ${G}pd session start${Z} "why"   Start a session manually`,
+    `  ${G}pd note${Z} "message"        Add a note to current session`,
+    `  ${G}pd notes${Z}                 View recent notes`,
     '',
-    'Coordination:',
-    '  pd lock <name>           Acquire a distributed lock',
-    '  pd agent register        Register as an agent',
-    '  pd salvage               Check for dead agents to continue',
+    `${K} ${A}Coordination:${Z}`,
+    `  ${G}pd lock${Z} <name>           Acquire a distributed lock`,
+    `  ${G}pd agent register${Z}        Register as an agent`,
+    `  ${G}pd salvage${Z}               Check for dead agents to continue`,
     '',
-    'More: pd help <topic>',
-    'Topics: sessions, locks, agents, ports, messaging, dns, orchestration, sugar, tutorial',
+    `${C} ${A}More:${Z} pd help <topic>`,
+    `${D}Topics: sessions, locks, agents, ports, messaging, dns, orchestration, sugar, tutorial${Z}`,
     '',
-    'Tip: Run `pd learn` for an interactive tutorial',
+    `${D}Tip: Run \`pd learn\` for an interactive tutorial${Z}`,
   );
 
   return lines.join('\n');
