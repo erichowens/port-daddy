@@ -67,8 +67,9 @@
   --p-white:        #ffffff;
 
   /* Typography */
-  --p-font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', ui-monospace, monospace;
-  --p-font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --p-font-mono:    'JetBrains Mono', 'Cascadia Code', 'Fira Code', ui-monospace, monospace;
+  --p-font-sans:    'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --p-font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
 
   /* Type scale */
   --p-text-xs:   0.75rem;   /* 12px */

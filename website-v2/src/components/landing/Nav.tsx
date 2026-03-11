@@ -25,6 +25,7 @@ function MoonIcon() {
 const NAV_LINKS = [
   { label: 'Docs', href: '/docs', internal: true },
   { label: 'Tutorials', href: '/tutorials', internal: true },
+  { label: 'Examples', href: '/examples', internal: true },
   { label: 'GitHub', href: 'https://github.com/erichowens/port-daddy', external: true },
 ]
 

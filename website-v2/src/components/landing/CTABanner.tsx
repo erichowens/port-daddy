@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 
 export function CTABanner() {
@@ -46,11 +47,11 @@ export function CTABanner() {
           <Button size="lg">
             brew install port-daddy
           </Button>
-          <Button variant="outline" size="lg"
-            onClick={() => window.open('https://github.com/erichowens/port-daddy', '_blank')}
-          >
-            Read the Docs
-          </Button>
+          <Link to="/docs" style={{ textDecoration: 'none' }}>
+            <Button variant="outline" size="lg">
+              Read the Docs
+            </Button>
+          </Link>
         </div>
 
         {/* Quick terminal snippet */}

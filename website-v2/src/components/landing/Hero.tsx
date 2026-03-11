@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import * as Tabs from '@radix-ui/react-tabs'
@@ -14,9 +15,62 @@ const RAINBOW_SEGMENTS = [
   '#24c1e0', // teal
 ]
 
-const DEMO_GIFS = [
-  { id: 'agents', label: 'Agent Coordination', src: '/demo-agents.gif', caption: 'Multiple agents, zero conflicts' },
-  { id: 'fleet',  label: 'Fleet Management',  src: '/demo-fleet.gif',  caption: 'Spawn, monitor, salvage' },
+const CHANGELOG_ITEMS = [
+  {
+    version: 'v3.5',
+    label: 'Harbors',
+    badge: 'new',
+    text: 'Permission namespaces with HMAC-signed capability tokens. Scope any operation to a harbor.',
+    color: 'var(--p-teal-400)',
+  },
+  {
+    version: 'v3.5',
+    label: 'pd spawn',
+    badge: 'new',
+    text: 'Launch AI agents (Ollama, Claude, Aider, Gemini) with coordination auto-wired. Heartbeats, notes, salvage — all included.',
+    color: 'var(--p-amber-400)',
+  },
+  {
+    version: 'v3.5',
+    label: 'pd watch',
+    badge: 'new',
+    text: 'SSE-backed channel watcher. Subscribe to a channel and execute a script on every message. The "always-on agent" primitive.',
+    color: 'var(--p-green-500)',
+  },
+  {
+    version: 'v3.4',
+    label: 'Syntactic Sugar',
+    badge: 'improved',
+    text: 'pd begin, pd done, pd whoami — wrap an entire session lifecycle in three commands.',
+    color: 'var(--p-navy-300)',
+  },
+]
+
+const TUTORIAL_TEASERS = [
+  {
+    num: '12',
+    title: 'Harbors',
+    level: 'Advanced',
+    summary: 'Create permission namespaces, issue capability tokens, and scope tunnels and locks to a harbor.',
+    href: '/tutorials#harbors',
+    badgeColor: 'var(--p-teal-400)',
+  },
+  {
+    num: '11',
+    title: 'pd spawn',
+    level: 'Intermediate',
+    summary: 'Launch Ollama, Claude, and Aider agents from the CLI. All coordination happens automatically.',
+    href: '/tutorials#spawn',
+    badgeColor: 'var(--p-amber-400)',
+  },
+  {
+    num: '10',
+    title: 'pd watch',
+    level: 'Intermediate',
+    summary: 'Build always-on agent triggers. Watch a channel, run a script on every message.',
+    href: '/tutorials#watch',
+    badgeColor: 'var(--p-green-500)',
+  },
 ]
 
 const INSTALL_TABS = [
@@ -33,16 +87,22 @@ const INSTALL_TABS = [
   {
     id: 'mcp',
     label: 'MCP (Claude)',
-    commands: ['pd mcp install', '# Adds Port Daddy to ~/.claude.json', '# Restart Claude Code'],
+    commands: [
+      'pd mcp install',
+      '# Adds Port Daddy tools to Claude Code',
+      '# begin_session, end_session_full, whoami,',
+      '# claim_port, acquire_lock, pd_discover...',
+    ],
   },
   {
     id: 'sdk',
-    label: 'SDK',
+    label: 'Agent SDK',
     commands: [
       'npm install port-daddy',
       '# In your agent code:',
       "import { PortDaddy } from 'port-daddy'",
       'const pd = new PortDaddy()',
+      'await pd.begin({ identity: "myapp:worker" })',
     ],
   },
 ]
@@ -52,9 +112,14 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 }
 
+const BADGE_COLORS: Record<string, { bg: string; text: string }> = {
+  new:      { bg: 'rgba(58,173,173,0.15)',   text: 'var(--p-teal-300)' },
+  improved: { bg: 'rgba(167,139,250,0.12)',  text: '#c4b5fd' },
+}
+
 export function Hero() {
   const [activeTab, setActiveTab] = React.useState('brew')
-  const [activeGif, setActiveGif] = React.useState(0)
+  const [activePanel, setActivePanel] = React.useState<'changelog' | 'tutorials'>('changelog')
 
   return (
     <section
@@ -70,7 +135,7 @@ export function Hero() {
       />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
 
           {/* Left column — text */}
           <div className="flex flex-col gap-6">
@@ -81,14 +146,14 @@ export function Hero() {
                   <div key={i} style={{ flex: 1, background: color }} />
                 ))}
               </div>
-              <Badge variant="teal" style={{ marginTop: '8px' }}>v3.5.0 · Now with Harbor Tokens</Badge>
+              <Badge variant="teal" style={{ marginTop: '8px' }}>v3.5.0 · Now with Harbors, pd spawn, pd watch</Badge>
             </motion.div>
 
             <motion.h1
               {...fadeUp}
               transition={{ duration: 0.5, delay: 0.1 }}
               className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight"
-              style={{ color: 'var(--text-primary)', lineHeight: 1.1 }}
+              style={{ color: 'var(--text-primary)', lineHeight: 1.1, fontFamily: 'var(--p-font-display)' }}
             >
               Port Authority<br />
               <span style={{ color: 'var(--brand-primary)' }}>for AI Agents</span>
@@ -187,69 +252,139 @@ export function Hero() {
               transition={{ duration: 0.5, delay: 0.5 }}
               className="flex flex-wrap gap-3"
             >
-              <Button size="lg" onClick={() => document.getElementById('tutorials')?.scrollIntoView({ behavior: 'smooth' })}>
+              <Button size="lg" onClick={() => document.getElementById('install')?.scrollIntoView({ behavior: 'smooth' })}>
                 Get Started
               </Button>
-              <Button variant="ghost" size="lg" onClick={() => window.open('https://github.com/erichowens/port-daddy', '_blank')}>
-                View on GitHub
-              </Button>
+              <Link to="/docs" style={{ textDecoration: 'none' }}>
+                <Button variant="ghost" size="lg">
+                  Read the Docs
+                </Button>
+              </Link>
             </motion.div>
           </div>
 
-          {/* Right column — demo GIFs */}
+          {/* Right column — changelog + tutorials */}
           <motion.div
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex flex-col gap-3"
+            className="flex flex-col gap-4"
           >
-            {/* GIF tab toggle */}
+            {/* Panel toggle */}
             <div className="flex gap-2">
-              {DEMO_GIFS.map((g, i) => (
+              {[
+                { id: 'changelog', label: "What's New" },
+                { id: 'tutorials', label: 'Latest Tutorials' },
+              ].map(p => (
                 <button
-                  key={g.id}
-                  onClick={() => setActiveGif(i)}
-                  className="text-sm px-3 py-1.5 rounded-lg transition-all"
+                  key={p.id}
+                  onClick={() => setActivePanel(p.id as typeof activePanel)}
+                  className="text-sm px-4 py-1.5 rounded-lg transition-all"
                   style={{
-                    background: activeGif === i ? 'var(--bg-overlay)' : 'transparent',
-                    color: activeGif === i ? 'var(--text-primary)' : 'var(--text-muted)',
+                    background: activePanel === p.id ? 'var(--bg-overlay)' : 'transparent',
+                    color: activePanel === p.id ? 'var(--text-primary)' : 'var(--text-muted)',
                     border: '1px solid',
-                    borderColor: activeGif === i ? 'var(--border-default)' : 'transparent',
+                    borderColor: activePanel === p.id ? 'var(--border-default)' : 'transparent',
                   }}
                 >
-                  {g.label}
+                  {p.label}
                 </button>
               ))}
             </div>
 
-            {/* GIF display */}
-            <div
-              className="rounded-xl overflow-hidden border"
-              style={{ borderColor: 'var(--border-default)', background: 'var(--code-bg)' }}
-            >
-              {/* Mac window chrome */}
-              <div
-                className="flex items-center gap-2 px-4 py-2.5"
-                style={{ background: 'var(--bg-overlay)', borderBottom: '1px solid var(--border-subtle)' }}
-              >
-                <span className="w-3 h-3 rounded-full" style={{ background: '#ef4444', opacity: 0.8 }} />
-                <span className="w-3 h-3 rounded-full" style={{ background: '#f59e0b', opacity: 0.8 }} />
-                <span className="w-3 h-3 rounded-full" style={{ background: '#22c55e', opacity: 0.8 }} />
-                <span className="ml-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {DEMO_GIFS[activeGif].caption}
-                </span>
+            {/* Changelog panel */}
+            {activePanel === 'changelog' && (
+              <div className="flex flex-col gap-3">
+                {CHANGELOG_ITEMS.map((item, i) => (
+                  <motion.div
+                    key={item.label}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: i * 0.06 }}
+                    className="rounded-xl p-4"
+                    style={{
+                      background: 'var(--bg-surface)',
+                      border: '1px solid var(--border-subtle)',
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span
+                        className="text-xs font-bold font-mono px-2 py-0.5 rounded-full"
+                        style={{
+                          background: BADGE_COLORS[item.badge]?.bg,
+                          color: BADGE_COLORS[item.badge]?.text,
+                        }}
+                      >
+                        {item.badge}
+                      </span>
+                      <span className="text-sm font-semibold" style={{ color: item.color }}>
+                        {item.label}
+                      </span>
+                      <span className="text-xs font-mono ml-auto" style={{ color: 'var(--text-muted)' }}>
+                        {item.version}
+                      </span>
+                    </div>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                      {item.text}
+                    </p>
+                  </motion.div>
+                ))}
               </div>
-              <motion.img
-                key={activeGif}
-                src={DEMO_GIFS[activeGif].src}
-                alt={DEMO_GIFS[activeGif].label}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.2 }}
-                className="w-full block"
-                style={{ maxHeight: '400px', objectFit: 'cover' }}
-              />
-            </div>
+            )}
+
+            {/* Tutorials panel */}
+            {activePanel === 'tutorials' && (
+              <div className="flex flex-col gap-3">
+                {TUTORIAL_TEASERS.map((tut, i) => (
+                  <motion.a
+                    key={tut.num}
+                    href={tut.href}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: i * 0.06 }}
+                    className="rounded-xl p-4 block no-underline group"
+                    style={{
+                      background: 'var(--bg-surface)',
+                      border: '1px solid var(--border-subtle)',
+                      transition: 'border-color 150ms ease',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-default)')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-subtle)')}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span
+                        className="text-xs font-bold font-mono w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
+                        style={{ background: `${tut.badgeColor}20`, color: tut.badgeColor }}
+                      >
+                        {tut.num}
+                      </span>
+                      <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        {tut.title}
+                      </span>
+                      <span
+                        className="text-xs px-2 py-0.5 rounded ml-auto"
+                        style={{ background: 'var(--bg-overlay)', color: 'var(--text-muted)' }}
+                      >
+                        {tut.level}
+                      </span>
+                    </div>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                      {tut.summary}
+                    </p>
+                    <div className="mt-2 text-xs font-medium" style={{ color: tut.badgeColor }}>
+                      Read tutorial →
+                    </div>
+                  </motion.a>
+                ))}
+                <Link
+                  to="/tutorials"
+                  className="text-sm text-center py-2 no-underline"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  All 12 tutorials →
+                </Link>
+              </div>
+            )}
           </motion.div>
         </div>
       </div>

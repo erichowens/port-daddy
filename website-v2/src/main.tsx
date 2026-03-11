@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/lib/theme'
 import { Nav } from '@/components/landing/Nav'
 import { TutorialsPage } from '@/pages/TutorialsPage'
 import { DocsPage } from '@/pages/DocsPage'
+import { ExamplesPage } from '@/pages/ExamplesPage'
 import App from './App.tsx'
 import './index.css'
 
@@ -17,6 +18,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/" element={<App />} />
           <Route path="/tutorials" element={<TutorialsPage />} />
           <Route path="/docs" element={<DocsPage />} />
+          <Route path="/examples" element={<ExamplesPage />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
