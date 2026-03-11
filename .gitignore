@@ -36,3 +36,4 @@ plans/
 .portdaddy/
 *.strategy.md
 *.internal.md
+.claude/worktrees/
