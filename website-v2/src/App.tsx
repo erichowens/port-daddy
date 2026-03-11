@@ -1,5 +1,5 @@
 import './App.css'
-import { Nav } from '@/components/landing/Nav'
+import { Link } from 'react-router-dom'
 import { Hero } from '@/components/landing/Hero'
 import { DemoGallery } from '@/components/landing/DemoGallery'
 import { HowItWorks } from '@/components/landing/HowItWorks'
@@ -25,8 +25,8 @@ function Footer() {
         <div className="flex flex-wrap items-center justify-center gap-6 text-sm" style={{ color: 'var(--text-muted)' }}>
           <a href="https://github.com/erichowens/port-daddy" target="_blank" rel="noopener noreferrer"
             className="transition-colors hover:text-[var(--text-primary)]">GitHub</a>
-          <a href="#docs" className="transition-colors hover:text-[var(--text-primary)]">Docs</a>
-          <a href="#tutorials" className="transition-colors hover:text-[var(--text-primary)]">Tutorials</a>
+          <Link to="/docs" className="transition-colors hover:text-[var(--text-primary)] no-underline" style={{ color: 'var(--text-muted)' }}>Docs</Link>
+          <Link to="/tutorials" className="transition-colors hover:text-[var(--text-primary)] no-underline" style={{ color: 'var(--text-muted)' }}>Tutorials</Link>
           <a href="#features" className="transition-colors hover:text-[var(--text-primary)]">Features</a>
         </div>
       </div>
@@ -40,7 +40,6 @@ export default function App() {
       className="min-h-screen flex flex-col"
       style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}
     >
-      <Nav />
       <main className="flex-1">
         <Hero />
         <DemoGallery />
