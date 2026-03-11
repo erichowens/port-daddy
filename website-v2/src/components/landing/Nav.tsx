@@ -66,11 +66,16 @@ export function Nav() {
       >
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 no-underline">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--brand-primary)', flexShrink: 0 }}>
+            <circle cx="12" cy="5" r="2" />
+            <path d="M12 7v14M5 14l7 7 7-7" />
+            <path d="M5 10H2v4h3M19 10h3v4h-3" />
+          </svg>
           <span
             className="font-mono font-bold text-xl"
             style={{ color: 'var(--brand-primary)' }}
           >
-            ⚓ port-daddy
+            port-daddy
           </span>
         </Link>
 

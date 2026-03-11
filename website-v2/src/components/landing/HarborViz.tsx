@@ -113,8 +113,8 @@ export function HarborViz() {
           animate={{ opacity: [0.15, 0.3, 0.15], r: [50, 56, 50] }}
           transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <text x={cx} y={cy - 8} textAnchor="middle" fontSize="18" fill="var(--brand-primary)">
-          ⚓
+        <text x={cx} y={cy - 4} textAnchor="middle" fontSize="13" fill="var(--brand-primary)" fontFamily="monospace" fontWeight="700">
+          PD
         </text>
         <text x={cx} y={cy + 8} textAnchor="middle" fontSize="9" fill="var(--text-muted)" fontFamily="monospace" fontWeight="600" letterSpacing="1">
           PORT

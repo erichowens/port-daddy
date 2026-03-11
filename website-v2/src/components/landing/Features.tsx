@@ -77,6 +77,26 @@ function DnsIcon() {
   )
 }
 
+function WatchIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 9v3l2 2" />
+    </svg>
+  )
+}
+
+function McpIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <path d="M8 21h8M12 17v4" />
+      <path d="M7 8h2l2 3 2-5 2 2h2" />
+    </svg>
+  )
+}
+
 const FEATURES: Feature[] = [
   {
     icon: <PortIcon />,
@@ -123,7 +143,14 @@ const FEATURES: Feature[] = [
     code: 'pd dns register myapp-api 3001',
   },
   {
-    icon: <PortIcon />,
+    icon: <WatchIcon />,
+    title: 'pd watch',
+    description: 'Subscribe to a channel and execute any script when a message arrives. The kernel for always-on agent workflows — trigger agents from build events, webhooks, or other agents.',
+    code: 'pd watch build-results --exec ./on-build.sh',
+    badge: 'Always-On',
+  },
+  {
+    icon: <McpIcon />,
     title: 'MCP Server',
     description: 'Native Model Context Protocol integration. pd mcp install adds Port Daddy to Claude Code — agents use coordination tools directly from the conversation.',
     code: 'pd mcp install',

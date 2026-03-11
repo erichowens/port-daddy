@@ -105,6 +105,36 @@ const TUTORIALS: Tutorial[] = [
     tags: ['sugar', 'begin', 'done', 'whoami'],
     href: '/tutorials/sugar',
   },
+  {
+    slug: 'pd-watch',
+    number: '10',
+    title: 'pd watch: Always-On Agents',
+    description: 'Subscribe to any channel and fire a script on every message. Build event-driven pipelines: CI signals, inter-agent triggers, and automated responses without polling.',
+    level: 'intermediate',
+    time: '10 min',
+    tags: ['watch', 'events', 'automation', 'always-on'],
+    href: '/tutorials/pd-watch',
+  },
+  {
+    slug: 'pd-spawn',
+    number: '11',
+    title: 'pd spawn: Launch Agent Fleets',
+    description: 'Spawn Ollama, Claude, Gemini, or Aider agents with Port Daddy coordination auto-wired. Sessions, heartbeats, notes, and salvage — all automatic.',
+    level: 'advanced',
+    time: '15 min',
+    tags: ['spawn', 'ollama', 'fleet', 'orchestration'],
+    href: '/tutorials/pd-spawn',
+  },
+  {
+    slug: 'harbors',
+    number: '12',
+    title: 'Harbor Tokens',
+    description: 'Create permission namespaces for agent teams. Scope tunnels, file claims, and pub/sub to a harbor. HMAC-signed tokens with TTLs and a full audit trail.',
+    level: 'advanced',
+    time: '12 min',
+    tags: ['harbors', 'tokens', 'permissions', 'security'],
+    href: '/tutorials/harbors',
+  },
 ]
 
 const LEVEL_VARIANT: Record<Tutorial['level'], 'teal' | 'amber' | 'neutral'> = {
@@ -143,7 +173,7 @@ export function TutorialsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <Badge variant="teal" className="mb-4">9 Tutorials</Badge>
+            <Badge variant="teal" className="mb-4">12 Tutorials</Badge>
             <h1 className="text-4xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
               Learn Port Daddy
             </h1>
@@ -168,7 +198,11 @@ export function TutorialsPage() {
             border: '1px solid var(--border-focus)',
           }}
         >
-          <div className="text-2xl">⚡</div>
+          <div style={{ color: 'var(--brand-primary)', flexShrink: 0 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            </svg>
+          </div>
           <div>
             <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
               New to Port Daddy? Start with the interactive tutorial

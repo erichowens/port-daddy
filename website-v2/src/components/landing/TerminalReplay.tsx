@@ -12,7 +12,7 @@ const REPLAY_SCRIPT: ReplayStep[] = [
   { type: 'comment', text: '# Two agents, one project, zero collisions' },
   { type: 'blank', text: '' },
   { type: 'command', text: 'pd begin --identity myapp:api --purpose "Refactor auth module"' },
-  { type: 'output', text: '⚓ Session started · myapp:api · agent-7f3a' },
+  { type: 'output', text: '[pd] Session started · myapp:api · agent-7f3a' },
   { type: 'output', text: '  No dead agents in myapp:* — clear skies' },
   { type: 'blank', text: '' },
   { type: 'command', text: 'pd files claim session-7f3a src/auth/*.ts' },
@@ -24,8 +24,8 @@ const REPLAY_SCRIPT: ReplayStep[] = [
   { type: 'comment', text: '# Meanwhile, Agent 2 arrives...' },
   { type: 'blank', text: '' },
   { type: 'command', text: 'pd begin --identity myapp:frontend --purpose "Wire auth UI"' },
-  { type: 'output', text: '⚓ Session started · myapp:frontend · agent-9c2b' },
-  { type: 'output', text: '  ⚠ 1 agent active in myapp:* → agent-7f3a owns src/auth/*.ts' },
+  { type: 'output', text: '[pd] Session started · myapp:frontend · agent-9c2b' },
+  { type: 'output', text: '  [!] 1 agent active in myapp:* → agent-7f3a owns src/auth/*.ts' },
   { type: 'blank', text: '' },
   { type: 'command', text: 'pd files claim session-9c2b src/components/LoginForm.tsx' },
   { type: 'output', text: '✓ Claimed · no conflicts (different files)' },
@@ -36,7 +36,7 @@ const REPLAY_SCRIPT: ReplayStep[] = [
   { type: 'comment', text: '# Agent 1 receives the signal and wraps up' },
   { type: 'blank', text: '' },
   { type: 'command', text: 'pd done' },
-  { type: 'output', text: '⚓ Session complete · 23 notes · 4 files released' },
+  { type: 'output', text: '[pd] Session complete · 23 notes · 4 files released' },
 ]
 
 const CHAR_SPEED = 25  // ms per char for commands

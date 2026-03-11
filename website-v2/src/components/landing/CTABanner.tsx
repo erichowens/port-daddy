@@ -73,7 +73,7 @@ export function CTABanner() {
             <span style={{ color: 'var(--text-primary)' }}>pd</span>
           </div>
           <div style={{ color: 'var(--code-output)' }}>
-            ⚓ Port Daddy v3.5.0 — all clear
+            [pd] Port Daddy v3.5.0 — all clear
           </div>
         </div>
       </motion.div>

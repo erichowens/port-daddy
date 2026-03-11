@@ -18,7 +18,7 @@ const STEPS: Step[] = [
       '$ pd begin --identity myapp:api \\',
       '    --purpose "Refactor auth"',
       '',
-      '⚓ Session started · agent-7f3a',
+      '[pd] Session started · agent-7f3a',
       '  Port 3001 assigned',
       '  No dead agents in myapp:*',
     ],
@@ -48,7 +48,7 @@ const STEPS: Step[] = [
       "When done, pd done releases everything cleanly. If a crash happens, the resurrection queue preserves the work — another agent picks up exactly where you left off.",
     code: [
       '$ pd done',
-      '⚓ Complete · 8 notes · 4 files released',
+      '[pd] Complete · 8 notes · 4 files released',
       '',
       '# Or, for the next agent:',
       '$ pd salvage',
