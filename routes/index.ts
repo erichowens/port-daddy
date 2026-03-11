@@ -30,6 +30,7 @@ import { createBriefingRoutes } from './briefing.js';
 import { createSugarRoutes } from './sugar.js';
 import { createLaunchHintsRoutes } from './launch.js';
 import { createSpawnRoutes } from './spawn.js';
+import { createHarborsRoutes } from './harbors.js';
 
 // Each route factory defines its own deps interface (e.g. ServicesRouteDeps,
 // InfoRouteDeps). Rather than duplicating those 10 interfaces here, we use a
@@ -73,6 +74,7 @@ export function createRoutes(deps: AnyDeps): Router {
   router.use(createSugarRoutes(deps as unknown as Parameters<typeof createSugarRoutes>[0]));
   router.use(createLaunchHintsRoutes(deps as unknown as Parameters<typeof createLaunchHintsRoutes>[0]));
   router.use(createSpawnRoutes(deps as unknown as Parameters<typeof createSpawnRoutes>[0]));
+  router.use(createHarborsRoutes(deps as unknown as Parameters<typeof createHarborsRoutes>[0]));
 
   return router;
 }

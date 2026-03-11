@@ -109,6 +109,8 @@ _port_daddy() {
     inbox
     # AI Agent Spawner + Watch
     spawn spawned watch
+    # Harbors (named permission namespaces)
+    harbor harbors
     # System & Monitoring
     dashboard channels webhook webhooks metrics config health ports
     # Orchestration
@@ -1416,6 +1418,39 @@ _port_daddy() {
           ;;
         *) _pd_opts '--exec --once' ;;
       esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # harbor  create|enter|leave|show|destroy|delete  <name>  [options]
+    # -----------------------------------------------------------------------
+    harbor)
+      local subcmd="${words[2]:-}"
+      case "$subcmd" in
+        '')
+          COMPREPLY=( $(compgen -W "create enter leave show destroy delete" -- "$cur") )
+          ;;
+        create)
+          _pd_opts '--cap --channels --expires'
+          ;;
+        enter)
+          _pd_opts '--agent --cap'
+          ;;
+        leave|show|destroy|delete)
+          if [[ "$cur" != -* ]]; then
+            local hnames; hnames="$(_pd_query '/harbors' | grep -o '"name":"[^"]*"' | sed 's/"name":"//;s/"//' | sort -u)"
+            # shellcheck disable=SC2207
+            COMPREPLY=( $(compgen -W "$hnames" -- "$cur") )
+          fi
+          ;;
+        *) _pd_opts '' ;;
+      esac
+      ;;
+
+    # -----------------------------------------------------------------------
+    # harbors  [--json]  — list all harbors
+    # -----------------------------------------------------------------------
+    harbors)
+      _pd_opts '--json'
       ;;
 
     # -----------------------------------------------------------------------

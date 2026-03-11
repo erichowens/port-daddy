@@ -97,7 +97,7 @@ set -l __pd_commands \
     'agent' 'agents' 'log' 'activity' \
     'session' 'sessions' 'note' 'notes' \
     'salvage' 'resurrection' 'changelog' 'dns' 'files' 'who-owns' 'integration' 'briefing' 'history' 'inbox' \
-    'begin' 'b' 'done' 'whoami' 'w' 'with-lock' 'n' 'u' 'd' 'learn' 'tutorial' 'spawn' 'spawned' 'watch' \
+    'begin' 'b' 'done' 'whoami' 'w' 'with-lock' 'n' 'u' 'd' 'learn' 'tutorial' 'spawn' 'spawned' 'watch' 'harbor' 'harbors' \
     'up' 'down' \
     'dashboard' 'channels' 'webhook' 'webhooks' 'metrics' 'config' 'health' 'ports' \
     'scan' 's' 'projects' 'p' 'doctor' 'diagnose' 'hints' \
@@ -169,6 +169,10 @@ for prog in port-daddy pd
     complete -c $prog -n __pd_needs_command -a spawn -d 'Launch an AI agent (Ollama/Claude/Gemini/Aider/custom)'
     complete -c $prog -n __pd_needs_command -a spawned -d 'List active spawned agents'
     complete -c $prog -n __pd_needs_command -a watch -d 'Subscribe to a channel and run a script on each message'
+
+    # Harbors (named permission namespaces)
+    complete -c $prog -n __pd_needs_command -a harbor -d 'Create, enter, leave, show, or destroy a harbor'
+    complete -c $prog -n __pd_needs_command -a harbors -d 'List all active harbors'
 
     # System & Monitoring
     complete -c $prog -n __pd_needs_command -a dashboard -d 'Open web dashboard'
@@ -534,4 +538,14 @@ for prog in port-daddy pd
     complete -c $prog -n "__pd_using_command watch" -l exec -d 'Shell command to run on each message' -x
     complete -c $prog -n "__pd_using_command watch" -l once -d 'Exit after first message'
     complete -c $prog -n "__pd_using_command watch" -x -a '(__pd_channels)'
+
+    # harbor
+    complete -c $prog -n "__pd_using_command harbor" -x -a 'create enter leave show destroy delete'
+    complete -c $prog -n "__pd_using_command harbor" -l cap -d 'Capabilities (comma-separated)' -x
+    complete -c $prog -n "__pd_using_command harbor" -l channels -d 'Channel names (comma-separated)' -x
+    complete -c $prog -n "__pd_using_command harbor" -l expires -d 'Expiry duration (e.g. 2h, 30m)' -x
+    complete -c $prog -n "__pd_using_command harbor" -l agent -d 'Agent ID' -x -a '(__pd_agent_ids)'
+
+    # harbors
+    complete -c $prog -n "__pd_using_command harbors" -l json -d 'JSON output'
 end

@@ -79,6 +79,8 @@ import {
   handleHistory,
   // Spawn + Watch
   handleSpawn, handleSpawned, handleWatch,
+  // Harbors
+  handleHarborCreate, handleHarborEnter, handleHarborLeave, handleHarborShow, handleHarborDestroy, handleHarbors,
 } from '../cli/commands/index.js';
 
 const __dirname: string = dirname(fileURLToPath(import.meta.url));
@@ -814,6 +816,7 @@ const ALL_COMMANDS: string[] = [
   'services', 'dns', 'briefing', 'integration',
   'b', 'w', 'who-owns', 'history', 'tutorial', 'files',
   'spawn', 'spawned', 'watch',
+  'harbor', 'harbors',
 ];
 
 /** Simple Levenshtein distance for short strings */
@@ -1980,6 +1983,28 @@ async function main(): Promise<void> {
       // Watch — ambient agent kernel (SSE subscriber)
       case 'watch':
         await handleWatch(positional[0], options);
+        break;
+
+      // Harbors — named permission namespaces
+      case 'harbor': {
+        const sub = positional[0];
+        const harborArgs = positional.slice(1);
+        switch (sub) {
+          case 'create':  await handleHarborCreate(harborArgs, options); break;
+          case 'enter':   await handleHarborEnter(harborArgs, options); break;
+          case 'leave':   await handleHarborLeave(harborArgs, options); break;
+          case 'show':    await handleHarborShow(harborArgs, options); break;
+          case 'destroy':
+          case 'delete':  await handleHarborDestroy(harborArgs, options); break;
+          default:
+            console.error('Usage: pd harbor <create|enter|leave|show|destroy> [args]');
+            process.exit(1);
+        }
+        break;
+      }
+
+      case 'harbors':
+        await handleHarbors(positional, options);
         break;
 
       // Tutorial

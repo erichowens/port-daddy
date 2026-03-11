@@ -2477,6 +2477,36 @@ class PortDaddy {
   async killSpawned(agentId: string): Promise<KillSpawnedResponse> {
     return this._request('DELETE', `/spawn/${encodeURIComponent(agentId)}`) as Promise<KillSpawnedResponse>;
   }
+
+  // Harbors -- Named Permission Namespaces
+
+  async createHarbor(name: string, options: CreateHarborOptions = {}): Promise<HarborResponse> {
+    return this._request('POST', '/harbors', { name, ...options }) as Promise<HarborResponse>;
+  }
+
+  async listHarbors(): Promise<ListHarborsResponse> {
+    return this._request('GET', '/harbors') as Promise<ListHarborsResponse>;
+  }
+
+  async getHarbor(name: string): Promise<HarborResponse> {
+    return this._request('GET', `/harbors/${encodeURIComponent(name)}`) as Promise<HarborResponse>;
+  }
+
+  async destroyHarbor(name: string): Promise<DestroyHarborResponse> {
+    return this._request('DELETE', `/harbors/${encodeURIComponent(name)}`) as Promise<DestroyHarborResponse>;
+  }
+
+  async enterHarbor(name: string, agentId: string, options: EnterHarborOptions = {}): Promise<HarborResponse> {
+    return this._request('POST', `/harbors/${encodeURIComponent(name)}/enter`, { agentId, ...options }) as Promise<HarborResponse>;
+  }
+
+  async leaveHarbor(name: string, agentId: string): Promise<LeaveHarborResponse> {
+    return this._request('POST', `/harbors/${encodeURIComponent(name)}/leave`, { agentId }) as Promise<LeaveHarborResponse>;
+  }
+
+  async harborMemberships(agentId: string): Promise<ListHarborsResponse> {
+    return this._request('GET', `/harbors/agent/${encodeURIComponent(agentId)}`) as Promise<ListHarborsResponse>;
+  }
 }
 
 // =============================================================================
@@ -2765,6 +2795,63 @@ interface KillSpawnedResponse {
   message: string;
 }
 
+// =============================================================================
+// Harbor types
+// =============================================================================
+
+interface HarborMemberEntry {
+  agentId: string;
+  identity: string | null;
+  capabilities: string[];
+  joinedAt: number;
+}
+
+interface HarborEntry {
+  name: string;
+  capabilities: string[];
+  channels: string[];
+  agentPatterns: string[];
+  members: HarborMemberEntry[];
+  createdAt: number;
+  expiresAt: number | null;
+  metadata: Record<string, unknown> | null;
+}
+
+interface CreateHarborOptions {
+  capabilities?: string[];
+  channels?: string[];
+  agentPatterns?: string[];
+  expiresIn?: number;
+  metadata?: Record<string, unknown>;
+}
+
+interface EnterHarborOptions {
+  identity?: string;
+  capabilities?: string[];
+}
+
+interface HarborResponse {
+  success: boolean;
+  harbor?: HarborEntry;
+  error?: string;
+}
+
+interface ListHarborsResponse {
+  success: boolean;
+  harbors: HarborEntry[];
+  count: number;
+}
+
+interface DestroyHarborResponse {
+  success: boolean;
+  error?: string;
+}
+
+interface LeaveHarborResponse {
+  success: boolean;
+  error?: string;
+}
+
 export { PortDaddy, PortDaddyError, ConnectionError };
 export type {
   WaitResponse,
@@ -2811,5 +2898,13 @@ export type {
   SpawnedAgent,
   ListSpawnedResponse,
   KillSpawnedResponse,
+  HarborMemberEntry,
+  HarborEntry,
+  CreateHarborOptions,
+  EnterHarborOptions,
+  HarborResponse,
+  ListHarborsResponse,
+  DestroyHarborResponse,
+  LeaveHarborResponse,
 };
 export default PortDaddy;

@@ -382,6 +382,8 @@ describe('CLI --> Manifest (no undocumented CLI commands)', () => {
       'add',
       // Projects subcommands
       // 'rm' already listed above
+      // Harbor subcommands: handled inside `case 'harbor':`
+      'create', 'enter', 'leave', 'show', 'destroy',
     ]);
 
     const undocumented = [];

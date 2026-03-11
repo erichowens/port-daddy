@@ -592,6 +592,68 @@ Check who owns a specific file path.
 
 ---
 
+## Spawn
+
+### POST /spawn
+Launch an AI agent (Ollama, Claude, Gemini, Aider, custom).
+
+**Body:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `backend` | string | yes | `ollama`, `claude`, `gemini`, `aider`, `custom` |
+| `model` | string | no | Model name override |
+| `identity` | string | no | Semantic identity (`project:stack:context`) |
+| `purpose` | string | no | Human-readable task description |
+| `task` | string | yes | The task/prompt for the agent |
+
+### GET /spawn
+List active spawned agents.
+
+### DELETE /spawn/:agentId
+Kill a spawned agent.
+
+---
+
+## Harbors
+
+### POST /harbors
+Create a named harbor (permission namespace).
+
+**Body:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | Harbor name (e.g. `myapp:security-review`) |
+| `capabilities` | string[] | no | Required capabilities for members |
+| `channels` | string[] | no | Pub/sub channels scoped to this harbor |
+| `expiresIn` | number | no | Expiry in milliseconds |
+
+### GET /harbors
+List all active harbors.
+
+### GET /harbors/:name
+Get harbor detail including member list.
+
+### DELETE /harbors/:name
+Destroy a harbor and remove all members.
+
+### POST /harbors/:name/enter
+Agent enters a harbor, declaring capabilities.
+
+**Body:** `{ "agentId": "...", "capabilities": ["code:read"] }`
+
+### POST /harbors/:name/leave
+Agent leaves a harbor.
+
+**Body:** `{ "agentId": "..." }`
+
+### GET /harbors/:name/members
+List members in a harbor.
+
+### GET /harbors/agent/:agentId
+List harbors an agent is currently in.
+
+---
+
 ## Config
 
 ### GET /config

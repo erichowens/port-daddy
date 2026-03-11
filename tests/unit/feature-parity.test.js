@@ -378,6 +378,8 @@ describe('Manifest Completeness', () => {
       briefing: 'briefing',
       sugar: 'sugar',
       launchhints: 'launch_hints',
+      spawn: 'spawn',
+      harbors: 'harbors',
     };
 
     const unmapped = routeModules.filter(mod => {

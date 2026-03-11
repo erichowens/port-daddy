@@ -743,6 +743,41 @@ pd watch code-review --exec ./spawn-reviewer.sh
 
 ---
 
+## Harbors — Named Permission Namespaces
+
+Harbors are coordination scopes that group agents together. An agent enters a harbor, declares its capabilities, and the harbormaster (Port Daddy) keeps the manifest. Think of a harbor as a named room: agents dock, announce what they can do, and leave when done.
+
+Enforcement is advisory in v1 — like file claims, harbors record intent and enable discovery.
+
+```bash
+# Create a harbor for a security review collaboration
+pd harbor create myapp:security-review --cap "code:read,security:scan" --expires 2h
+
+# Agents enter the harbor and declare their capabilities
+pd harbor enter myapp:security-review --agent claude-1 --cap "code:read"
+pd harbor enter myapp:security-review --agent gemini-1 --cap "security:scan"
+
+# Inspect the harbor
+pd harbor show myapp:security-review
+# Harbor: myapp:security-review
+# Capabilities: code:read, security:scan
+# Expires: 2h
+# Members (2):
+#   claude-1  [code:read]
+#   gemini-1  [security:scan]
+
+# List all active harbors
+pd harbors
+
+# Leave and clean up
+pd harbor leave myapp:security-review --agent claude-1
+pd harbor destroy myapp:security-review
+```
+
+Harbors auto-expire (if `--expires` was set) and dead agents are automatically removed from all harbors on the zombie protocol.
+
+---
+
 ## When NOT to Use Port Daddy
 
 Be honest with yourself:

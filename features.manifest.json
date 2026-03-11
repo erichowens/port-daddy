@@ -879,6 +879,40 @@
         "readme": true,
         "sdk": false
       }
+    },
+    "harbors": {
+      "description": "Named permission namespaces for agent coordination — agents enter/leave harbors and declare capabilities",
+      "cli": [
+        "harbor",
+        "harbors"
+      ],
+      "sdk": [
+        "createHarbor",
+        "listHarbors",
+        "getHarbor",
+        "destroyHarbor",
+        "enterHarbor",
+        "leaveHarbor",
+        "harborMemberships"
+      ],
+      "routes": [
+        "POST /harbors",
+        "GET /harbors",
+        "GET /harbors/:name",
+        "DELETE /harbors/:name",
+        "POST /harbors/:name/enter",
+        "POST /harbors/:name/leave",
+        "GET /harbors/:name/members",
+        "GET /harbors/agent/:agentId"
+      ],
+      "completions": [
+        "harbor",
+        "harbors"
+      ],
+      "docs": {
+        "readme": true,
+        "sdk": true
+      }
     }
   }
 }

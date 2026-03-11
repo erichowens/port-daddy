@@ -73,6 +73,22 @@ interface Health {
   uptime: number;
 }
 
+interface HarborMember {
+  agentId: string;
+  identity: string | null;
+  capabilities: string[];
+  joinedAt: number;
+}
+
+interface Harbor {
+  name: string;
+  capabilities: string[];
+  channels: string[];
+  members: HarborMember[];
+  createdAt: number;
+  expiresAt: number | null;
+}
+
 // ─── API ─────────────────────────────────────────────────────────────────────
 
 async function apiFetch<T,>(path: string): Promise<T | null> {
@@ -356,9 +372,48 @@ function ChannelsPanel({
   );
 }
 
+// ─── Harbors Panel ───────────────────────────────────────────────────────────
+
+function HarborsPanel({ harbors }: { harbors: Harbor[] }): React.ReactElement {
+  if (!harbors.length) return <Text dimColor>{'No active harbors. Run: pd harbor create myapp:security-review'}</Text>;
+  return (
+    <Box flexDirection="column">
+      <Box gap={2} marginBottom={1}>
+        <Box width={36}><Text {...COL}>HARBOR</Text></Box>
+        <Box width={8}><Text {...COL}>MEMBERS</Text></Box>
+        <Box width={10}><Text {...COL}>EXPIRES</Text></Box>
+        <Text {...COL}>CAPABILITIES</Text>
+      </Box>
+      {harbors.map(h => {
+        const expStr = h.expiresAt
+          ? (h.expiresAt < Date.now() ? 'expired' : timeAgo(h.expiresAt))
+          : 'never';
+        return (
+          <React.Fragment key={h.name}>
+            <Box gap={2}>
+              <Box width={36}><TokenId id={h.name} /></Box>
+              <Box width={8}><Text color="green" bold>{h.members.length}</Text></Box>
+              <Box width={10}><Text dimColor>{expStr}</Text></Box>
+              <Text dimColor>{h.capabilities.join(', ') || '--'}</Text>
+            </Box>
+            {h.members.map(m => (
+              <Box key={m.agentId} gap={2} marginLeft={2}>
+                <Box width={34}><Text dimColor>{'↳ '}</Text><TokenId id={m.agentId} dim /></Box>
+                <Box width={8}></Box>
+                <Box width={10}></Box>
+                <Text dimColor>{m.capabilities.join(', ')}</Text>
+              </Box>
+            ))}
+          </React.Fragment>
+        );
+      })}
+    </Box>
+  );
+}
+
 // ─── Tabs ────────────────────────────────────────────────────────────────────
 
-const TABS = ['Services', 'Agents', 'Sessions', 'Locks', 'Channels'] as const;
+const TABS = ['Services', 'Agents', 'Sessions', 'Locks', 'Channels', 'Harbors'] as const;
 type Tab = (typeof TABS)[number];
 
 // ─── App ─────────────────────────────────────────────────────────────────────
@@ -375,12 +430,14 @@ function App(): React.ReactElement {
   const sesData = usePolling<{ sessions: Session[] }>(() => apiFetch('/sessions?limit=30'), 3000);
   const lckData = usePolling<{ locks: Lock[] }>(() => apiFetch('/locks'), 2500);
   const chnData = usePolling<{ channels: Channel[] }>(() => apiFetch('/channels'), 3000);
+  const hbrData = usePolling<{ harbors: Harbor[] }>(() => apiFetch('/harbors'), 5000);
 
   const svcs  = svcData?.services ?? [];
   const agts  = agtData?.agents ?? [];
   const sess  = sesData?.sessions ?? [];
   const lcks  = lckData?.locks ?? [];
   const chans = chnData?.channels ?? [];
+  const hbrs  = hbrData?.harbors ?? [];
 
   // Set of alive agent IDs for zombie detection in sessions panel
   const aliveAgentIds = new Set(agts.filter(a => a.liveness !== 'dead').map(a => a.id));
@@ -400,6 +457,7 @@ function App(): React.ReactElement {
     if (input === '3') setTab('Sessions');
     if (input === '4') setTab('Locks');
     if (input === '5') setTab('Channels');
+    if (input === '6') setTab('Harbors');
     if (key.leftArrow) {
       const i = TABS.indexOf(tab);
       setTab(TABS[(i - 1 + TABS.length) % TABS.length]);
@@ -466,6 +524,7 @@ function App(): React.ReactElement {
             onBack={() => setChannelDrilling(false)}
           />
         )}
+        {tab === 'Harbors'   && <HarborsPanel   harbors={hbrs}   />}
       </Box>
 
       {/* ── Footer ── */}

@@ -40,6 +40,7 @@ import { createDns } from './lib/dns.js';
 import { createResolver } from './lib/resolver.js';
 import { createBriefing } from './lib/briefing.js';
 import { createSugar } from './lib/sugar.js';
+import { createHarbors } from './lib/harbors.js';
 import { initDatabase, closeDatabase, resolveDbPath } from './lib/db.js';
 
 // Route aggregator
@@ -225,6 +226,7 @@ const resolver = createResolver(db);
 dns.setResolver(resolver);
 const briefing = createBriefing(db, { sessions, agents, resurrection, activityLog, services, messaging });
 const sugar = createSugar({ agents, sessions, activityLog });
+const harbors = createHarbors(db);
 
 // Wire resurrection events to broadcast on the radio
 resurrection.on('agent:stale', (agent) => {
@@ -241,6 +243,7 @@ resurrection.on('agent:stale', (agent) => {
 
 resurrection.on('agent:dead', (agent) => {
   // Zombie protocol: abandon any active sessions owned by this dead agent.
+  harbors.leaveAll(agent.id);  // remove from all harbors
   const zombied = sessions.abandonByAgent(agent.id);
   if (zombied > 0) {
     logger.warn('zombie_sessions_abandoned', { agentId: agent.id, count: zombied });

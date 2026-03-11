@@ -1046,6 +1046,67 @@ _pd_cmd_watch() {
     '1:channel:_pd_complete_channels'
 }
 
+_pd_complete_harbors() {
+  local harbors
+  harbors=( ${(f)"$(_pd_query '/harbors' | grep -o '"name":"[^"]*"' | sed 's/"name":"//;s/"//')"} )
+  _describe 'harbor name' harbors
+}
+
+_pd_cmd_harbor() {
+  local -a harbor_subcmds
+  harbor_subcmds=(
+    'create:create a named harbor'
+    'enter:enter a harbor (declare capabilities)'
+    'leave:leave a harbor'
+    'show:show harbor members and capabilities'
+    'destroy:destroy a harbor'
+    'delete:destroy a harbor (alias)'
+  )
+
+  local state subcmd
+  _arguments -C \
+    '1:subcommand:->subcommand' \
+    '*::subcommand args:->args' \
+    && return
+
+  case "$state" in
+    subcommand)
+      _describe 'harbor subcommand' harbor_subcmds
+      ;;
+    args)
+      subcmd="${words[1]}"
+      case "$subcmd" in
+        create)
+          _arguments \
+            '--cap[capabilities (comma-separated)]:capabilities:' \
+            '--channels[channel names (comma-separated)]:channels:' \
+            '--expires[expiry duration (e.g. 2h, 30m)]:duration:' \
+            '(-j --json)'{-j,--json}'[JSON output]' \
+            '1:harbor name:'
+          ;;
+        enter)
+          _arguments \
+            '--agent[agent ID]:agent ID:_pd_complete_agents' \
+            '--cap[capabilities (comma-separated)]:capabilities:' \
+            '(-j --json)'{-j,--json}'[JSON output]' \
+            '1:harbor name:_pd_complete_harbors'
+          ;;
+        leave|show|destroy|delete)
+          _arguments \
+            '--agent[agent ID (for leave)]:agent ID:_pd_complete_agents' \
+            '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+            '1:harbor name:_pd_complete_harbors'
+          ;;
+      esac
+      ;;
+  esac
+}
+
+_pd_cmd_harbors() {
+  _arguments \
+    '(-j --json)'{-j,--json}'[JSON output]'
+}
+
 _pd_cmd_inbox() {
   local -a inbox_subcmds
   inbox_subcmds=(
@@ -1163,6 +1224,9 @@ _port_daddy() {
     'spawn:launch an AI agent (Ollama/Claude/Gemini/Aider/custom)'
     'spawned:list active spawned agents'
     'watch:subscribe to a channel and run a script on each message'
+    # Harbors (named permission namespaces)
+    'harbor:create, enter, leave, show, or destroy a harbor'
+    'harbors:list all active harbors'
     # System & Monitoring
     'dashboard:open web dashboard in browser'
     'channels:list pub/sub channels'
@@ -1275,6 +1339,8 @@ _port_daddy() {
         spawn)                  _pd_cmd_spawn ;;
         spawned)                _pd_cmd_spawned ;;
         watch)                  _pd_cmd_watch ;;
+        harbor)                 _pd_cmd_harbor ;;
+        harbors)                _pd_cmd_harbors ;;
         version|help)       ;;
         *)                  ;;
       esac

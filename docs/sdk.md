@@ -693,3 +693,89 @@ function verifySignature(payload, signature, secret) {
   return signature === expected;
 }
 ```
+
+---
+
+## Spawn — AI Agent Launcher
+
+Launch AI agents (Ollama, Claude, Gemini, Aider, custom subprocess) with Port Daddy coordination auto-wired. Each spawned agent automatically registers, sends heartbeats, and marks its session done on completion.
+
+```typescript
+// Spawn a local Ollama agent
+const result = await pd.spawn({
+  backend: 'ollama',
+  model: 'llama3',
+  identity: 'myapp:coder',
+  purpose: 'Refactor auth module',
+  task: 'Fix the login bug in src/auth.ts',
+});
+console.log(result.agentId, result.status);  // e.g. "ollama-abc123", "completed"
+
+// Spawn a Claude SDK agent
+await pd.spawn({
+  backend: 'claude',
+  model: 'claude-haiku-4-5-20251001',
+  identity: 'myapp:reviewer',
+  task: 'Review PR #42 for security issues',
+});
+
+// List active spawned agents
+const { agents } = await pd.listSpawned();
+agents.forEach(a => console.log(a.agentId, a.backend, a.status));
+
+// Kill a spawned agent
+await pd.killSpawned(agentId);
+```
+
+| Method | Description |
+|--------|-------------|
+| `pd.spawn(spec)` | Launch an AI agent; returns `SpawnResult` |
+| `pd.listSpawned()` | List active spawned agents |
+| `pd.killSpawned(agentId)` | Kill a running spawned agent |
+
+---
+
+## Harbors — Named Permission Namespaces
+
+Harbors group agents into coordination scopes with declared capabilities. Advisory enforcement in v1 (like file claims).
+
+```typescript
+// Create a harbor for a security review
+const { harbor } = await pd.createHarbor('myapp:security-review', {
+  capabilities: ['code:read', 'security:scan'],
+  channels: ['security-alerts'],
+  expiresIn: 7200000,  // 2 hours in ms
+});
+
+// Agent enters the harbor
+await pd.enterHarbor('myapp:security-review', agentId, {
+  capabilities: ['code:read'],
+});
+
+// List all harbors
+const { harbors } = await pd.listHarbors();
+
+// Get a specific harbor with members
+const { harbor: h } = await pd.getHarbor('myapp:security-review');
+h.members.forEach(m => console.log(m.agentId, m.capabilities));
+
+// Agent leaves
+await pd.leaveHarbor('myapp:security-review', agentId);
+
+// List harbors an agent is in
+const { harbors: mine } = await pd.harborMemberships(agentId);
+
+// Destroy harbor (cascades to members)
+await pd.destroyHarbor('myapp:security-review');
+```
+
+| Method | Description |
+|--------|-------------|
+| `pd.createHarbor(name, options?)` | Create a named harbor |
+| `pd.listHarbors()` | List all active harbors |
+| `pd.getHarbor(name)` | Get harbor detail with members |
+| `pd.destroyHarbor(name)` | Destroy harbor and remove all members |
+| `pd.enterHarbor(name, agentId, options?)` | Agent enters harbor, declares capabilities |
+| `pd.leaveHarbor(name, agentId)` | Agent leaves harbor |
+| `pd.harborMemberships(agentId)` | List harbors an agent is currently in |
+
