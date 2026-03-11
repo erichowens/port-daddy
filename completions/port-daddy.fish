@@ -537,6 +537,9 @@ for prog in port-daddy pd
     # watch
     complete -c $prog -n "__pd_using_command watch" -l exec -d 'Shell command to run on each message' -x
     complete -c $prog -n "__pd_using_command watch" -l once -d 'Exit after first message'
+    complete -c $prog -n "__pd_using_command watch" -l max-concurrent -d 'Max concurrent exec processes (default: 3)' -x
+    complete -c $prog -n "__pd_using_command watch" -l timeout -d 'Per-exec timeout in ms (default: 30000)' -x
+    complete -c $prog -n "__pd_using_command watch" -l min-interval -d 'Min ms between executions, rate limit (default: 0)' -x
     complete -c $prog -n "__pd_using_command watch" -x -a '(__pd_channels)'
 
     # harbor

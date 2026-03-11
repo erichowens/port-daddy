@@ -242,20 +242,25 @@ export async function handleWatch(
     console.error('Usage: pd watch <channel> --exec <script>');
     console.error('');
     console.error('Subscribes to a pub/sub channel and runs a script on each message.');
+    console.error('Reconnects automatically with exponential backoff (1s → 2s → 4s … 30s).');
     console.error('');
     console.error('Options:');
-    console.error('  --exec <script>    Shell command to run on each message (required)');
-    console.error('  --once             Exit after first message');
+    console.error('  --exec <script>          Shell command to run on each message (required)');
+    console.error('  --once                   Exit after first message');
+    console.error('  --max-concurrent <n>     Max concurrent exec processes (default: 3)');
+    console.error('  --timeout <ms>           Per-exec timeout in ms (default: 30000)');
+    console.error('  --min-interval <ms>      Min ms between executions — rate limit (default: 0)');
     console.error('');
     console.error('Environment variables set when exec runs:');
     console.error('  PD_MESSAGE          Full message JSON string');
-    console.error('  PD_MESSAGE_CONTENT  Message content field');
+    console.error('  PD_MESSAGE_CONTENT  Extracted content field');
     console.error('  PD_CHANNEL          Channel name');
     console.error('  PD_TIMESTAMP        ISO timestamp');
     console.error('');
     console.error('Examples:');
     console.error('  pd watch deployments --exec ./deploy.sh');
-    console.error('  pd watch alerts --exec "echo Deploy triggered: $PD_MESSAGE_CONTENT"');
+    console.error('  pd watch alerts --exec "echo $PD_MESSAGE_CONTENT" --max-concurrent 1');
+    console.error('  pd watch builds --exec ./notify.sh --timeout 10000 --min-interval 5000');
     process.exit(1);
   }
 
@@ -267,15 +272,26 @@ export async function handleWatch(
   }
 
   const once = !!options.once;
+  const maxConcurrent = options['max-concurrent'] !== undefined
+    ? parseInt(String(options['max-concurrent']), 10)
+    : 3;
+  const timeout = options.timeout !== undefined
+    ? parseInt(String(options.timeout), 10)
+    : 30_000;
+  const minInterval = options['min-interval'] !== undefined
+    ? parseInt(String(options['min-interval']), 10)
+    : 0;
 
   if (IS_TTY && !isQuiet(options)) {
     console.error(maritimeStatus('ready', `Watching channel "${channel}" — exec: ${exec}`));
     if (once) console.error('  (--once: will exit after first message)');
+    console.error(`  max-concurrent: ${maxConcurrent}  timeout: ${timeout}ms  min-interval: ${minInterval}ms`);
+    console.error('  Reconnects with exponential backoff on disconnect');
     console.error('  Press Ctrl+C to stop');
   }
 
   const watcher = createWatch();
-  const handle = watcher.watch(channel, { exec, once });
+  const handle = watcher.watch(channel, { exec, once, maxConcurrent, timeout, minInterval });
 
   // Handle SIGINT/SIGTERM gracefully
   const cleanup = () => {

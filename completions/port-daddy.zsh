@@ -1041,6 +1041,9 @@ _pd_cmd_watch() {
   _arguments \
     '--exec[shell command to run on each message]:command:_command_names' \
     '--once[exit after first message]' \
+    '--max-concurrent[max concurrent exec processes (default: 3)]:count' \
+    '--timeout[per-exec timeout in ms (default: 30000)]:milliseconds' \
+    '--min-interval[min ms between executions, rate limit (default: 0)]:milliseconds' \
     '(-q --quiet)'{-q,--quiet}'[suppress output]' \
     '(-h --help)'{-h,--help}'[show help]' \
     '1:channel:_pd_complete_channels'

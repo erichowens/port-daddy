@@ -1405,7 +1405,7 @@ _port_daddy() {
       case "$prev" in
         watch)
           if [[ "$cur" == -* ]]; then
-            _pd_opts '--exec --once'
+            _pd_opts '--exec --once --max-concurrent --timeout --min-interval'
           else
             local channels; channels="$(_pd_channels)"
             # shellcheck disable=SC2207
