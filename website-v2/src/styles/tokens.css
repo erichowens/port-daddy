@@ -124,26 +124,26 @@
 /* ─── Layer 2: Semantic Tokens — DARK (default) ──────────────────────────── */
 :root,
 [data-theme="dark"] {
-  /* Backgrounds */
-  --bg-base:       var(--p-navy-950);
-  --bg-surface:    var(--p-navy-900);
-  --bg-overlay:    var(--p-navy-800);
-  --bg-elevated:   var(--p-navy-700);
-  --bg-glass:      rgba(13, 21, 38, 0.85);
-  --bg-glass-teal: rgba(30, 107, 107, 0.12);
+  /* Backgrounds — true black, no navy tint */
+  --bg-base:       #0a0a0a;
+  --bg-surface:    #111111;
+  --bg-overlay:    #1a1a1a;
+  --bg-elevated:   #222222;
+  --bg-glass:      rgba(10, 10, 10, 0.88);
+  --bg-glass-teal: rgba(30, 107, 107, 0.10);
 
   /* Borders */
-  --border-subtle:  rgba(255,255,255,0.06);
-  --border-default: rgba(255,255,255,0.10);
-  --border-strong:  rgba(255,255,255,0.18);
+  --border-subtle:  rgba(255,255,255,0.07);
+  --border-default: rgba(255,255,255,0.12);
+  --border-strong:  rgba(255,255,255,0.20);
   --border-focus:   var(--p-teal-400);
 
   /* Text */
-  --text-primary:   var(--p-white);
-  --text-secondary: var(--p-navy-200);
-  --text-muted:     var(--p-navy-300);
-  --text-disabled:  var(--p-navy-400);
-  --text-inverse:   var(--p-navy-950);
+  --text-primary:   #ffffff;
+  --text-secondary: #a0a8b4;
+  --text-muted:     #6b7280;
+  --text-disabled:  #4b5563;
+  --text-inverse:   #0a0a0a;
   --text-code:      var(--p-teal-300);
 
   /* Brand */
@@ -156,7 +156,7 @@
   --status-success:  var(--p-green-400);
   --status-warning:  var(--p-amber-400);
   --status-danger:   var(--p-red-500);
-  --status-info:     var(--p-navy-300);
+  --status-info:     #9ca3af;
 
   /* Interactive */
   --interactive-hover:  rgba(58, 173, 173, 0.08);
@@ -164,11 +164,11 @@
   --interactive-focus:  rgba(58, 173, 173, 0.3);
 
   /* Code / Terminal */
-  --code-bg:       var(--p-navy-950);
+  --code-bg:       #0d1117;
   --code-border:   var(--border-subtle);
   --code-prompt:   var(--p-teal-400);
-  --code-output:   var(--p-navy-200);
-  --code-comment:  var(--p-navy-400);
+  --code-output:   #c9d1d9;
+  --code-comment:  #6b7280;
   --code-string:   var(--p-amber-300);
   --code-keyword:  var(--p-teal-300);
 }

@@ -43,7 +43,7 @@ export function AgentEcosystem() {
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
-          <p className="text-sm font-mono uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-sm font-medium uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>
             Works with every AI agent
           </p>
           <h2 className="text-2xl sm:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -72,7 +72,7 @@ export function AgentEcosystem() {
               >
                 {/* Monogram */}
                 <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0 font-mono"
+                  className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0"
                   style={{
                     background: 'var(--bg-overlay)',
                     color: COLORS[i % COLORS.length],
@@ -87,7 +87,7 @@ export function AgentEcosystem() {
                       {tool.name}
                     </span>
                     <span
-                      className="text-xs font-mono px-1.5 py-0.5 rounded"
+                      className="text-xs px-1.5 py-0.5 rounded"
                       style={{
                         background: 'var(--bg-overlay)',
                         color: 'var(--text-muted)',
@@ -114,7 +114,7 @@ export function AgentEcosystem() {
           className="mt-10 text-center"
         >
           <div
-            className="inline-flex items-center gap-3 px-6 py-3 rounded-xl text-sm font-mono"
+            className="inline-flex items-center gap-3 px-6 py-3 rounded-xl text-sm"
             style={{
               background: 'var(--bg-overlay)',
               border: '1px solid var(--border-default)',

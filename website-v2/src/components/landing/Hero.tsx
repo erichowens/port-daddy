@@ -2,10 +2,22 @@ import * as React from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { TerminalReplay } from './TerminalReplay'
-import { HarborViz } from './HarborViz'
-import { PortDaddyMark } from '@/components/PortDaddyMark'
 import * as Tabs from '@radix-ui/react-tabs'
+
+const RAINBOW_SEGMENTS = [
+  '#4285f4', // blue
+  '#34a853', // green
+  '#fbbc04', // yellow
+  '#fa7b17', // orange
+  '#ea4335', // red
+  '#a142f4', // purple
+  '#24c1e0', // teal
+]
+
+const DEMO_GIFS = [
+  { id: 'agents', label: 'Agent Coordination', src: '/demo-agents.gif', caption: 'Multiple agents, zero conflicts' },
+  { id: 'fleet',  label: 'Fleet Management',  src: '/demo-fleet.gif',  caption: 'Spawn, monitor, salvage' },
+]
 
 const INSTALL_TABS = [
   {
@@ -42,7 +54,7 @@ const fadeUp = {
 
 export function Hero() {
   const [activeTab, setActiveTab] = React.useState('brew')
-  const [activePanel, setActivePanel] = React.useState<'terminal' | 'agents' | 'character'>('terminal')
+  const [activeGif, setActiveGif] = React.useState(0)
 
   return (
     <section
@@ -62,8 +74,14 @@ export function Hero() {
 
           {/* Left column — text */}
           <div className="flex flex-col gap-6">
+            {/* Rainbow accent bar */}
             <motion.div {...fadeUp} transition={{ duration: 0.5 }}>
-              <Badge variant="teal">v3.5.0 · Now with Harbor Tokens</Badge>
+              <div className="flex gap-0 mb-1" style={{ height: '4px', width: '200px', borderRadius: '2px', overflow: 'hidden' }}>
+                {RAINBOW_SEGMENTS.map((color, i) => (
+                  <div key={i} style={{ flex: 1, background: color }} />
+                ))}
+              </div>
+              <Badge variant="teal" style={{ marginTop: '8px' }}>v3.5.0 · Now with Harbor Tokens</Badge>
             </motion.div>
 
             <motion.h1
@@ -178,73 +196,60 @@ export function Hero() {
             </motion.div>
           </div>
 
-          {/* Right column — terminal + viz + character toggle */}
+          {/* Right column — demo GIFs */}
           <motion.div
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex flex-col gap-4"
+            className="flex flex-col gap-3"
           >
-            {/* Three-way panel toggle */}
-            <div className="flex gap-2 flex-wrap">
-              {([
-                { id: 'terminal', label: 'Terminal Replay' },
-                { id: 'agents', label: 'Agent Map' },
-                { id: 'character', label: 'Meet Port Daddy' },
-              ] as const).map(({ id, label }) => (
+            {/* GIF tab toggle */}
+            <div className="flex gap-2">
+              {DEMO_GIFS.map((g, i) => (
                 <button
-                  key={id}
-                  onClick={() => setActivePanel(id)}
-                  className="text-sm font-mono px-3 py-1.5 rounded-lg transition-all"
+                  key={g.id}
+                  onClick={() => setActiveGif(i)}
+                  className="text-sm px-3 py-1.5 rounded-lg transition-all"
                   style={{
-                    background: activePanel === id ? 'var(--bg-overlay)' : 'transparent',
-                    color: activePanel === id ? 'var(--text-primary)' : 'var(--text-muted)',
+                    background: activeGif === i ? 'var(--bg-overlay)' : 'transparent',
+                    color: activeGif === i ? 'var(--text-primary)' : 'var(--text-muted)',
                     border: '1px solid',
-                    borderColor: activePanel === id ? 'var(--border-default)' : 'transparent',
+                    borderColor: activeGif === i ? 'var(--border-default)' : 'transparent',
                   }}
                 >
-                  {label}
+                  {g.label}
                 </button>
               ))}
             </div>
 
-            {activePanel === 'terminal' && <TerminalReplay />}
-
-            {activePanel === 'agents' && (
-              <motion.div
+            {/* GIF display */}
+            <div
+              className="rounded-xl overflow-hidden border"
+              style={{ borderColor: 'var(--border-default)', background: 'var(--code-bg)' }}
+            >
+              {/* Mac window chrome */}
+              <div
+                className="flex items-center gap-2 px-4 py-2.5"
+                style={{ background: 'var(--bg-overlay)', borderBottom: '1px solid var(--border-subtle)' }}
+              >
+                <span className="w-3 h-3 rounded-full" style={{ background: '#ef4444', opacity: 0.8 }} />
+                <span className="w-3 h-3 rounded-full" style={{ background: '#f59e0b', opacity: 0.8 }} />
+                <span className="w-3 h-3 rounded-full" style={{ background: '#22c55e', opacity: 0.8 }} />
+                <span className="ml-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {DEMO_GIFS[activeGif].caption}
+                </span>
+              </div>
+              <motion.img
+                key={activeGif}
+                src={DEMO_GIFS[activeGif].src}
+                alt={DEMO_GIFS[activeGif].label}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="rounded-xl border p-6"
-                style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}
-              >
-                <p className="text-xs font-mono text-center mb-4" style={{ color: 'var(--text-muted)' }}>
-                  Live agent coordination — harbors group agents by capability
-                </p>
-                <HarborViz />
-              </motion.div>
-            )}
-
-            {activePanel === 'character' && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="rounded-xl border flex flex-col items-center justify-center py-10 px-6 gap-4"
-                style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)', minHeight: '380px' }}
-              >
-                <PortDaddyMark
-                  size={180}
-                  style={{ color: 'var(--brand-primary)' }}
-                />
-                <div className="text-center">
-                  <p className="font-mono font-bold" style={{ color: 'var(--text-primary)' }}>
-                    Port Daddy
-                  </p>
-                  <p className="text-xs font-mono mt-1" style={{ color: 'var(--text-muted)' }}>
-                    Harbormaster of your agent fleet
-                  </p>
-                </div>
-              </motion.div>
-            )}
+                transition={{ duration: 0.2 }}
+                className="w-full block"
+                style={{ maxHeight: '400px', objectFit: 'cover' }}
+              />
+            </div>
           </motion.div>
         </div>
       </div>

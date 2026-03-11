@@ -151,7 +151,7 @@ export function DemoGallery() {
                     <span className="w-3 h-3 rounded-full" style={{ background: 'var(--p-amber-500)', opacity: 0.7 }} />
                     <span className="w-3 h-3 rounded-full" style={{ background: 'var(--p-green-500)', opacity: 0.7 }} />
                   </div>
-                  <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                     {demo.subtitle}
                   </span>
                   {/* Progress bar */}
@@ -185,7 +185,7 @@ export function DemoGallery() {
                 className="flex flex-col gap-5"
               >
                 <span
-                  className="text-xs font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full w-fit"
+                  className="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full w-fit"
                   style={BADGE_STYLES[demo.badgeColor]}
                 >
                   {demo.badge}

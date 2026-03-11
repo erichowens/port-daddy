@@ -156,7 +156,7 @@ export function HarborsSection() {
 
             {/* Capability pills */}
             <div className="mb-8">
-              <p className="text-xs font-mono uppercase mb-3" style={{ color: 'var(--text-muted)', letterSpacing: '0.08em' }}>
+              <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>
                 Capability scopes
               </p>
               <div className="flex flex-wrap gap-2">
@@ -240,7 +240,7 @@ export function HarborsSection() {
                 className="p-5 rounded-xl h-full"
                 style={{ background: 'var(--bg-overlay)', border: '1px solid var(--border-subtle)' }}
               >
-                <h3 className="font-mono text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+                <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
                   {item.title}
                 </h3>
                 <p className="text-sm" style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
