@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { TerminalReplay } from './TerminalReplay'
 import { HarborViz } from './HarborViz'
+import { PortDaddyMark } from '@/components/PortDaddyMark'
 import * as Tabs from '@radix-ui/react-tabs'
 
 const INSTALL_TABS = [
@@ -41,7 +42,7 @@ const fadeUp = {
 
 export function Hero() {
   const [activeTab, setActiveTab] = React.useState('brew')
-  const [showViz, setShowViz] = React.useState(false)
+  const [activePanel, setActivePanel] = React.useState<'terminal' | 'agents' | 'character'>('terminal')
 
   return (
     <section
@@ -177,44 +178,39 @@ export function Hero() {
             </motion.div>
           </div>
 
-          {/* Right column — terminal + viz toggle */}
+          {/* Right column — terminal + viz + character toggle */}
           <motion.div
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
             className="flex flex-col gap-4"
           >
-            {/* Toggle between terminal replay and harbor viz */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowViz(false)}
-                className="text-sm font-mono px-3 py-1.5 rounded-lg transition-all"
-                style={{
-                  background: !showViz ? 'var(--bg-overlay)' : 'transparent',
-                  color: !showViz ? 'var(--text-primary)' : 'var(--text-muted)',
-                  border: '1px solid',
-                  borderColor: !showViz ? 'var(--border-default)' : 'transparent',
-                }}
-              >
-                Terminal Replay
-              </button>
-              <button
-                onClick={() => setShowViz(true)}
-                className="text-sm font-mono px-3 py-1.5 rounded-lg transition-all"
-                style={{
-                  background: showViz ? 'var(--bg-overlay)' : 'transparent',
-                  color: showViz ? 'var(--text-primary)' : 'var(--text-muted)',
-                  border: '1px solid',
-                  borderColor: showViz ? 'var(--border-default)' : 'transparent',
-                }}
-              >
-                Agent Map
-              </button>
+            {/* Three-way panel toggle */}
+            <div className="flex gap-2 flex-wrap">
+              {([
+                { id: 'terminal', label: 'Terminal Replay' },
+                { id: 'agents', label: 'Agent Map' },
+                { id: 'character', label: 'Meet Port Daddy' },
+              ] as const).map(({ id, label }) => (
+                <button
+                  key={id}
+                  onClick={() => setActivePanel(id)}
+                  className="text-sm font-mono px-3 py-1.5 rounded-lg transition-all"
+                  style={{
+                    background: activePanel === id ? 'var(--bg-overlay)' : 'transparent',
+                    color: activePanel === id ? 'var(--text-primary)' : 'var(--text-muted)',
+                    border: '1px solid',
+                    borderColor: activePanel === id ? 'var(--border-default)' : 'transparent',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
-            {!showViz ? (
-              <TerminalReplay />
-            ) : (
+            {activePanel === 'terminal' && <TerminalReplay />}
+
+            {activePanel === 'agents' && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -225,6 +221,28 @@ export function Hero() {
                   Live agent coordination — harbors group agents by capability
                 </p>
                 <HarborViz />
+              </motion.div>
+            )}
+
+            {activePanel === 'character' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="rounded-xl border flex flex-col items-center justify-center py-10 px-6 gap-4"
+                style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)', minHeight: '380px' }}
+              >
+                <PortDaddyMark
+                  size={180}
+                  style={{ color: 'var(--brand-primary)' }}
+                />
+                <div className="text-center">
+                  <p className="font-mono font-bold" style={{ color: 'var(--text-primary)' }}>
+                    Port Daddy
+                  </p>
+                  <p className="text-xs font-mono mt-1" style={{ color: 'var(--text-muted)' }}>
+                    Harbormaster of your agent fleet
+                  </p>
+                </div>
               </motion.div>
             )}
           </motion.div>

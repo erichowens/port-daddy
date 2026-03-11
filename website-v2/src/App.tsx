@@ -1,5 +1,6 @@
 import './App.css'
 import { Link } from 'react-router-dom'
+import { PortDaddyAnchor } from '@/components/PortDaddyMark'
 import { Hero } from '@/components/landing/Hero'
 import { DemoGallery } from '@/components/landing/DemoGallery'
 import { HowItWorks } from '@/components/landing/HowItWorks'
@@ -17,11 +18,7 @@ function Footer() {
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
         <div className="flex flex-col items-center sm:items-start gap-1">
           <span className="font-mono font-bold text-lg flex items-center gap-2" style={{ color: 'var(--brand-primary)' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="5" r="2" />
-              <path d="M12 7v14M5 14l7 7 7-7" />
-              <path d="M5 10H2v4h3M19 10h3v4h-3" />
-            </svg>
+            <PortDaddyAnchor size={18} style={{ color: 'var(--brand-primary)' }} />
             port-daddy
           </span>
           <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
