@@ -2,7 +2,7 @@ export interface Feature {
   id: string;
   title: string;
   description: string;
-  category: 'ports' | 'coordination' | 'security' | 'observability';
+  category: 'ports' | 'coordination' | 'security' | 'observability' | 'agents';
   cli: string;
   status: 'core' | 'new' | 'preview';
 }
@@ -25,6 +25,14 @@ export const PRODUCT_FEATURES: Feature[] = [
     status: 'core'
   },
   {
+    id: 'always-on-avatars',
+    title: 'Always-On Avatars',
+    description: 'Persistent agent processes that live in background harbors, maintaining state and responding to signals 24/7.',
+    category: 'agents',
+    cli: 'pd spawn --avatar',
+    status: 'new'
+  },
+  {
     id: 'harbors',
     title: 'Cryptographic Harbors',
     description: 'Named permission namespaces with HMAC-signed capability tokens (JWT). Enforce security boundaries at the daemon level.',
@@ -33,12 +41,20 @@ export const PRODUCT_FEATURES: Feature[] = [
     status: 'new'
   },
   {
-    id: 'reactive-pipelines',
-    title: 'Reactive Pipelines',
-    description: 'Event-driven orchestration. Trigger shell commands or spawn agents automatically when messages hit specific channels.',
-    category: 'coordination',
-    cli: 'pd orchestrator',
+    id: 'background-teams',
+    title: 'Background Teams',
+    description: 'Orchestrate entire swarms that fix problems, deploy services, and manage infrastructure while you sleep.',
+    category: 'agents',
+    cli: 'pd orchestrator --team',
     status: 'new'
+  },
+  {
+    id: 'remote-harbors',
+    title: 'Remote Harbors (P2P)',
+    description: 'Secure P2P tunneling between daemons. Connect local agents to remote swarms with zero-config DNS.',
+    category: 'security',
+    cli: 'pd tunnel connect <peer>',
+    status: 'preview'
   },
   {
     id: 'time-travel',
@@ -49,27 +65,11 @@ export const PRODUCT_FEATURES: Feature[] = [
     status: 'new'
   },
   {
-    id: 'agent-salvage',
-    title: 'Automatic Salvage',
-    description: 'Dead agents leave their notes and progress in the resurrection queue. The next agent can "salvage" and resume the venture.',
+    id: 'shared-memory',
+    title: 'Shared Embedding Memory',
+    description: 'A global K/V store for your swarm, optimized for vector embeddings and shared context across agents.',
     category: 'coordination',
-    cli: 'pd salvage',
-    status: 'core'
-  },
-  {
-    id: 'distributed-locks',
-    title: 'Distributed Locks',
-    description: 'Prevent race conditions with named locks and automatic TTL expiry. Safe for CI/CD and multi-agent file access.',
-    category: 'security',
-    cli: 'pd with-lock <name>',
-    status: 'core'
-  },
-  {
-    id: 'local-dns',
-    title: 'Local DNS Resolver',
-    description: 'Access services via friendly hostnames like http://api.pd.local instead of magic port numbers.',
-    category: 'ports',
-    cli: 'pd dns register <name>',
-    status: 'new'
+    cli: 'pd memory store',
+    status: 'preview'
   }
 ];
