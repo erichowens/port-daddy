@@ -1,12 +1,9 @@
-}
-import { motion } from "framer-motion"
 import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Link } from 'react-router-dom'
 import { Book, Shield, Activity, Zap, MessageSquare, UserMinus, ChevronRight } from 'lucide-react'
 import { COOKBOOK_RECIPES } from '@/data/cookbook'
-import type { Recipe } from '@/data/cookbook'
 import { Footer } from '@/components/layout/Footer'
 
 const ICON_MAP: Record<string, any> = {
@@ -31,7 +28,7 @@ export function CookbookPage() {
       >
         <motion.div className="max-w-5xl mx-auto text-center flex flex-col items-center">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <Badge variant="amber" className="mb-6 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest">Orchestration Patterns</Badge>
+            <Badge variant="amber" className="mb-6 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest font-sans">Orchestration Patterns</Badge>
             <motion.h1 className="text-5xl sm:text-7xl font-bold mb-8 tracking-tight font-display">
               The <motion.span className="text-[var(--p-amber-400)]">Cookbook</motion.span>
             </motion.h1>
@@ -55,14 +52,14 @@ export function CookbookPage() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
               >
-                <Card className="h-full hover:border-[var(--p-amber-400)] transition-all group rounded-[40px] overflow-hidden shadow-sm hover:shadow-2xl">
+                <Card className="h-full hover:border-[var(--p-amber-400)] transition-all group rounded-[40px] overflow-hidden shadow-sm hover:shadow-2xl font-sans">
                   <CardContent className="p-10 flex flex-col gap-6 font-sans h-full">
                     <motion.div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-[var(--p-amber-400)]/10 text-[var(--p-amber-400)] shadow-inner">
                       <Icon size={32} />
                     </motion.div>
                     <motion.div className="flex items-center justify-between font-sans">
                       <motion.h3 className="text-2xl font-bold font-display">{recipe.title}</motion.h3>
-                      <Badge variant={recipe.difficulty === 'advanced' ? 'neutral' : 'teal'}>
+                      <Badge variant={recipe.difficulty === 'advanced' ? 'neutral' : 'teal'} className="font-sans">
                         {recipe.difficulty}
                       </Badge>
                     </motion.div>
@@ -82,3 +79,4 @@ export function CookbookPage() {
       <Footer />
     </motion.div>
   )
+}

@@ -1,5 +1,3 @@
-}
-import { motion } from "framer-motion"
 import { motion } from 'framer-motion'
 import { useParams, Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
@@ -34,7 +32,7 @@ export function TemplatePage() {
           <Box size={32} />
         </motion.div>
         <motion.div className="font-sans">
-          <Badge variant="teal" className="mb-2">
+          <Badge variant="teal" className="mb-2 font-sans">
             OFFICIAL TEMPLATE
           </Badge>
           <motion.h3 className="m-0 text-3xl font-bold font-display" style={{ color: 'var(--text-primary)' }}>{bp.title}</motion.h3>
@@ -55,7 +53,7 @@ export function TemplatePage() {
         <motion.ul className="space-y-3 list-none p-0 m-0 font-sans">
           <motion.li className="flex items-start gap-3 font-sans">
             <motion.span className="text-[var(--brand-primary)] mt-1 font-sans">✓</motion.span>
-            <motion.span className="font-sans">Pre-configured <motion.code className="font-mono bg-[var(--bg-overlay)] px-1.5 py-0.5 rounded">.portdaddyrc</motion.code> for the full stack</motion.span>
+            <motion.span className="font-sans">Pre-configured <motion.code className="font-mono bg-[var(--bg-overlay)] px-1.5 py-0.5 rounded font-mono">.portdaddyrc</motion.code> for the full stack</motion.span>
           </motion.li>
           <motion.li className="flex items-start gap-3 font-sans">
             <motion.span className="text-[var(--brand-primary)] mt-1 font-sans">✓</motion.span>
@@ -63,9 +61,10 @@ export function TemplatePage() {
           </motion.li>
           <motion.li className="flex items-start gap-3 font-sans">
             <motion.span className="text-[var(--brand-primary)] mt-1 font-sans">✓</motion.span>
-            <motion.span className="font-sans">Local <motion.code className="font-mono bg-[var(--bg-overlay)] px-1.5 py-0.5 rounded">.claude/skills</motion.code> specific to the architecture</motion.span>
+            <motion.span className="font-sans">Local <motion.code className="font-mono bg-[var(--bg-overlay)] px-1.5 py-0.5 rounded font-mono">.claude/skills</motion.code> specific to the architecture</motion.span>
           </motion.li>
         </motion.ul>
       </motion.section>
     </TutorialLayout>
   )
+}

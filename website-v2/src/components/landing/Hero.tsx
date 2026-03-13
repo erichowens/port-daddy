@@ -1,11 +1,11 @@
 import * as React from 'react'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import * as Tabs from '@radix-ui/react-tabs'
 import { useTheme } from '@/lib/theme'
-import { Copy, Check, Terminal, Zap, Shield, Sparkles, BookOpen, ChevronRight, Globe } from 'lucide-react'
+import { Copy, Check, Terminal, Zap, Shield, Sparkles, BookOpen, ChevronRight, Globe, Anchor } from 'lucide-react'
 import { MaritimeSignalRow } from '@/components/viz/MaritimeFlags'
 
 const RAINBOW_SEGMENTS = [
@@ -72,7 +72,7 @@ export function Hero() {
         <motion.div className="w-full h-full" style={{ background: 'radial-gradient(circle, var(--p-teal-500) 0%, transparent 70%)' }} />
       </motion.div>
 
-      <motion.div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <motion.div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 font-sans">
         <motion.div className="flex flex-col items-center text-center gap-8 mb-20 font-sans">
 
           <motion.div {...fadeUp} transition={{ duration: 0.5 }} className="flex flex-col items-center gap-6 relative">
@@ -92,9 +92,9 @@ export function Hero() {
                   <motion.div key={i} className="flex-1" style={{ background: color }} />
                 ))}
               </motion.div>
-              <motion.div className="flex gap-3 items-center">
-                <Badge variant="teal" className="px-4 py-1.5 text-[10px] font-black uppercase tracking-widest">v3.7.0 · The Control Plane</Badge>
-                <motion.div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(58,173,173,0.1)] border border-[rgba(58,173,173,0.2)]">
+              <motion.div className="flex gap-3 items-center font-sans">
+                <Badge variant="teal" className="px-4 py-1.5 text-[10px] font-black uppercase tracking-widest font-sans">v3.7.0 · The Control Plane</Badge>
+                <motion.div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(58,173,173,0.1)] border border-[rgba(58,173,173,0.2)] font-sans">
                   <motion.div className="w-2 h-2 rounded-full bg-[var(--p-teal-400)] pulse-active" />
                   <motion.span className="text-[10px] font-black uppercase tracking-widest text-[var(--p-teal-300)] font-sans">DNS Active</motion.span>
                 </motion.div>
@@ -111,18 +111,18 @@ export function Hero() {
               </motion.span>
             </motion.h1>
             <motion.p className="text-xl sm:text-2xl mx-auto leading-relaxed font-sans max-w-[850px]" style={{ color: 'var(--text-secondary)' }}>
-              The unified orchestration layer for multi-agent workflows. 
+              The unified orchestration layer for autonomous AI agent workflows. 
               Atomic port assignment, session coordination, and automatic salvage.
             </motion.p>
           </motion.div>
 
           <motion.div {...fadeUp} transition={{ duration: 0.5, delay: 0.2 }} className="flex flex-col items-center gap-10 font-sans">
             <motion.div className="flex flex-wrap justify-center gap-5 font-sans">
-              <Button size="lg" className="px-10 py-7 text-lg shadow-2xl relative overflow-hidden group" onClick={() => document.getElementById('install')?.scrollIntoView({ behavior: 'smooth' })}>
+              <Button size="lg" className="px-10 py-7 text-lg shadow-2xl relative overflow-hidden group font-sans" onClick={() => document.getElementById('install')?.scrollIntoView({ behavior: 'smooth' })}>
                 <motion.span className="relative z-10">Get Started</motion.span>
               </Button>
-              <Link to="/docs" className="no-underline">
-                <Button variant="ghost" size="lg" className="px-10 py-7 text-lg">Read the Docs</Button>
+              <Link to="/docs" className="no-underline font-sans">
+                <Button variant="ghost" size="lg" className="px-10 py-7 text-lg font-sans">Read the Docs</Button>
               </Link>
             </motion.div>
             
@@ -133,7 +133,7 @@ export function Hero() {
                 { num: '∞', label: 'possibilities' },
               ].map((stat, i) => (
                 <motion.div key={stat.label} className="text-center group font-sans" initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 + (i * 0.1) }}>
-                  <motion.div className="text-3xl font-bold font-mono group-hover:scale-110 transition-transform text-[var(--brand-primary)]">{stat.num}</motion.div>
+                  <motion.div className="text-3xl font-bold font-mono group-hover:scale-110 transition-transform text-[var(--brand-primary)] tracking-tighter">{stat.num}</motion.div>
                   <motion.div className="text-[10px] font-black uppercase tracking-[0.2em] mt-2 opacity-60 font-sans text-[var(--text-muted)]">{stat.label}</motion.div>
                 </motion.div>
               ))}
@@ -147,16 +147,16 @@ export function Hero() {
               <Terminal size={20} className="text-[var(--brand-primary)]" />
               Quick Install
             </motion.h3>
-            <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-              <Tabs.List className="flex gap-1 p-1.5 rounded-2xl mb-4 bg-[var(--bg-overlay)] border border-[var(--border-subtle)]">
+            <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col font-sans">
+              <Tabs.List className="flex gap-1 p-1.5 rounded-2xl mb-4 bg-[var(--bg-overlay)] border border-[var(--border-subtle)] font-sans">
                 {INSTALL_TABS.map(tab => (
-                  <Tabs.Trigger key={tab.id} value={tab.id} className={`flex-1 px-4 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === tab.id ? 'bg-[var(--bg-surface)] text-[var(--brand-primary)] shadow-lg' : 'text-[var(--text-muted)]'}`}>
+                  <Tabs.Trigger key={tab.id} value={tab.id} className={`flex-1 px-4 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all font-sans ${activeTab === tab.id ? 'bg-[var(--bg-surface)] text-[var(--brand-primary)] shadow-lg' : 'text-[var(--text-muted)]'}`}>
                     {tab.label}
                   </Tabs.Trigger>
                 ))}
               </Tabs.List>
               {INSTALL_TABS.map(tab => (
-                <Tabs.Content key={tab.id} value={tab.id} className="flex-1">
+                <Tabs.Content key={tab.id} value={tab.id} className="flex-1 font-sans">
                   <motion.div className="rounded-3xl p-8 font-mono text-[13px] h-full relative group shadow-inner bg-[var(--code-bg)] border border-[var(--border-default)]">
                     <CopyButton text={tab.full} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100" />
                     {tab.commands.map((cmd, i) => (
@@ -173,19 +173,19 @@ export function Hero() {
 
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="flex flex-col font-sans">
             <motion.div className="flex gap-2 mb-6 font-sans">
-              <motion.button onClick={() => setActivePanel('changelog')} className={`text-xs font-black uppercase tracking-widest px-6 py-3 rounded-2xl transition-all font-display border ${activePanel === 'changelog' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] border-[var(--border-default)]' : 'border-transparent text-[var(--text-muted)]'}`}>
+              <motion.button onClick={() => setActivePanel('changelog')} className={`text-[10px] font-black uppercase tracking-widest px-6 py-3 rounded-2xl transition-all font-sans border ${activePanel === 'changelog' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] border-[var(--border-default)] shadow-sm' : 'border-transparent text-[var(--text-muted)]'}`}>
                 What's New in v3.7.0
               </motion.button>
             </motion.div>
             <motion.div className="flex-1 flex flex-col gap-3 font-sans">
               {CHANGELOG_ITEMS.map((item) => (
-                <motion.div key={item.label} className="rounded-3xl p-6 bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:bg-[var(--interactive-hover)] transition-all font-sans">
+                <motion.div key={item.label} className="rounded-3xl p-6 bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:bg-[var(--interactive-hover)] transition-all font-sans shadow-sm hover:shadow-xl">
                   <motion.div className="flex items-center gap-4 mb-3 font-sans">
                     <motion.div className="p-2 rounded-xl bg-[var(--bg-overlay)] text-[var(--brand-primary)]"><item.icon size={18} /></motion.div>
                     <motion.span className="text-lg font-bold font-display">{item.label}</motion.span>
-                    <Badge variant="teal" className="ml-auto">new</Badge>
+                    <Badge variant="teal" className="ml-auto font-sans">new</Badge>
                   </motion.div>
-                  <motion.p className="text-sm font-sans leading-relaxed">{item.text}</motion.p>
+                  <motion.p className="text-sm font-sans leading-relaxed text-[var(--text-secondary)]">{item.text}</motion.p>
                 </motion.div>
               ))}
             </motion.div>

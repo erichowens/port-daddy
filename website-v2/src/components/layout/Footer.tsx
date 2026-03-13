@@ -1,5 +1,3 @@
-}
-import { motion } from "framer-motion"
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Github, Twitter, Book, PlayCircle, ShieldCheck } from 'lucide-react'
@@ -85,9 +83,9 @@ export function Footer() {
                 </Link>
               </motion.li>
               <motion.li>
-                <motion.a href="/#features" className="text-sm font-bold no-underline transition-colors font-sans" style={{ color: 'var(--text-secondary)' }}>
-                  Features
-                </motion.a>
+                <Link to="/dashboard" className="text-sm font-bold no-underline transition-colors font-sans" style={{ color: 'var(--text-secondary)' }}>
+                  Live Dashboard
+                </Link>
               </motion.li>
             </motion.ul>
           </motion.div>
@@ -103,14 +101,14 @@ export function Footer() {
                 </Link>
               </motion.li>
               <motion.li>
-                <motion.a href="https://www.npmjs.com/package/port-daddy" target="_blank" rel="noopener noreferrer" className="text-sm font-bold no-underline transition-colors font-sans" style={{ color: 'var(--text-secondary)' }}>
-                  npm Package
-                </motion.a>
+                <Link to="/integrations" className="text-sm font-bold no-underline transition-colors font-sans" style={{ color: 'var(--text-secondary)' }}>
+                  Ecosystem
+                </Link>
               </motion.li>
               <motion.li>
-                <motion.a href="https://github.com/erichowens/port-daddy/issues" target="_blank" rel="noopener noreferrer" className="text-sm font-bold no-underline transition-colors font-sans" style={{ color: 'var(--text-secondary)' }}>
-                  Report Bug
-                </motion.a>
+                <Link to="/cookbook" className="text-sm font-bold no-underline transition-colors font-sans" style={{ color: 'var(--text-secondary)' }}>
+                  Cookbook
+                </Link>
               </motion.li>
             </motion.ul>
           </motion.div>
@@ -149,3 +147,4 @@ export function Footer() {
       </motion.div>
     </motion.footer>
   )
+}

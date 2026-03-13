@@ -1,5 +1,3 @@
-}
-import { motion } from "framer-motion"
 import * as React from 'react'
 import { motion } from 'framer-motion'
 
@@ -47,3 +45,4 @@ export function MaritimeSignalRow({ size = 24 }: { size?: number }) {
       </motion.div>
     </motion.div>
   )
+}

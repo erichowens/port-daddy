@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { motion, useScroll, useSpring, AnimatePresence } from 'framer-motion'
+import { motion, useScroll, useSpring } from 'framer-motion'
 import { Link, useLocation } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
 import { Clock, BookOpen, ChevronRight, Home, Layout, List } from 'lucide-react'
@@ -36,8 +36,6 @@ export function TutorialLayout({
     restDelta: 0.001
   })
 
-  const isHome = useLocation().pathname === '/'
-
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -53,7 +51,7 @@ export function TutorialLayout({
 
       {/* Hero */}
       <motion.section
-        className="py-20 px-4 sm:px-6 lg:px-8 border-b relative overflow-hidden shrink-0"
+        className="py-24 px-4 sm:px-6 lg:px-8 border-b relative overflow-hidden shrink-0"
         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
       >
         <motion.div 
@@ -62,7 +60,7 @@ export function TutorialLayout({
         />
         
         <motion.div className="max-w-4xl mx-auto relative z-10 text-center flex flex-col items-center">
-          <motion.nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] mb-8 font-sans" style={{ color: 'var(--text-muted)' }}>
+          <motion.nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] mb-10 font-sans" style={{ color: 'var(--text-muted)' }}>
             <Link to="/" className="hover:text-[var(--text-primary)] transition-colors no-underline flex items-center gap-1.5 font-sans">
               <Home size={12} />
               Home
@@ -85,8 +83,8 @@ export function TutorialLayout({
             transition={{ duration: 0.5 }}
             className="flex flex-col items-center"
           >
-            <motion.div className="flex items-center gap-3 mb-6 font-sans">
-              <Badge variant={level === 'Beginner' ? 'teal' : level === 'Intermediate' ? 'amber' : 'neutral'}>
+            <motion.div className="flex items-center gap-3 mb-8 font-sans">
+              <Badge variant={level === 'Beginner' ? 'teal' : level === 'Intermediate' ? 'amber' : 'neutral'} className="font-sans">
                 {level}
               </Badge>
               <motion.div className="h-[1px] w-8 bg-[var(--border-strong)] opacity-30" />
@@ -95,20 +93,20 @@ export function TutorialLayout({
               </motion.span>
             </motion.div>
 
-            <motion.h1 className="text-5xl sm:text-6xl font-bold mb-6 tracking-tight font-display" style={{ color: 'var(--text-primary)', lineHeight: 1.1 }}>
+            <motion.h1 className="text-5xl sm:text-7xl font-bold mb-8 tracking-tight font-display" style={{ color: 'var(--text-primary)', lineHeight: 1.1 }}>
               {title}
             </motion.h1>
-            <motion.p className="text-xl sm:text-2xl max-w-3xl leading-relaxed mb-10 mx-auto font-sans" style={{ color: 'var(--text-secondary)' }}>
+            <motion.p className="text-xl sm:text-2xl max-w-3xl leading-relaxed mb-12 mx-auto font-sans" style={{ color: 'var(--text-secondary)' }}>
               {description}
             </motion.p>
 
-            <motion.div className="flex flex-wrap items-center justify-center gap-10 text-[10px] font-black uppercase tracking-[0.2em] font-sans" style={{ color: 'var(--text-muted)' }}>
-              <motion.div className="flex items-center gap-2.5">
-                <Clock size={16} className="text-[var(--brand-primary)]" />
+            <motion.div className="flex flex-wrap items-center justify-center gap-12 text-[10px] font-black uppercase tracking-[0.2em] font-sans" style={{ color: 'var(--text-muted)' }}>
+              <motion.div className="flex items-center gap-3">
+                <Clock size={18} className="text-[var(--brand-primary)]" />
                 {readTime}
               </motion.div>
-              <motion.div className="flex items-center gap-2.5">
-                <List size={16} className="text-[var(--brand-primary)]" />
+              <motion.div className="flex items-center gap-3">
+                <List size={18} className="text-[var(--brand-primary)]" />
                 Lesson {number} of {total}
               </motion.div>
             </motion.div>
@@ -117,18 +115,18 @@ export function TutorialLayout({
       </motion.section>
 
       {/* Content */}
-      <motion.div className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-20 relative font-sans">
+      <motion.div className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-24 relative font-sans">
         <motion.article className="prose dark:prose-invert max-w-none tutorial-content leading-relaxed text-lg font-sans" style={{ color: 'var(--text-secondary)' }}>
           {children}
         </motion.article>
 
         {/* Navigation */}
-        <motion.div className="mt-24 pt-12 border-t font-sans" style={{ borderColor: 'var(--border-subtle)' }}>
-          <motion.div className="grid sm:grid-cols-2 gap-8 font-sans">
+        <motion.div className="mt-32 pt-16 border-t font-sans" style={{ borderColor: 'var(--border-subtle)' }}>
+          <motion.div className="grid sm:grid-cols-2 gap-10 font-sans">
             {prev ? (
               <Link
                 to={prev.href}
-                className="group block p-8 rounded-3xl transition-all no-underline"
+                className="group block p-10 rounded-[32px] transition-all no-underline"
                 style={{ border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}
               >
                 <motion.div className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-50 font-sans" style={{ color: 'var(--text-muted)' }}>Previous Lesson</motion.div>
@@ -141,7 +139,7 @@ export function TutorialLayout({
             {next ? (
               <Link
                 to={next.href}
-                className="group block p-8 rounded-3xl transition-all text-right no-underline shadow-xl shadow-transparent hover:shadow-[var(--brand-primary)]/5"
+                className="group block p-10 rounded-[32px] transition-all text-right no-underline shadow-xl shadow-transparent hover:shadow-[var(--brand-primary)]/5"
                 style={{ border: '2px solid var(--brand-primary)', background: 'var(--bg-surface)' }}
               >
                 <motion.div className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-60 font-sans" style={{ color: 'var(--brand-primary)' }}>Next Lesson</motion.div>
@@ -150,25 +148,25 @@ export function TutorialLayout({
                 </motion.div>
               </Link>
             ) : (
-              <motion.div className="col-span-full p-16 rounded-[48px] flex flex-col items-center justify-center text-center gap-8 border border-dashed shadow-2xl relative overflow-hidden font-sans mx-auto w-full max-w-3xl" style={{ borderColor: 'var(--brand-primary)', background: 'var(--bg-overlay)' }}>
+              <motion.div className="col-span-full p-20 rounded-[56px] flex flex-col items-center justify-center text-center gap-10 border border-dashed shadow-2xl relative overflow-hidden font-sans mx-auto w-full" style={{ borderColor: 'var(--brand-primary)', background: 'var(--bg-overlay)' }}>
                  <motion.div 
                    className="absolute inset-0 opacity-5 pointer-events-none"
                    animate={{ rotate: 360 }}
-                   transition={{ duration: 100, repeat: Infinity, ease: 'linear' }}
+                   transition={{ duration: 120, repeat: Infinity, ease: 'linear' }}
                  >
-                    <BookOpen size={600} />
+                    <BookOpen size={800} />
                  </motion.div>
                  
-                 <motion.div className="relative z-10 flex flex-col items-center gap-6">
-                    <Badge variant="teal" className="px-4 py-1.5 text-[10px] font-black uppercase tracking-widest">Academy Complete</Badge>
-                    <motion.h3 className="text-4xl font-bold font-display m-0" style={{ color: 'var(--text-primary)' }}>You've mastered the basics!</motion.h3>
-                    <motion.p className="text-lg font-medium max-w-md font-sans" style={{ color: 'var(--text-secondary)' }}>
+                 <motion.div className="relative z-10 flex flex-col items-center gap-8">
+                    <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-widest shadow-xl">Academy Complete</Badge>
+                    <motion.h3 className="text-5xl font-bold font-display m-0" style={{ color: 'var(--text-primary)' }}>You've mastered the basics!</motion.h3>
+                    <motion.p className="text-xl font-medium max-w-lg font-sans leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                       The harbor is now open. Dispatch your swarms and begin the venture.
                     </motion.p>
                     <Link to="/docs" className="no-underline">
                       <motion.div 
-                        className="px-10 py-5 rounded-2xl bg-[var(--brand-primary)] text-[var(--bg-base)] font-bold shadow-xl shadow-[var(--brand-primary)]/20 transition-all font-sans"
-                        whileHover={{ scale: 1.05 }}
+                        className="px-12 py-6 rounded-2xl bg-[var(--brand-primary)] text-[var(--bg-base)] font-bold text-lg shadow-[0_20px_40px_rgba(58,173,173,0.3)] transition-all font-sans"
+                        whileHover={{ scale: 1.05, y: -4 }}
                         whileTap={{ scale: 0.95 }}
                       >
                         View Documentation Reference
@@ -186,51 +184,52 @@ export function TutorialLayout({
       {/* CSS for better tutorial typography */}
       <style dangerouslySetInnerHTML={{ __html: `
         .tutorial-content h2 {
-          font-size: 2.25rem;
+          font-size: 2.5rem;
           font-weight: 800;
+          color: var(--text-primary);
+          margin-top: 5rem;
+          margin-bottom: 2rem;
+          font-family: var(--p-font-display) !important;
+          letter-spacing: -0.02em;
+          border-bottom: 1px solid var(--border-subtle);
+          padding-bottom: 1rem;
+        }
+        .tutorial-content h3 {
+          font-size: 1.875rem;
+          font-weight: 700;
           color: var(--text-primary);
           margin-top: 4rem;
           margin-bottom: 1.5rem;
-          font-family: var(--p-font-display);
-          letter-spacing: -0.02em;
-          border-bottom: 1px solid var(--border-subtle);
-          padding-bottom: 0.5rem;
-        }
-        .tutorial-content h3 {
-          font-size: 1.75rem;
-          font-weight: 700;
-          color: var(--text-primary);
-          margin-top: 3rem;
-          margin-bottom: 1rem;
-          font-family: var(--p-font-display);
+          font-family: var(--p-font-display) !important;
         }
         .tutorial-content p {
-          margin-bottom: 1.5rem;
+          margin-bottom: 2rem;
           line-height: 1.8;
-          font-family: var(--p-font-sans);
+          font-family: var(--p-font-sans) !important;
         }
         .tutorial-content ul, .tutorial-content ol {
-          margin-bottom: 2rem;
-          padding-left: 1.5rem;
-          font-family: var(--p-font-sans);
+          margin-bottom: 2.5rem;
+          padding-left: 2rem;
+          font-family: var(--p-font-sans) !important;
         }
         .tutorial-content li {
-          margin-bottom: 0.75rem;
+          margin-bottom: 1rem;
         }
         .tutorial-content pre {
           background: var(--bg-surface) !important;
-          padding: 1.5rem !important;
-          margin: 2.5rem 0 !important;
-          border-radius: 1.5rem !important;
+          padding: 2rem !important;
+          margin: 3rem 0 !important;
+          border-radius: 2rem !important;
           border: 1px solid var(--border-subtle) !important;
+          box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
         }
         .tutorial-content code {
           background: var(--interactive-active);
           color: var(--brand-primary);
-          padding: 0.2rem 0.4rem;
-          border-radius: 0.4rem;
+          padding: 0.25rem 0.5rem;
+          border-radius: 0.5rem;
           font-weight: 600;
-          font-family: var(--p-font-mono);
+          font-family: var(--p-font-mono) !important;
         }
         .tutorial-content pre code {
           background: transparent !important;
