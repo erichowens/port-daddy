@@ -206,7 +206,7 @@ export function HowItWorks() {
                        <motion.span className="text-[10px] font-mono opacity-40 font-bold">Active</motion.span>
                     </motion.div>
                  </div>
-              </div>
+              </motion.div>
            </div>
         </motion.div>
       </motion.div>

@@ -116,7 +116,7 @@ export function AgentEcosystem() {
                     </motion.div>
                     <div className="space-y-3">
                        <motion.p className="font-black m-0 text-xl tracking-tight">Cross-Framework Signaling</motion.p>
-                       <motion.p className="text-base m-0 opacity-60 leading-relaxed">A LangChain agent can publish an event that a CrewAI task is waiting for, bridged instantly by the Port Daddy daemon.</p>
+                       <motion.p className="text-base m-0 opacity-60 leading-relaxed">A LangChain agent can publish an event that a CrewAI task is waiting for, bridged instantly by the Port Daddy daemon.</motion.p>
                     </div>
                  </motion.div>
               </div>

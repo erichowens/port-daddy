@@ -218,7 +218,7 @@ export default function MCPPage() {
               <div className="flex flex-col items-center gap-8">
                  <motion.div className="w-20 h-20 rounded-3xl flex items-center justify-center border shadow-2xl bg-[var(--brand-primary)]/10 border-[var(--brand-primary)]/20">
                     <Zap size={40} className="text-[var(--brand-primary)]" />
-                 </div>
+                 </motion.div>
                  <motion.h2 className="text-5xl sm:text-8xl font-display font-black tracking-tighter m-0 leading-[0.95]">The Essential Set.</motion.h2>
               </div>
               <motion.p className="text-2xl leading-relaxed opacity-70 m-0 font-medium max-w-3xl mx-auto">
