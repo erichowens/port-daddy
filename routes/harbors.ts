@@ -102,14 +102,14 @@ export function createHarborsRoutes(deps: HarborsRouteDeps): Router {
   });
 
   // POST /harbors/:name/enter — agent enters harbor
-  router.post('/harbors/:name/enter', (req: Request, res: Response) => {
+  router.post('/harbors/:name/enter', async (req: Request, res: Response) => {
     try {
       const name = decodeURIComponent(req.params.name as string);
       const { agentId, identity, capabilities } = req.body as Record<string, unknown>;
       if (!agentId || typeof agentId !== 'string') {
         return res.status(400).json({ error: 'agentId required', code: 'VALIDATION_ERROR' });
       }
-      const result = harbors.enter(name, agentId, {
+      const result = await harbors.enter(name, agentId, {
         identity: typeof identity === 'string' ? identity : undefined,
         capabilities: Array.isArray(capabilities) ? capabilities as string[] : undefined,
       });

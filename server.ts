@@ -222,7 +222,7 @@ sessions.setActivityLog(activityLog);
 
 // Agent Inbox handles direct messages. Broadcast to "inbox:[agentId]" for real-time.
 const agentInbox = createAgentInbox(db, (agentId, message) => {
-  messaging.broadcast(`inbox:${agentId}`, {
+  messaging.publish(`inbox:${agentId}`, {
     ...message,
     sender: message.from || 'SYSTEM',
     signal: (message as any).signal || 'report'

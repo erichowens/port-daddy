@@ -2,7 +2,7 @@ import * as React from 'react'
 import { motion, useScroll, useSpring } from 'framer-motion'
 import { Badge } from '@/components/ui/Badge'
 import { Link } from 'react-router-dom'
-import { Terminal, Shield, Zap, History, Anchor, Search, Cpu, Globe, Share2, ArrowRight, MessageSquare, Box, Lock, Activity, BookOpen, ChevronRight, Copy, Check } from 'lucide-react'
+import { Terminal, Shield, Zap, History, Anchor, Search, Cpu, Globe, Share2, ArrowRight, MessageSquare, Box, Lock, Activity, BookOpen, ChevronRight, Copy, Check, ShieldCheck } from 'lucide-react'
 import { Footer } from '@/components/layout/Footer'
 
 /* ─── Documentation Data ─────────────────────────────────────────────────── */
