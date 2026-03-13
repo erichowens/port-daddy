@@ -195,7 +195,7 @@ const TUTORIALS: Tutorial[] = [
   }
 ]
 
-export default function TutorialsPage() {
+export function TutorialsPage() {
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -204,27 +204,27 @@ export default function TutorialsPage() {
     >
       {/* Hero Section */}
       <motion.section 
-        className="py-32 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden" 
+        className="py-48 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden flex flex-col items-center justify-center text-center" 
         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
       >
         <motion.div 
-          className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full blur-[140px] opacity-[0.1] pointer-events-none" 
+          className="absolute top-0 right-0 w-[800px] h-[800px] rounded-full blur-[160px] opacity-[0.1] pointer-events-none" 
           style={{ background: 'radial-gradient(circle, var(--brand-primary) 0%, transparent 70%)' }} 
         />
         
-        <motion.div className="max-w-7xl mx-auto text-center relative z-10 flex flex-col items-center gap-10">
-           <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">Academy of Coordination</Badge>
+        <motion.div className="max-w-5xl mx-auto relative z-10 flex flex-col items-center gap-12">
+           <Badge variant="teal" className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">Academy of Coordination</Badge>
            <motion.h1 
-             className="text-6xl sm:text-9xl font-black tracking-tighter font-display leading-[0.9]"
+             className="text-7xl sm:text-9xl font-black tracking-tighter font-display leading-[0.85] m-0"
              initial={{ opacity: 0, y: 32 }}
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
            >
              Master the <br />
-             <motion.span className="text-[var(--brand-primary)]">Swarm Logic.</motion.span>
+             <span className="text-[var(--brand-primary)]">Swarm Logic.</span>
            </motion.h1>
            <motion.p 
-             className="text-2xl sm:text-3xl max-w-3xl leading-relaxed opacity-70 font-medium"
+             className="text-2xl sm:text-4xl max-w-4xl leading-relaxed opacity-70 font-medium"
              initial={{ opacity: 0, y: 20 }}
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: 0.8, delay: 0.1 }}
@@ -235,12 +235,12 @@ export default function TutorialsPage() {
       </motion.section>
 
       {/* Tutorials Grid */}
-      <motion.main className="flex-1 py-32 px-6 sm:px-8 lg:px-10 max-w-7xl mx-auto w-full font-sans">
-        <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-10">
+      <motion.main className="flex-1 py-48 px-6 sm:px-8 lg:px-10 max-w-7xl mx-auto w-full font-sans flex flex-col items-center">
+        <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-16 w-full">
           {TUTORIALS.map((tutorial, i) => (
             <motion.div
               key={tutorial.slug}
-              initial={{ opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 32 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: i * 0.03 }}
@@ -248,44 +248,44 @@ export default function TutorialsPage() {
             >
               <Link to={tutorial.href} className="no-underline block h-full">
                 <motion.div 
-                  className="h-full p-10 rounded-[48px] border transition-all duration-[var(--p-transition-spring)] flex flex-col items-start gap-8"
+                  className="h-full p-12 rounded-[56px] border transition-all duration-[var(--p-transition-spring)] flex flex-col items-center text-center gap-10"
                   style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-surface)' }}
-                  whileHover={{ y: -10, borderColor: 'var(--brand-primary)', boxShadow: '0 32px 64px -12px rgba(58,173,173,0.15)' }}
+                  whileHover={{ y: -12, borderColor: 'var(--brand-primary)', boxShadow: '0 40px 80px -20px rgba(58,173,173,0.15)' }}
                 >
-                  <motion.div className="w-full flex justify-between items-start">
-                     <motion.div className="w-16 h-16 rounded-[24px] bg-[var(--interactive-active)] flex items-center justify-center border border-[var(--border-subtle)] group-hover:scale-110 transition-transform">
-                        <tutorial.icon size={28} className="text-[var(--brand-primary)]" />
+                  <div className="w-full flex flex-col items-center gap-6">
+                     <motion.div className="w-20 h-20 rounded-[32px] bg-[var(--interactive-active)] flex items-center justify-center border border-[var(--border-subtle)] group-hover:scale-110 transition-transform shadow-lg">
+                        <tutorial.icon size={32} className="text-[var(--brand-primary)]" />
                      </motion.div>
-                     <Badge variant={tutorial.level === 'beginner' ? 'teal' : tutorial.level === 'intermediate' ? 'amber' : 'neutral'} className="text-[8px] font-black uppercase tracking-widest px-3 py-1">
+                     <Badge variant={tutorial.level === 'beginner' ? 'teal' : tutorial.level === 'intermediate' ? 'amber' : 'neutral'} className="text-[8px] font-black uppercase tracking-widest px-4 py-1.5 shadow-md">
                         {tutorial.level}
                      </Badge>
-                  </motion.div>
+                  </div>
 
-                  <motion.div className="space-y-4 flex-1">
-                    <motion.div className="flex items-center gap-3">
-                       <motion.span className="text-xl font-display font-black opacity-20">{tutorial.number}</motion.span>
-                       <motion.h3 className="m-0 text-2xl font-display font-black leading-tight text-[var(--text-primary)]">
+                  <div className="space-y-6 flex-1 flex flex-col items-center">
+                    <div className="flex flex-col items-center gap-2">
+                       <motion.span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30 font-mono">Lesson {tutorial.number}</motion.span>
+                       <motion.h3 className="m-0 text-3xl font-display font-black leading-tight text-[var(--text-primary)]">
                          {tutorial.title}
                        </motion.h3>
-                    </motion.div>
-                    <motion.p className="m-0 text-base opacity-60 leading-relaxed group-hover:opacity-100 transition-opacity">
+                    </div>
+                    <motion.p className="m-0 text-lg opacity-60 leading-relaxed group-hover:opacity-100 transition-opacity">
                       {tutorial.description}
                     </motion.p>
-                  </motion.div>
+                  </div>
 
-                  <motion.div className="flex flex-wrap gap-2">
+                  <motion.div className="flex flex-wrap justify-center gap-3">
                      {tutorial.tags.map(tag => (
-                       <motion.span key={tag} className="px-3 py-1 rounded-lg bg-[var(--bg-overlay)] text-[10px] font-bold opacity-40 uppercase tracking-widest border border-transparent group-hover:border-[var(--border-subtle)] transition-all">{tag}</motion.span>
+                       <motion.span key={tag} className="px-4 py-1.5 rounded-xl bg-[var(--bg-overlay)] text-[10px] font-bold opacity-40 uppercase tracking-widest border border-transparent group-hover:border-[var(--border-subtle)] transition-all">{tag}</motion.span>
                      ))}
                   </motion.div>
 
-                  <motion.div className="w-full flex items-center justify-between pt-6 border-t border-[var(--border-subtle)] group-hover:border-transparent transition-colors">
-                     <motion.div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-40">
-                        <Clock size={12} className="text-[var(--brand-primary)]" />
+                  <motion.div className="w-full flex items-center justify-between pt-10 border-t border-[var(--border-subtle)] group-hover:border-transparent transition-colors">
+                     <motion.div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-60 transition-opacity">
+                        <Clock size={14} className="text-[var(--brand-primary)]" />
                         {tutorial.time}
                      </motion.div>
-                     <motion.div className="w-8 h-8 rounded-full bg-[var(--bg-overlay)] flex items-center justify-center group-hover:bg-[var(--brand-primary)] group-hover:text-[var(--bg-base)] transition-all">
-                        <Play size={12} fill="currentColor" className="ml-0.5" />
+                     <motion.div className="w-10 h-10 rounded-full bg-[var(--bg-overlay)] border border-[var(--border-subtle)] flex items-center justify-center group-hover:bg-[var(--brand-primary)] group-hover:text-[var(--bg-base)] group-hover:border-transparent transition-all shadow-md">
+                        <Play size={14} fill="currentColor" className="ml-0.5" />
                      </motion.div>
                   </motion.div>
                 </motion.div>
@@ -296,38 +296,40 @@ export default function TutorialsPage() {
 
         {/* Vision Callout */}
         <motion.div 
-          className="mt-32 p-20 rounded-[80px] border border-dashed border-[var(--border-strong)] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-base)] flex flex-col items-center text-center gap-12 relative overflow-hidden"
+          className="mt-48 p-24 rounded-[100px] border border-dashed border-[var(--border-strong)] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-base)] flex flex-col items-center text-center gap-12 relative overflow-hidden w-full shadow-2xl"
           initial={{ opacity: 0, scale: 0.98 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
         >
-           <motion.div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
-              <Anchor size={600} />
-           </motion.div>
+           <div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
+              <Anchor size={800} />
+           </div>
            
-           <motion.div className="space-y-6 max-w-3xl relative z-10">
-              <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-widest shadow-xl">Automated Verification</Badge>
-              <motion.h3 className="text-4xl sm:text-7xl font-display font-black tracking-tight leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
-                Certified <motion.span className="text-[var(--p-teal-400)]">Academy.</motion.span>
+           <div className="space-y-8 max-w-4xl relative z-10 flex flex-col items-center">
+              <Badge variant="teal" className="px-8 py-3 text-[10px] font-black uppercase tracking-widest shadow-2xl">Automated Verification</Badge>
+              <motion.h3 className="text-5xl sm:text-8xl font-display font-black tracking-tight leading-[0.95] m-0" style={{ color: 'var(--text-primary)' }}>
+                Certified <span className="text-[var(--p-teal-400)]">Academy.</span>
               </motion.h3>
-              <motion.p className="text-2xl leading-relaxed opacity-70">
+              <motion.p className="text-2xl sm:text-3xl leading-relaxed opacity-70">
                 Every lesson in the Port Daddy Academy is backed by an automated verification service. We use Playwright and VHS to record live CLI sessions and ensure that the code you learn today will work in your harbor tomorrow.
               </motion.p>
-           </motion.div>
+           </div>
 
-           <motion.div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full max-w-5xl">
+           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 w-full max-w-6xl relative z-10">
               {[
                 { label: 'VHS Recorded', icon: Play },
                 { label: 'Playwright Verified', icon: Shield },
                 { label: 'LangChain Tested', icon: Sparkles },
                 { label: 'Continuous CI', icon: Zap }
               ].map((item, i) => (
-                <motion.div key={i} className="p-8 rounded-[40px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] flex flex-col items-center gap-4">
-                   <item.icon size={24} className="text-[var(--brand-primary)]" />
-                   <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-60">{item.label}</motion.span>
+                <motion.div key={i} className="p-10 rounded-[48px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] flex flex-col items-center gap-6 group hover:border-[var(--brand-primary)] transition-all shadow-xl">
+                   <motion.div className="w-14 h-14 rounded-2xl bg-[var(--bg-surface)] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                      <item.icon size={28} className="text-[var(--brand-primary)]" />
+                   </motion.div>
+                   <motion.span className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40 group-hover:opacity-100 transition-opacity">{item.label}</motion.span>
                 </motion.div>
               ))}
-           </motion.div>
+           </div>
         </motion.div>
       </motion.main>
 
