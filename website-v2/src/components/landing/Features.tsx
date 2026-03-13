@@ -1,11 +1,9 @@
-import * as React from 'react'
 import { motion } from 'framer-motion'
-import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { PRODUCT_FEATURES } from '@/data/product'
 import { 
   Shield, History, Radio, 
-  Anchor, Code, Cpu, Globe, Share2, Terminal, Zap
+  Anchor, Code, Cpu, Share2, Terminal
 } from 'lucide-react'
 
 const ICON_MAP: Record<string, any> = {

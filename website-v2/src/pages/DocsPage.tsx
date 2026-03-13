@@ -1,8 +1,7 @@
 import * as React from 'react'
 import { motion, useScroll, useSpring } from 'framer-motion'
 import { Badge } from '@/components/ui/Badge'
-import { Link } from 'react-router-dom'
-import { Terminal, Shield, Zap, History, Anchor, Search, Cpu, Globe, Share2, ArrowRight, MessageSquare, Box, Lock, Activity, BookOpen, ChevronRight, Copy, Check, ShieldCheck } from 'lucide-react'
+import { Shield, Zap, Anchor, Share2, MessageSquare, Box, Copy, Check, ShieldCheck } from 'lucide-react'
 import { Footer } from '@/components/layout/Footer'
 
 /* ─── Documentation Data ─────────────────────────────────────────────────── */
@@ -139,7 +138,7 @@ export default function DocsPage() {
       {/* Main Content */}
       <motion.main className="flex-1 py-24 px-6 sm:px-8 lg:px-10 max-w-7xl mx-auto w-full font-sans">
         <motion.div className="space-y-32">
-          {SECTIONS.map((section, i) => (
+          {SECTIONS.map((section) => (
             <motion.section 
               key={section.id}
               initial={{ opacity: 0, y: 40 }}

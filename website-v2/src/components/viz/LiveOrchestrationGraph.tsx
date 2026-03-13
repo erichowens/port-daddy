@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { SailorAgent } from './SailorAgent'
-import { Anchor, Shield, Zap, Globe, Share2, Cpu, Terminal, Activity, MessageSquare } from 'lucide-react'
+import { Anchor, Cpu } from 'lucide-react'
 
 interface LiveOrchestrationGraphProps {
   services?: any[]
@@ -14,7 +14,6 @@ export function LiveOrchestrationGraph({
   services = [], 
   agents = [], 
   onSelectAgent,
-  selectedAgentId 
 }: LiveOrchestrationGraphProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 });

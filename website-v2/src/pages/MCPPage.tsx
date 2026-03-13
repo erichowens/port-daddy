@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { motion, useScroll, useSpring } from 'framer-motion'
 import { Badge } from '@/components/ui/Badge'
-import { Terminal, Shield, Zap, History, Anchor, Search, Cpu, Globe, Share2, ArrowRight, MessageSquare, Box, Lock, Activity, BookOpen, ChevronRight, Copy, Check, Info, Rocket, Heart, Layers, Mail, Send, RefreshCw } from 'lucide-react'
+import { Terminal, Shield, Zap, History, Anchor, Search, Cpu, Globe, MessageSquare, Lock, Copy, Check, Rocket, Layers, Mail, RefreshCw } from 'lucide-react'
 import { Footer } from '@/components/layout/Footer'
 
 /* ─── Data ─────────────────────────────────────────────────────────────────── */
@@ -220,7 +220,7 @@ export default function MCPPage() {
            </motion.div>
 
            <motion.div className="grid lg:grid-cols-2 gap-10">
-              {ESSENTIAL_TOOLS.map((tool, i) => (
+              {ESSENTIAL_TOOLS.map((tool) => (
                 <ToolCard key={tool.name} tool={tool} />
               ))}
            </motion.div>

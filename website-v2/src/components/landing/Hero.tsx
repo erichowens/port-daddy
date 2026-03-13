@@ -1,35 +1,14 @@
 import * as React from 'react'
-import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import * as Tabs from '@radix-ui/react-tabs'
 import { useTheme } from '@/lib/theme'
-import { Copy, Check, Terminal, Zap, Shield, History, Sparkles, ArrowRight, Play } from 'lucide-react'
+import { Copy, Check, Zap, Shield, History, ArrowRight } from 'lucide-react'
 import { MaritimeSignalRow } from '@/components/viz/MaritimeFlags'
 
 const RAINBOW_SEGMENTS = [
   '#4285f4', '#34a853', '#fbbc04', '#fa7b17', '#ea4335', '#a142f4', '#24c1e0'
 ]
-
-function CopyButton({ text, className = '' }: { text: string; className?: string }) {
-  const [copied, setCopied] = React.useState(false)
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-  return (
-    <motion.button
-      onClick={handleCopy}
-      className={`p-1.5 rounded-md transition-all hover:bg-[var(--interactive-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] ${className}`}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-    >
-      {copied ? <Check size={14} className="text-[var(--status-success)]" /> : <Copy size={14} />}
-    </motion.button>
-  )
-}
 
 const CHANGELOG_ITEMS = [
   { version: 'v3.7.0', label: 'Harbors', badge: 'new', text: 'Permission namespaces with HMAC-signed tokens.', color: 'var(--p-teal-400)', icon: Shield },
@@ -43,7 +22,6 @@ const fadeUp = {
 }
 
 export function Hero() {
-  const [activeTab, setActiveTab] = React.useState('brew')
   const { theme } = useTheme()
   const { scrollY } = useScroll()
   

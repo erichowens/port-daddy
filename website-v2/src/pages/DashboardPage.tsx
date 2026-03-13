@@ -1,17 +1,14 @@
 import * as React from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useDaemonData } from '@/hooks/useDaemonData'
 import { useActivityStream } from '@/hooks/useActivityStream'
 import { useTimeline } from '@/hooks/useTimeline'
 import { LiveOrchestrationGraph } from '@/components/viz/LiveOrchestrationGraph'
-import { AgentCard } from '@/components/viz/AgentCard'
-import { WorkflowsTable } from '@/components/viz/WorkflowsTable'
 import { Badge } from '@/components/ui/Badge'
 import { 
-  Lock, Users, Terminal, Zap, AlertCircle, 
-  Network, GitBranch, MessageSquare, 
+  Users, Zap, MessageSquare, 
   History, 
-  Skull, LifeBuoy, Anchor, Globe, Radio, Search, Activity, Cpu, Share2, ArrowRight, Layout,
+  Anchor, Radio, Search, Activity, Share2, Layout,
   Shield, RefreshCw
 } from 'lucide-react'
 import { Footer } from '@/components/layout/Footer'
