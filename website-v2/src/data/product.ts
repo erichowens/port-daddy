@@ -2,7 +2,7 @@ export interface Feature {
   id: string;
   title: string;
   description: string;
-  category: 'ports' | 'coordination' | 'security' | 'observability' | 'agents';
+  category: 'ports' | 'coordination' | 'security' | 'observability' | 'agents' | 'intelligence';
   cli: string;
   status: 'core' | 'new' | 'preview';
 }
@@ -41,11 +41,19 @@ export const PRODUCT_FEATURES: Feature[] = [
     status: 'new'
   },
   {
-    id: 'background-teams',
-    title: 'Background Teams',
-    description: 'Orchestrate entire swarms that fix problems, deploy services, and manage infrastructure while you sleep.',
-    category: 'agents',
-    cli: 'pd orchestrator --team',
+    id: 'briefing-system',
+    title: 'Briefing Intelligence',
+    description: 'Automatically generate high-fidelity project briefings for agents. Summarize session history, file claims, and decisions.',
+    category: 'intelligence',
+    cli: 'pd briefing generate',
+    status: 'new'
+  },
+  {
+    id: 'reactive-watchers',
+    title: 'Reactive Watchers',
+    description: 'Ambient agent kernel that reacts to pub/sub messages without polling. Execute scripts instantly on swarm signals.',
+    category: 'coordination',
+    cli: 'pd watch <channel>',
     status: 'new'
   },
   {
@@ -65,11 +73,11 @@ export const PRODUCT_FEATURES: Feature[] = [
     status: 'new'
   },
   {
-    id: 'shared-memory',
-    title: 'Shared Embedding Memory',
-    description: 'A global K/V store for your swarm, optimized for vector embeddings and shared context across agents.',
-    category: 'coordination',
-    cli: 'pd memory store',
-    status: 'preview'
+    id: 'self-healing',
+    title: 'Self-Healing Diagnostics',
+    description: 'Automated health checks for SQLite integrity, stale sockets, and PID staleness. Auto-salvage work from crashed agents.',
+    category: 'observability',
+    cli: 'pd doctor',
+    status: 'new'
   }
 ];
