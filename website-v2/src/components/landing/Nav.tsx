@@ -2,14 +2,16 @@ import * as React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation } from 'react-router-dom'
 import { useTheme } from '@/lib/theme'
-import { Sun, Moon, Github, Menu, X, Anchor, Share2, Terminal, Sparkles, Layout } from 'lucide-react'
+import { Sun, Moon, Github, Menu, X, Anchor, Share2, Terminal, Sparkles, Layout, Compass, LayoutGrid } from 'lucide-react'
 
 const NAV_LINKS = [
   { label: 'Academy', href: '/tutorials', icon: Sparkles },
   { label: 'Blueprints', href: '/examples', icon: Share2 },
+  { label: 'Templates', href: '/templates', internal: true, icon: LayoutGrid },
   { label: 'MCP', href: '/mcp', icon: Terminal },
   { label: 'SDK', href: '/docs', icon: Anchor },
   { label: 'Journal', href: '/blog', icon: Layout },
+  { label: 'V4 Roadmap', href: '/roadmap', internal: true, icon: Compass },
 ]
 
 export function Nav() {
@@ -30,9 +32,9 @@ export function Nav() {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
     >
-      <motion.div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-8 lg:px-12">
         <motion.div 
-          className={`rounded-[32px] border transition-all duration-500 px-8 py-4 flex items-center justify-between shadow-2xl relative overflow-hidden ${scrolled ? 'bg-[var(--bg-surface)]/80 backdrop-blur-xl border-[var(--border-subtle)]' : 'bg-transparent border-transparent shadow-none'}`}
+          className={`rounded-[32px] border transition-all duration-500 px-8 py-4 flex items-center justify-between shadow-2xl relative overflow-hidden ${scrolled ? 'bg-[var(--bg-surface)]/80 backdrop-blur-xl border-[var(--border-subtle)]' : 'bg-[var(--bg-overlay)]/40 border-[var(--border-subtle)]'}`}
         >
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 no-underline group relative z-10">
@@ -49,21 +51,21 @@ export function Nav() {
           </Link>
 
           {/* Desktop Links */}
-          <motion.div className="hidden md:flex items-center gap-2">
+          <div className="hidden xl:flex items-center gap-1">
             {NAV_LINKS.map((link) => (
               <Link 
                 key={link.label} 
                 to={link.href} 
-                className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest no-underline transition-all flex items-center gap-2 group ${location.pathname === link.href ? 'bg-[var(--brand-primary)] text-[var(--bg-base)] shadow-lg shadow-[var(--brand-primary)]/20' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--interactive-hover)]'}`}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest no-underline transition-all flex items-center gap-2 group ${location.pathname === link.href ? 'bg-[var(--brand-primary)] text-white shadow-lg' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--interactive-hover)]'}`}
               >
                 <link.icon size={14} className={location.pathname === link.href ? '' : 'opacity-40 group-hover:opacity-100 transition-opacity'} />
                 {link.label}
               </Link>
             ))}
-          </motion.div>
+          </div>
 
           {/* Actions */}
-          <motion.div className="flex items-center gap-4 relative z-10">
+          <div className="flex items-center gap-4 relative z-10">
             <motion.button
               onClick={toggle}
               className="p-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-overlay)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--brand-primary)] transition-all"
@@ -83,14 +85,14 @@ export function Nav() {
             </motion.button>
 
             <motion.button
-              className="md:hidden p-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-overlay)] text-[var(--text-muted)]"
+              className="xl:hidden p-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-overlay)] text-[var(--text-muted)]"
               onClick={() => setMobileOpen(!mobileOpen)}
             >
               {mobileOpen ? <X size={18} /> : <Menu size={18} />}
             </motion.button>
-          </motion.div>
+          </div>
         </motion.div>
-      </motion.div>
+      </div>
 
       {/* Mobile Menu */}
       <AnimatePresence>
@@ -99,9 +101,9 @@ export function Nav() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] overflow-hidden font-sans"
+            className="xl:hidden bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] overflow-hidden font-sans"
           >
-            <motion.div className="px-6 py-10 space-y-4">
+            <div className="px-6 py-10 space-y-4">
               {NAV_LINKS.map((link) => (
                 <Link
                   key={link.label}
@@ -113,7 +115,7 @@ export function Nav() {
                   {link.label}
                 </Link>
               ))}
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

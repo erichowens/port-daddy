@@ -626,6 +626,35 @@ _pd_cmd_down() {
     '(-h --help)'{-h,--help}'[show help]'
 }
 
+_pd_cmd_bench() {
+  _arguments \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]'
+}
+
+_pd_cmd_demo() {
+  local -a demo_subcmds
+  demo_subcmds=(
+    'port-conflict:demonstrate port conflict resolution'
+    'coordination:demonstrate agent coordination'
+  )
+
+  local state
+  _arguments -C \
+    '(-j --json)'{-j,--json}'[JSON output]' \
+    '(-q --quiet)'{-q,--quiet}'[suppress output]' \
+    '(-h --help)'{-h,--help}'[show help]' \
+    '1:subcommand:->subcommand' \
+    && return
+
+  case "$state" in
+    subcommand)
+      _describe 'demo subcommand' demo_subcmds
+      ;;
+  esac
+}
+
 _pd_cmd_doctor() {
   _arguments \
     '(-j --json)'{-j,--json}'[JSON output]' \
@@ -1242,6 +1271,9 @@ _port_daddy() {
     # Orchestration
     'up:start all services (auto-detect or from .portdaddyrc)'
     'down:stop all services started by up'
+    # Benchmarking & Demos
+    'bench:run performance benchmarks'
+    'demo:interactive demos of Port Daddy features'
     # Project (+ aliases)
     'scan:deep-scan project for frameworks and register with daemon'
     's:deep-scan project (alias for scan)'
@@ -1313,6 +1345,8 @@ _port_daddy() {
         changelog)          _pd_cmd_changelog ;;
         up)                 _pd_cmd_up ;;
         down)               _pd_cmd_down ;;
+        bench)              _pd_cmd_bench ;;
+        demo)               _pd_cmd_demo ;;
         s|scan)             _pd_cmd_scan ;;
         p|projects)         _pd_cmd_projects ;;
         doctor|diagnose)    _pd_cmd_doctor ;;

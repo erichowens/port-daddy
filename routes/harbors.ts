@@ -54,7 +54,8 @@ export function createHarborsRoutes(deps: HarborsRouteDeps): Router {
   router.get('/harbors', (req: Request, res: Response) => {
     try {
       const limit = Math.min(parseInt(String(req.query['limit'] ?? '50'), 10) || 50, 200);
-      const list = harbors.list(limit);
+      const pattern = req.query['pattern'] as string | undefined;
+      const list = harbors.list({ limit, pattern });
       return res.json({ success: true, harbors: list, count: list.length });
     } catch (err) {
       logger.error('harbors_list_error', { error: String(err) });

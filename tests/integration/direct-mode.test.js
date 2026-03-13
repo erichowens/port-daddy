@@ -86,7 +86,7 @@ describe('Direct-Mode Integration Tests', () => {
     test('claim works with --direct flag', () => {
       const result = runDirect(['claim', 'direct-basic-1', '-q']);
       expect(result.success).toBe(true);
-      expect(result.stdout).toMatch(/^\d+$/);
+      expect(result.stdout.trim()).toMatch(/^\d+$/);
 
       const port = parseInt(result.stdout, 10);
       expect(port).toBeGreaterThanOrEqual(3100);
@@ -95,7 +95,7 @@ describe('Direct-Mode Integration Tests', () => {
     test('claim with specific port', () => {
       const result = runDirect(['claim', 'direct-specific', '-p', '7777', '-q']);
       expect(result.success).toBe(true);
-      expect(result.stdout).toBe('7777');
+      expect(result.stdout.trim()).toBe('7777');
     });
 
     test('release works', () => {
@@ -201,7 +201,7 @@ describe('Direct-Mode Integration Tests', () => {
     test('claim falls back to direct mode when daemon unreachable', () => {
       const result = runFallback(['claim', 'fallback-test-1', '-q']);
       expect(result.success).toBe(true);
-      expect(result.stdout).toMatch(/^\d+$/);
+      expect(result.stdout.trim()).toMatch(/^\d+$/);
       // Fallback works silently when -q flag is used
     });
 

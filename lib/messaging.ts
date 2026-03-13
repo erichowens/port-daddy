@@ -5,6 +5,7 @@
  */
 
 import type Database from 'better-sqlite3';
+import { matchesPattern } from './identity.js';
 import { parseExpires, tryParseJson } from './utils.js';
 
 // =============================================================================
@@ -87,9 +88,21 @@ export function createMessaging(db: Database.Database) {
       ORDER BY created_at DESC
       LIMIT ?
     `),
+    getLatestByPattern: db.prepare<[string, number]>(`
+      SELECT * FROM messages
+      WHERE channel LIKE ? ESCAPE '\\'
+      ORDER BY created_at DESC
+      LIMIT ?
+    `),
     getAfter: db.prepare<[string, number]>(`
       SELECT * FROM messages
       WHERE channel = ? AND id > ?
+      ORDER BY created_at ASC
+      LIMIT 200
+    `),
+    getAfterByPattern: db.prepare<[string, number]>(`
+      SELECT * FROM messages
+      WHERE channel LIKE ? ESCAPE '\\' AND id > ?
       ORDER BY created_at ASC
       LIMIT 200
     `),
@@ -125,9 +138,12 @@ export function createMessaging(db: Database.Database) {
       return { success: false, error: 'channel must be a non-empty string', code: 'VALIDATION_ERROR' };
     }
 
-    // Validate payload
     if (payload === null || payload === undefined) {
       return { success: false, error: 'payload is required', code: 'VALIDATION_ERROR' };
+    }
+
+    if (typeof payload === 'string' && payload.trim() === '') {
+      return { success: false, error: 'payload must be a non-empty string', code: 'VALIDATION_ERROR' };
     }
 
     const now = Date.now();
@@ -161,7 +177,7 @@ export function createMessaging(db: Database.Database) {
       const message: MessagePayload = {
         id: result.lastInsertRowid,
         channel: trimmedChannel,
-        payload: formatPayload(payloadStr, contentType),
+        payload: contentType === 'json' ? payloadStr : formatPayload(payloadStr, contentType),
         contentType,
         sender,
         createdAt: now
@@ -201,11 +217,23 @@ export function createMessaging(db: Database.Database) {
     const { limit = 50, after = null } = options;
 
     let messages: MessageRow[];
-    if (after !== null) {
-      messages = stmts.getAfter.all(trimmedChannel, after) as MessageRow[];
+    if (trimmedChannel.includes('*')) {
+      const sqlPattern = patternToSql(trimmedChannel);
+      if (!sqlPattern) return { success: false, error: 'invalid channel pattern' };
+
+      if (after !== null) {
+        messages = stmts.getAfterByPattern.all(sqlPattern, after) as MessageRow[];
+      } else {
+        messages = stmts.getLatestByPattern.all(sqlPattern, limit) as MessageRow[];
+        messages.reverse(); // Return in chronological order
+      }
     } else {
-      messages = stmts.getLatest.all(trimmedChannel, limit) as MessageRow[];
-      messages.reverse(); // Return in chronological order
+      if (after !== null) {
+        messages = stmts.getAfter.all(trimmedChannel, after) as MessageRow[];
+      } else {
+        messages = stmts.getLatest.all(trimmedChannel, limit) as MessageRow[];
+        messages.reverse(); // Return in chronological order
+      }
     }
 
     return {
@@ -300,25 +328,15 @@ export function createMessaging(db: Database.Database) {
    * Notify all subscribers of a channel
    */
   function notifySubscribers(channel: string, message: MessagePayload): void {
-    const subs = subscribers.get(channel);
-    if (subs) {
-      for (const callback of subs) {
-        try {
-          callback(message);
-        } catch (err) {
-          console.error(`Error notifying subscriber on ${channel}:`, err);
-        }
-      }
-    }
-
-    // Also notify wildcard subscribers
-    const wildcardSubs = subscribers.get('*');
-    if (wildcardSubs) {
-      for (const callback of wildcardSubs) {
-        try {
-          callback({ ...message, channel });
-        } catch (err) {
-          console.error('Error notifying wildcard subscriber:', err);
+    // Notify exact matches and patterns
+    for (const [pattern, subs] of subscribers.entries()) {
+      if (pattern === channel || pattern === '*' || matchesPattern(pattern, channel)) {
+        for (const callback of subs) {
+          try {
+            callback(pattern === '*' ? { ...message, channel } : message);
+          } catch (err) {
+            console.error(`Error notifying subscriber on ${pattern} (for channel ${channel}):`, err);
+          }
         }
       }
     }

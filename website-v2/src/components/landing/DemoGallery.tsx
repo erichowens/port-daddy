@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Badge } from '@/components/ui/Badge'
-import { Play, ExternalLink, Activity, Sparkles, Anchor, Share2 } from 'lucide-react'
+import { Play, ExternalLink, Activity, Share2 } from 'lucide-react'
 
 interface Demo {
   id: string

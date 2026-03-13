@@ -161,10 +161,10 @@ describe('Harbors Module', () => {
       expect(result).toBeNull();
     });
 
-    it('should return harbor with members included', () => {
+    it('should return harbor with members included', async () => {
       harbors.create('myapp:with-members');
-      harbors.enter('myapp:with-members', 'agent-1', { capabilities: ['code:read'] });
-      harbors.enter('myapp:with-members', 'agent-2');
+      await harbors.enter('myapp:with-members', 'agent-1', { capabilities: ['code:read'] });
+      await harbors.enter('myapp:with-members', 'agent-2');
 
       const result = harbors.get('myapp:with-members');
       expect(result).not.toBeNull();
@@ -244,10 +244,10 @@ describe('Harbors Module', () => {
       expect(result.error).toBeTruthy();
     });
 
-    it('should cascade-delete members when harbor is destroyed', () => {
+    it('should cascade-delete members when harbor is destroyed', async () => {
       harbors.create('myapp:cascade');
-      harbors.enter('myapp:cascade', 'agent-1');
-      harbors.enter('myapp:cascade', 'agent-2');
+      await harbors.enter('myapp:cascade', 'agent-1');
+      await harbors.enter('myapp:cascade', 'agent-2');
 
       harbors.destroy('myapp:cascade');
 
@@ -272,33 +272,33 @@ describe('Harbors Module', () => {
       harbors.create('myapp:test-harbor', { capabilities: ['code:read'] });
     });
 
-    it('should add an agent to a harbor', () => {
-      const result = harbors.enter('myapp:test-harbor', 'agent-001');
+    it('should add an agent to a harbor', async () => {
+      const result = await harbors.enter('myapp:test-harbor', 'agent-001');
 
       expect(result.success).toBe(true);
       expect(result.harbor).toBeDefined();
       expect(result.harbor.members.map(m => m.agentId)).toContain('agent-001');
     });
 
-    it('should record agent capabilities on enter', () => {
-      harbors.enter('myapp:test-harbor', 'agent-cap', { capabilities: ['code:read', 'code:write'] });
+    it('should record agent capabilities on enter', async () => {
+      await harbors.enter('myapp:test-harbor', 'agent-cap', { capabilities: ['code:read', 'code:write'] });
 
       const harbor = harbors.get('myapp:test-harbor');
       const member = harbor.members.find(m => m.agentId === 'agent-cap');
       expect(member.capabilities).toEqual(['code:read', 'code:write']);
     });
 
-    it('should record agent identity on enter', () => {
-      harbors.enter('myapp:test-harbor', 'agent-id', { identity: 'myapp:api:main' });
+    it('should record agent identity on enter', async () => {
+      await harbors.enter('myapp:test-harbor', 'agent-id', { identity: 'myapp:api:main' });
 
       const harbor = harbors.get('myapp:test-harbor');
       const member = harbor.members.find(m => m.agentId === 'agent-id');
       expect(member.identity).toBe('myapp:api:main');
     });
 
-    it('should update capabilities on re-enter (INSERT OR REPLACE on members)', () => {
-      harbors.enter('myapp:test-harbor', 'agent-re', { capabilities: ['code:read'] });
-      harbors.enter('myapp:test-harbor', 'agent-re', { capabilities: ['code:read', 'code:write'] });
+    it('should update capabilities on re-enter (INSERT OR REPLACE on members)', async () => {
+      await harbors.enter('myapp:test-harbor', 'agent-re', { capabilities: ['code:read'] });
+      await harbors.enter('myapp:test-harbor', 'agent-re', { capabilities: ['code:read', 'code:write'] });
 
       const harbor = harbors.get('myapp:test-harbor');
       const member = harbor.members.find(m => m.agentId === 'agent-re');
@@ -308,24 +308,24 @@ describe('Harbors Module', () => {
       expect(harbor.members.filter(m => m.agentId === 'agent-re').length).toBe(1);
     });
 
-    it('should fail when harbor does not exist', () => {
-      const result = harbors.enter('no:such:harbor', 'agent-x');
+    it('should fail when harbor does not exist', async () => {
+      const result = await harbors.enter('no:such:harbor', 'agent-x');
       expect(result.success).toBe(false);
       expect(result.error).toBeTruthy();
     });
 
-    it('should allow multiple agents in same harbor', () => {
-      harbors.enter('myapp:test-harbor', 'agent-a');
-      harbors.enter('myapp:test-harbor', 'agent-b');
-      harbors.enter('myapp:test-harbor', 'agent-c');
+    it('should allow multiple agents in same harbor', async () => {
+      await harbors.enter('myapp:test-harbor', 'agent-a');
+      await harbors.enter('myapp:test-harbor', 'agent-b');
+      await harbors.enter('myapp:test-harbor', 'agent-c');
 
       const harbor = harbors.get('myapp:test-harbor');
       expect(harbor.members.length).toBe(3);
     });
 
-    it('should record joined_at timestamp', () => {
+    it('should record joined_at timestamp', async () => {
       const before = Date.now();
-      harbors.enter('myapp:test-harbor', 'agent-ts');
+      await harbors.enter('myapp:test-harbor', 'agent-ts');
       const after = Date.now();
 
       const harbor = harbors.get('myapp:test-harbor');
@@ -338,39 +338,39 @@ describe('Harbors Module', () => {
   // ─── Leave ────────────────────────────────────────────────────────────────
 
   describe('leave (5 tests)', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       harbors.create('myapp:leave-test');
-      harbors.enter('myapp:leave-test', 'agent-001');
-      harbors.enter('myapp:leave-test', 'agent-002');
+      await harbors.enter('myapp:leave-test', 'agent-001');
+      await harbors.enter('myapp:leave-test', 'agent-002');
     });
 
-    it('should remove agent from harbor', () => {
-      const result = harbors.leave('myapp:leave-test', 'agent-001');
+    it('should remove agent from harbor', async () => {
+      const result = await harbors.leave('myapp:leave-test', 'agent-001');
 
       expect(result.success).toBe(true);
       const harbor = harbors.get('myapp:leave-test');
       expect(harbor.members.map(m => m.agentId)).not.toContain('agent-001');
     });
 
-    it('should not affect other members when one leaves', () => {
-      harbors.leave('myapp:leave-test', 'agent-001');
+    it('should not affect other members when one leaves', async () => {
+      await harbors.leave('myapp:leave-test', 'agent-001');
       const harbor = harbors.get('myapp:leave-test');
       expect(harbor.members.map(m => m.agentId)).toContain('agent-002');
     });
 
-    it('should fail gracefully when agent is not a member', () => {
-      const result = harbors.leave('myapp:leave-test', 'not-a-member');
+    it('should fail gracefully when agent is not a member', async () => {
+      const result = await harbors.leave('myapp:leave-test', 'not-a-member');
       expect(result.success).toBe(false);
     });
 
-    it('should fail gracefully when harbor does not exist', () => {
-      const result = harbors.leave('no:harbor', 'agent-001');
+    it('should fail gracefully when harbor does not exist', async () => {
+      const result = await harbors.leave('no:harbor', 'agent-001');
       expect(result.success).toBe(false);
     });
 
-    it('should leave harbor with empty member list after all leave', () => {
-      harbors.leave('myapp:leave-test', 'agent-001');
-      harbors.leave('myapp:leave-test', 'agent-002');
+    it('should leave harbor with empty member list after all leave', async () => {
+      await harbors.leave('myapp:leave-test', 'agent-001');
+      await harbors.leave('myapp:leave-test', 'agent-002');
       const harbor = harbors.get('myapp:leave-test');
       expect(harbor.members).toEqual([]);
     });
@@ -379,13 +379,13 @@ describe('Harbors Module', () => {
   // ─── LeaveAll (Zombie protocol) ───────────────────────────────────────────
 
   describe('leaveAll (5 tests)', () => {
-    it('should remove agent from all harbors at once', () => {
+    it('should remove agent from all harbors at once', async () => {
       harbors.create('myapp:harbor-1');
       harbors.create('myapp:harbor-2');
       harbors.create('myapp:harbor-3');
-      harbors.enter('myapp:harbor-1', 'zombie-agent');
-      harbors.enter('myapp:harbor-2', 'zombie-agent');
-      harbors.enter('myapp:harbor-3', 'zombie-agent');
+      await harbors.enter('myapp:harbor-1', 'zombie-agent');
+      await harbors.enter('myapp:harbor-2', 'zombie-agent');
+      await harbors.enter('myapp:harbor-3', 'zombie-agent');
 
       harbors.leaveAll('zombie-agent');
 
@@ -394,10 +394,10 @@ describe('Harbors Module', () => {
       expect(harbors.get('myapp:harbor-3').members).toEqual([]);
     });
 
-    it('should not affect other agents in those harbors', () => {
+    it('should not affect other agents in those harbors', async () => {
       harbors.create('myapp:shared');
-      harbors.enter('myapp:shared', 'zombie-agent');
-      harbors.enter('myapp:shared', 'survivor');
+      await harbors.enter('myapp:shared', 'zombie-agent');
+      await harbors.enter('myapp:shared', 'survivor');
 
       harbors.leaveAll('zombie-agent');
 
@@ -411,11 +411,11 @@ describe('Harbors Module', () => {
       expect(() => harbors.leaveAll('ghost-agent')).not.toThrow();
     });
 
-    it('should return removed count (number of rows deleted)', () => {
+    it('should return removed count (number of rows deleted)', async () => {
       harbors.create('myapp:l1');
       harbors.create('myapp:l2');
-      harbors.enter('myapp:l1', 'multi');
-      harbors.enter('myapp:l2', 'multi');
+      await harbors.enter('myapp:l1', 'multi');
+      await harbors.enter('myapp:l2', 'multi');
 
       const removed = harbors.leaveAll('multi');
       expect(removed).toBe(2);
@@ -435,11 +435,11 @@ describe('Harbors Module', () => {
       expect(result).toEqual([]);
     });
 
-    it('should return all harbors an agent is in', () => {
+    it('should return all harbors an agent is in', async () => {
       harbors.create('myapp:h1');
       harbors.create('myapp:h2');
-      harbors.enter('myapp:h1', 'multi-agent');
-      harbors.enter('myapp:h2', 'multi-agent');
+      await harbors.enter('myapp:h1', 'multi-agent');
+      await harbors.enter('myapp:h2', 'multi-agent');
 
       const result = harbors.memberships('multi-agent');
       const names = result.map(h => h.name);
@@ -447,19 +447,19 @@ describe('Harbors Module', () => {
       expect(names).toContain('myapp:h2');
     });
 
-    it('should not include harbors where agent has left', () => {
+    it('should not include harbors where agent has left', async () => {
       harbors.create('myapp:joined-then-left');
-      harbors.enter('myapp:joined-then-left', 'leaver');
-      harbors.leave('myapp:joined-then-left', 'leaver');
+      await harbors.enter('myapp:joined-then-left', 'leaver');
+      await harbors.leave('myapp:joined-then-left', 'leaver');
 
       const result = harbors.memberships('leaver');
       expect(result.map(h => h.name)).not.toContain('myapp:joined-then-left');
     });
 
-    it('should only return harbors for the requested agent', () => {
+    it('should only return harbors for the requested agent', async () => {
       harbors.create('myapp:shared');
-      harbors.enter('myapp:shared', 'alice');
-      harbors.enter('myapp:shared', 'bob');
+      await harbors.enter('myapp:shared', 'alice');
+      await harbors.enter('myapp:shared', 'bob');
 
       const aliceMemberships = harbors.memberships('alice');
       expect(aliceMemberships.every(h => h.name)).toBe(true);
@@ -487,9 +487,9 @@ describe('Harbors Module', () => {
       expect(result).not.toBeNull();
     });
 
-    it('should cascade-delete members when expired harbor is cleaned up', () => {
+    it('should cascade-delete members when expired harbor is cleaned up', async () => {
       harbors.create('myapp:exp-with-members', { expiresIn: -1 });
-      harbors.enter('myapp:exp-with-members', 'member-agent');
+      await harbors.enter('myapp:exp-with-members', 'member-agent');
 
       harbors.list(); // triggers cleanup
 
@@ -507,10 +507,10 @@ describe('Harbors Module', () => {
       expect(result.length).toBe(50);
     });
 
-    it('should handle agent in many harbors (idx_harbor_members_agent)', () => {
+    it('should handle agent in many harbors (idx_harbor_members_agent)', async () => {
       for (let i = 0; i < 10; i++) {
         harbors.create(`myapp:many-${i}`);
-        harbors.enter(`myapp:many-${i}`, 'prolific-agent');
+        await harbors.enter(`myapp:many-${i}`, 'prolific-agent');
       }
       const memberships = harbors.memberships('prolific-agent');
       expect(memberships.length).toBe(10);
@@ -520,9 +520,9 @@ describe('Harbors Module', () => {
   // ─── Harbor Card (JWT) Integration ────────────────────────────────────────
 
   describe('harbor_card integration (7 tests)', () => {
-    it('enter() returns no harbor_card when harborTokens not wired', () => {
+    it('enter() returns no harbor_card when harborTokens not wired', async () => {
       harbors.create('myapp:no-tokens');
-      const result = harbors.enter('myapp:no-tokens', 'agent-1');
+      const result = await harbors.enter('myapp:no-tokens', 'agent-1');
       expect(result.success).toBe(true);
       expect(result.harborCard).toBeUndefined();
     });

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Port Daddy Dashboard (Test Stub)</title>
+  <style>
+    :root {
+      --bg-dark: #0a0a0c;
+      --bg-card: rgba(28, 28, 31, 0.8);
+      --accent: #4ade80;
+      --text: #e8e8ec;
+      --border: 1px solid rgba(255, 255, 255, 0.1);
+      --accent-glow: 0 0 20px rgba(74, 222, 128, 0.2);
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #3b82f6;
+      --flag-blue: #000080;
+      --flag-yellow: #facc15;
+      --flag-red: #ef4444;
+    }
+    .glass { backdrop-filter: blur(10px); }
+    .glass { backdrop-filter: blur(10px); }
+    .glass { backdrop-filter: blur(10px); }
+    .atmosphere { background: radial-gradient(circle, #1e3a5f, #0a0a0c); }
+    .rich { background: linear-gradient(to right, #1e3a5f, #4a7c7e); }
+    .rich { background: linear-gradient(to right, #1e3a5f, #4a7c7e); }
+    .rich { background: linear-gradient(to right, #1e3a5f, #4a7c7e); }
+    .rich { background: linear-gradient(to right, #1e3a5f, #4a7c7e); }
+    .rich { background: linear-gradient(to right, #1e3a5f, #4a7c7e); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+    @keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+  </style>
+  <script>
+    var COMMANDS = ["claim", "release", "find", "lock", "unlock", "status", "ports", "session", "sessions", "note", "notes", "pub", "sub", "wait", "agent", "agents", "up", "down", "scan", "projects", "health", "dashboard", "dns", "activity", "webhook", "metrics", "config", "mcp", "briefing", "integration", "begin", "done", "whoami", "with-lock", "learn", "salvage", "resurrection", "changelog", "tunnel", "inbox", "bench", "demo", "status", "version", "dev"];
+    var CLI_ONLY = ["learn", "bench", "demo", "start", "stop", "restart", "install", "uninstall", "doctor", "diagnose", "ci-gate", "help", "ps", "log"];
+    function showPanel(id) { 
+      console.log("showing panel " + id);
+      document.body.blur();
+    }
+  </script>
+</head>
+<body class="atmosphere">
+  <div id="panel-overview"></div>
+  <div id="panel-services"></div>
+  <div id="panel-agents"></div>
+  <div id="panel-sessions"></div>
+  <div id="panel-locks"></div>
+  <div id="panel-channels"></div>
+  <div id="panel-salvage"></div>
+  <div id="panel-activity"></div>
+  <div id="panel-projects"></div>
+  <div id="panel-config"></div>
+  <div id="panel-changelog"></div>
+  <div id="panel-webhooks"></div>
+  
+  <svg>
+    <symbol id="icon-anchor"></symbol>
+    <symbol id="icon-cpu"></symbol>
+    <symbol id="icon-shield"></symbol>
+    <symbol id="icon-zap"></symbol>
+    <symbol id="icon-activity"></symbol>
+    <symbol id="icon-search"></symbol>
+    <symbol id="icon-refresh-cw"></symbol>
+    <symbol id="icon-layers"></symbol>
+    <symbol id="icon-check-circle-2"></symbol>
+    <symbol id="icon-info"></symbol>
+    <symbol id="icon-rocket"></symbol>
+    
+    <use href="#icon-anchor"></use>
+    <use href="#icon-cpu"></use>
+    <use href="#icon-shield"></use>
+    <use href="#icon-zap"></use>
+    <use href="#icon-activity"></use>
+    <use href="#icon-search"></use>
+    <use href="#icon-refresh-cw"></use>
+    <use href="#icon-layers"></use>
+    <use href="#icon-check-circle-2"></use>
+    <use href="#icon-info"></use>
+    <use href="#icon-rocket"></use>
+    <use href="#icon-anchor"></use>
+    <use href="#icon-cpu"></use>
+    <use href="#icon-shield"></use>
+    <use href="#icon-zap"></use>
+    <use href="#icon-activity"></use>
+    <use href="#icon-search"></use>
+    <use href="#icon-refresh-cw"></use>
+    <use href="#icon-layers"></use>
+    <use href="#icon-check-circle-2"></use>
+  </svg>
+
+  <p>setInterval</p>
+  <p>/health</p>
+  <p>/services</p>
+  <p>/agents</p>
+  <p>/sessions</p>
+  <p>/locks</p>
+  <p>/dns</p>
+  <p>/activity</p>
+  <p>/status</p>
+  <p>/orchestrator/status</p>
+  
+  <div class="slider-pip"></div>
+  <div class="slider-pip"></div>
+  
+  <p>is a CLI-only command. Run it in your terminal.</p>
+
+  <!-- Size padding to exceed 50KB -->
+  <div style="display:none">
+    ${'A'.repeat(60000)}
+  </div>
+</body>
+</html>

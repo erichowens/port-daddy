@@ -168,6 +168,7 @@ export function createActivityLog(db: Database.Database) {
       INSERT INTO activity_log (timestamp, type, agent_id, target_id, details, metadata)
       VALUES (?, ?, ?, ?, ?, ?)
     `),
+    clear: db.prepare('DELETE FROM activity_log'),
     getRecent: db.prepare(`
       SELECT * FROM activity_log
       ORDER BY timestamp DESC
@@ -181,13 +182,13 @@ export function createActivityLog(db: Database.Database) {
     `),
     getByAgent: db.prepare(`
       SELECT * FROM activity_log
-      WHERE agent_id = ?
+      WHERE agent_id LIKE ? ESCAPE '\\'
       ORDER BY timestamp DESC
       LIMIT ?
     `),
     getByTarget: db.prepare(`
       SELECT * FROM activity_log
-      WHERE target_id LIKE ?
+      WHERE target_id LIKE ? ESCAPE '\\'
       ORDER BY timestamp DESC
       LIMIT ?
     `),
@@ -292,9 +293,6 @@ export function createActivityLog(db: Database.Database) {
     };
   }
 
-  /**
-   * Get recent activity
-   */
   function getRecent(options: GetRecentOptions = {}): GetRecentResult {
     const { limit = 100, type = null, agentId = null, targetPattern = null } = options;
     const safeLimit = Math.min(Math.max(1, limit), 1000);
@@ -304,9 +302,11 @@ export function createActivityLog(db: Database.Database) {
     if (type) {
       entries = stmts.getByType.all(type, safeLimit) as ActivityRow[];
     } else if (agentId) {
-      entries = stmts.getByAgent.all(agentId, safeLimit) as ActivityRow[];
+      const sqlPattern = agentId.includes('*') ? agentId.replace(/\*/g, '%') : agentId;
+      entries = stmts.getByAgent.all(sqlPattern, safeLimit) as ActivityRow[];
     } else if (targetPattern) {
-      entries = stmts.getByTarget.all(targetPattern.replace(/\*/g, '%'), safeLimit) as ActivityRow[];
+      const sqlPattern = targetPattern.includes('*') ? targetPattern.replace(/\*/g, '%') : targetPattern;
+      entries = stmts.getByTarget.all(sqlPattern, safeLimit) as ActivityRow[];
     } else {
       entries = stmts.getRecent.all(safeLimit) as ActivityRow[];
     }
@@ -452,6 +452,7 @@ export function createActivityLog(db: Database.Database) {
     getByTimeRange,
     getSummary,
     cleanup,
+    clear: () => stmts.clear.run(),
     getStats,
     subscribe,
     logService,

@@ -12,6 +12,7 @@
 
 import type Database from 'better-sqlite3';
 import { EventEmitter } from 'events';
+import { patternToSql } from './identity.js';
 
 export interface StaleAgent {
   id: string;
@@ -111,6 +112,24 @@ export function createResurrection(db: Database.Database) {
     `),
     listAllByProjectStack: db.prepare(`
       SELECT * FROM resurrection_queue WHERE identity_project = ? AND identity_stack = ? ORDER BY detected_at DESC LIMIT ?
+    `),
+    listPendingByPattern: db.prepare(`
+      SELECT * FROM resurrection_queue 
+      WHERE status = 'pending' AND (
+        identity_project || 
+        CASE WHEN identity_stack IS NOT NULL THEN ':' || identity_stack ELSE '' END || 
+        CASE WHEN identity_context IS NOT NULL THEN ':' || identity_context ELSE '' END
+      ) LIKE ? ESCAPE '\\'
+      ORDER BY detected_at ASC
+    `),
+    listAllByPattern: db.prepare(`
+      SELECT * FROM resurrection_queue 
+      WHERE (
+        identity_project || 
+        CASE WHEN identity_stack IS NOT NULL THEN ':' || identity_stack ELSE '' END || 
+        CASE WHEN identity_context IS NOT NULL THEN ':' || identity_context ELSE '' END
+      ) LIKE ? ESCAPE '\\'
+      ORDER BY detected_at DESC LIMIT ?
     `),
     updateStatus: db.prepare(`
       UPDATE resurrection_queue SET status = ?, last_attempt_at = ?, resurrection_attempts = resurrection_attempts + 1
@@ -243,7 +262,11 @@ export function createResurrection(db: Database.Database) {
     pending(options: { project?: string; stack?: string } = {}) {
       let rows: ResurrectionQueueRow[];
 
-      if (options.project && options.stack) {
+      if (options.project?.includes('*') || options.stack?.includes('*')) {
+        const pattern = options.project + (options.stack ? ':' + options.stack : '');
+        const sqlPattern = patternToSql(pattern);
+        rows = stmts.listPendingByPattern.all(sqlPattern) as ResurrectionQueueRow[];
+      } else if (options.project && options.stack) {
         rows = stmts.listPendingByProjectStack.all(options.project, options.stack) as ResurrectionQueueRow[];
       } else if (options.project) {
         rows = stmts.listPendingByProject.all(options.project) as ResurrectionQueueRow[];
@@ -267,7 +290,11 @@ export function createResurrection(db: Database.Database) {
       const limit = options.limit ?? 50;
       let rows: ResurrectionQueueRow[];
 
-      if (options.project && options.stack) {
+      if (options.project?.includes('*') || options.stack?.includes('*')) {
+        const pattern = options.project + (options.stack ? ':' + options.stack : '');
+        const sqlPattern = patternToSql(pattern);
+        rows = stmts.listAllByPattern.all(sqlPattern, limit) as ResurrectionQueueRow[];
+      } else if (options.project && options.stack) {
         rows = stmts.listAllByProjectStack.all(options.project, options.stack, limit) as ResurrectionQueueRow[];
       } else if (options.project) {
         rows = stmts.listAllByProject.all(options.project, limit) as ResurrectionQueueRow[];

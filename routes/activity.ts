@@ -26,14 +26,11 @@ interface ActivityRouteDeps {
     getSummary(since: number): unknown;
     getStats(): unknown;
     subscribe(callback: (entry: any) => void): () => void;
+    clear(): void;
   };
   sessions: any;
   correlationEngine: {
     getTimeline(options: { limit?: number; agentId?: string; sessionId?: string }): Promise<any[]>;
-  };
-  orchestrator: {
-    addRule(rule: any): { success: boolean; id: number | bigint };
-    listRules(): any[];
   };
 }
 
@@ -44,25 +41,18 @@ interface ActivityRouteDeps {
  * @returns Express router
  */
 export function createActivityRoutes(deps: ActivityRouteDeps): Router {
-  const { logger, metrics, activityLog, correlationEngine, orchestrator } = deps;
+  const { logger, metrics, activityLog, correlationEngine } = deps;
   const router = Router();
 
   // =========================================================================
-  // ORCHESTRATOR RULES
+  // DELETE /activity - Clear activity log
   // =========================================================================
-  router.get('/orchestrator/rules', (_req: Request, res: Response) => {
+  router.delete('/activity', (req: Request, res: Response) => {
     try {
-      res.json(orchestrator.listRules());
+      activityLog.clear();
+      res.json({ success: true, message: 'Activity log cleared' });
     } catch (error) {
-      res.status(500).json({ error: 'internal server error' });
-    }
-  });
-
-  router.post('/orchestrator/rules', (req: Request, res: Response) => {
-    try {
-      const result = orchestrator.addRule(req.body);
-      res.json(result);
-    } catch (error) {
+      metrics.errors++;
       res.status(500).json({ error: 'internal server error' });
     }
   });

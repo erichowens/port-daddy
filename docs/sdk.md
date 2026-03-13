@@ -405,7 +405,7 @@ const svcHealth = await pd.checkServiceHealth('myapp:api');
 
 ---
 
-## Activity & Ports
+## Activity & Monitoring
 
 ```javascript
 // Activity log
@@ -417,14 +417,53 @@ const range = await pd.getActivityRange(
   '2025-01-31T23:59:59Z'
 );
 
+// Timeline view (hierarchical)
+const timeline = await pd.getActivityTimeline();
+
 // Summary and stats
 const summary = await pd.getActivitySummary('1h');
 const activityStats = await pd.getActivityStats();
 
-// Port management
-const activePorts = await pd.listActivePorts();
-const systemPorts = await pd.getSystemPorts();
-const cleaned = await pd.cleanup(); // remove expired
+// Real-time activity subscription (SSE)
+const sub = pd.subscribeToActivity();
+sub.on('entry', (entry) => console.log('Activity:', entry.details));
+
+// Clear/Delete activity log
+await pd.clearActivity();
+```
+
+---
+
+## Orchestrator Control
+
+```javascript
+// Get current orchestration status
+const status = await pd.getOrchestrationStatus();
+
+// Get orchestration rules
+const rules = await pd.getOrchestrationRules();
+
+// Update orchestration rules
+await pd.setOrchestrationRules({
+  autoRestart: true,
+  healthCheckInterval: 5000
+});
+
+// Start entire stack based on .portdaddyrc or scan
+await pd.startOrchestration();
+
+// Stop entire stack
+await pd.stopOrchestration();
+```
+
+---
+
+## System Info
+
+```javascript
+// Get detailed daemon status and version
+const status = await pd.status();
+console.log(`Port Daddy v${status.version} is ${status.status}`);
 ```
 
 ---

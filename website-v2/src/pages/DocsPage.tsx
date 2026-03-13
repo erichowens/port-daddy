@@ -68,18 +68,18 @@ function CommandCard({ cmd, desc, example, color }: { cmd: string; desc: string;
 
   return (
     <motion.div 
-      className="p-8 rounded-[40px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-6 group hover:border-[var(--border-strong)] transition-all shadow-xl"
+      className="p-8 rounded-[40px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-6 group hover:border-[var(--border-strong)] transition-all shadow-xl flex flex-col items-center text-center"
       whileHover={{ y: -4 }}
     >
-       <motion.div className="space-y-2">
-          <code className="text-xl font-bold font-mono" style={{ color }}>{cmd}</code>
-          <motion.p className="text-sm opacity-60 leading-relaxed m-0 font-medium">{desc}</motion.p>
+       <motion.div className="space-y-4 w-full">
+          <code className="text-xl font-bold font-mono block" style={{ color }}>{cmd}</code>
+          <motion.p className="text-sm leading-relaxed m-0 font-medium" style={{ color: 'var(--text-muted)' }}>{desc}</motion.p>
        </motion.div>
        
-       <motion.div className="relative rounded-2xl bg-[var(--bg-overlay)] p-6 font-mono text-xs overflow-hidden group-hover:bg-[var(--interactive-active)] transition-colors">
+       <motion.div className="relative w-full rounded-2xl bg-[var(--bg-overlay)] p-6 font-mono text-xs overflow-hidden group-hover:bg-[var(--interactive-active)] transition-colors">
           <motion.div className="flex items-center justify-between gap-4">
-             <motion.span className="opacity-40 truncate">{example}</motion.span>
-             <button onClick={handleCopy} className="shrink-0 text-[var(--brand-primary)] opacity-40 hover:opacity-100 transition-opacity">
+             <motion.span className="truncate" style={{ color: 'var(--text-muted)' }}>{example}</motion.span>
+             <button onClick={handleCopy} className="shrink-0 text-[var(--brand-primary)] hover:opacity-100 transition-opacity">
                 {copied ? <Check size={14} /> : <Copy size={14} />}
              </button>
           </motion.div>
@@ -137,7 +137,7 @@ export default function DocsPage() {
 
       {/* Main Content */}
       <motion.main className="flex-1 py-24 px-6 sm:px-8 lg:px-10 max-w-7xl mx-auto w-full font-sans">
-        <motion.div className="space-y-32">
+        <motion.div className="space-y-32 flex flex-col items-center">
           {SECTIONS.map((section) => (
             <motion.section 
               key={section.id}
@@ -146,27 +146,27 @@ export default function DocsPage() {
               viewport={{ once: true }}
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
               id={section.id}
-              className="space-y-12"
+              className="space-y-16 flex flex-col items-center w-full"
             >
-               <motion.div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-[var(--border-subtle)] pb-12">
-                  <motion.div className="max-w-2xl space-y-6">
-                     <motion.div className="flex items-center gap-4">
+               <motion.div className="flex flex-col items-center text-center gap-10 border-b border-[var(--border-subtle)] pb-16 w-full">
+                  <motion.div className="max-w-2xl flex flex-col items-center gap-8">
+                     <motion.div className="flex flex-col items-center gap-6">
                         <motion.div 
-                          className="w-14 h-14 rounded-2xl flex items-center justify-center border shadow-lg"
+                          className="w-16 h-16 rounded-2xl flex items-center justify-center border shadow-lg"
                           style={{ background: `${section.color}10`, borderColor: `${section.color}20` }}
                         >
-                           <section.icon size={28} style={{ color: section.color }} />
+                           <section.icon size={32} style={{ color: section.color }} />
                         </motion.div>
-                        <motion.h2 className="text-4xl sm:text-6xl font-display font-black tracking-tight m-0">{section.title}</motion.h2>
+                        <motion.h2 className="text-4xl sm:text-7xl font-display font-black tracking-tight m-0">{section.title}</motion.h2>
                      </motion.div>
-                     <motion.p className="text-xl leading-relaxed opacity-60 m-0 font-medium">
+                     <motion.p className="text-xl sm:text-2xl leading-relaxed m-0 font-medium" style={{ color: 'var(--text-secondary)' }}>
                         {section.description}
                      </motion.p>
                   </motion.div>
-                  <Badge variant="neutral" className="px-4 py-1.5 text-[8px] font-black uppercase tracking-widest bg-[var(--bg-overlay)]">Core Primitive</Badge>
+                  <Badge variant="neutral" className="px-6 py-2 text-[10px] font-black uppercase tracking-widest bg-[var(--bg-overlay)]">Core Primitive</Badge>
                </motion.div>
 
-               <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+               <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
                   {section.commands.map((cmd, j) => (
                     <CommandCard key={j} {...cmd} color={section.color} />
                   ))}

@@ -19,8 +19,16 @@ import type { DiscoveredService } from '../../lib/discover.js';
 import { loadConfig } from '../../lib/config.js';
 import type { PortDaddyRcConfig } from '../../lib/config.js';
 
-// PID file for tracking `up` sessions
-const UP_PID_FILE: string = join(tmpdir(), 'port-daddy-up.pid');
+import { createHash } from 'node:crypto';
+
+/**
+ * Get a unique PID file path for the current project directory.
+ * This allows multiple `pd up` sessions to run in parallel in different worktrees.
+ */
+function getPidFile(dir: string = process.cwd()): string {
+  const hash = createHash('sha256').update(dir).digest('hex').substring(0, 12);
+  return join(tmpdir(), `port-daddy-up-${hash}.pid`);
+}
 
 /**
  * Handle `pd up [service...]` command
@@ -205,7 +213,7 @@ export async function handleUp(positional: string[], options: CLIOptions): Promi
   orchestrator.on('stopped', () => {
     console.log('');
     console.log(maritimeStatus('stop', 'All services stopped.'));
-    removePidFile();
+    removePidFile(dir);
   });
 
   orchestrator.on('error', (data: unknown) => {
@@ -225,7 +233,7 @@ export async function handleUp(positional: string[], options: CLIOptions): Promi
     shuttingDown = true;
     console.log('\n' + maritimeStatus('warning', 'Shutting down...'));
     await orchestrator.stop();
-    removePidFile();
+    removePidFile(dir);
     // Resolve the keep-alive promise so the process exits naturally
     // after all async work (port release HTTP calls) has completed.
     if (keepAliveResolve) keepAliveResolve();
@@ -235,7 +243,7 @@ export async function handleUp(positional: string[], options: CLIOptions): Promi
   process.on('SIGTERM', gracefulShutdown);
 
   // 10. Write PID file for `down` command
-  writePidFile();
+  writePidFile(dir);
 
   // 11. Start
   console.log(maritimeStatus('ready', `Starting: ${order.join(' → ')}`));
@@ -245,7 +253,7 @@ export async function handleUp(positional: string[], options: CLIOptions): Promi
     await orchestrator.start();
   } catch (err: unknown) {
     console.error(maritimeStatus('error', `Failed to start: ${(err as Error).message}`));
-    removePidFile();
+    removePidFile(dir);
     process.exit(1);
   }
 
@@ -256,26 +264,29 @@ export async function handleUp(positional: string[], options: CLIOptions): Promi
 /**
  * Handle `pd down` command
  */
-export async function handleDown(_options: CLIOptions): Promise<void> {
-  if (!existsSync(UP_PID_FILE)) {
+export async function handleDown(options: CLIOptions): Promise<void> {
+  const dir = (options.dir as string) || process.cwd();
+  const pidFile = getPidFile(dir);
+
+  if (!existsSync(pidFile)) {
     console.error(maritimeStatus('error', 'No port-daddy up session found.'));
-    console.error('  (No PID file at ' + UP_PID_FILE + ')');
+    console.error('  (No PID file at ' + pidFile + ')');
     process.exit(1);
   }
 
-  const pidStr: string = readFileSync(UP_PID_FILE, 'utf-8').trim();
+  const pidStr: string = readFileSync(pidFile, 'utf-8').trim();
   const pid: number = parseInt(pidStr, 10);
 
   if (isNaN(pid)) {
     console.error(maritimeStatus('error', 'Invalid PID file. Removing it.'));
-    removePidFile();
+    removePidFile(dir);
     process.exit(1);
   }
 
   // Check if process is alive
   if (!isProcessAlive(pid)) {
     console.error(maritimeStatus('warning', `Process ${pid} is not running. Cleaning up PID file.`));
-    removePidFile();
+    removePidFile(dir);
     process.exit(1);
   }
 
@@ -285,7 +296,7 @@ export async function handleDown(_options: CLIOptions): Promise<void> {
     process.kill(pid, 'SIGTERM');
   } catch (err: unknown) {
     console.error(maritimeStatus('error', `Failed to signal process: ${(err as Error).message}`));
-    removePidFile();
+    removePidFile(dir);
     process.exit(1);
   }
 
@@ -328,7 +339,7 @@ export async function handleDown(_options: CLIOptions): Promise<void> {
   } catch { /* daemon unreachable — nothing more we can do */ }
 
   // Clean up PID file
-  removePidFile();
+  removePidFile(dir);
 
   if (isProcessAlive(pid)) {
     console.error(maritimeStatus('warning', `Process ${pid} may still be running.`));
@@ -347,14 +358,15 @@ function isProcessAlive(pid: number): boolean {
   }
 }
 
-function writePidFile(): void {
+function writePidFile(dir: string): void {
   try {
-    fsWriteFileSync(UP_PID_FILE, String(process.pid));
+    fsWriteFileSync(getPidFile(dir), String(process.pid));
   } catch { /* best effort */ }
 }
 
-function removePidFile(): void {
+function removePidFile(dir: string): void {
   try {
-    if (existsSync(UP_PID_FILE)) unlinkSync(UP_PID_FILE);
+    const pidFile = getPidFile(dir);
+    if (existsSync(pidFile)) unlinkSync(pidFile);
   } catch { /* best effort */ }
 }

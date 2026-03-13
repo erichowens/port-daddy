@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
-import { Github, Terminal, Sparkles, Anchor, Zap } from 'lucide-react'
+import { Github, Terminal, Sparkles, Anchor } from 'lucide-react'
 
 export function CTABanner() {
   return (
     <motion.section 
-      className="py-24 px-6 sm:px-8 lg:px-10 relative overflow-hidden font-sans bg-[var(--bg-base)]"
+      className="py-20 px-6 sm:px-8 lg:px-10 relative overflow-hidden font-sans bg-[var(--bg-base)] flex flex-col items-center text-center"
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}
@@ -26,9 +26,9 @@ export function CTABanner() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="relative max-w-5xl mx-auto text-center flex flex-col items-center gap-16"
+        className="relative max-w-5xl mx-auto text-center flex flex-col items-center gap-8"
       >
-        <motion.div className="flex flex-col items-center gap-8">
+        <motion.div className="flex flex-col items-center gap-6">
            <Badge variant="teal" className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">The Departure</Badge>
            <motion.div 
              className="w-24 h-24 rounded-[40px] bg-[var(--interactive-active)] flex items-center justify-center border border-[var(--brand-primary)] shadow-[0_0_48px_rgba(58,173,173,0.3)]"
@@ -39,18 +39,18 @@ export function CTABanner() {
            </motion.div>
         </motion.div>
 
-        <motion.div className="space-y-8 flex flex-col items-center">
-           <motion.h2 className="text-6xl sm:text-9xl font-display font-black tracking-tighter leading-[0.85] m-0" style={{ color: 'var(--text-primary)' }}>
+        <motion.div className="space-y-6 flex flex-col items-center">
+           <motion.h2 className="text-4xl sm:text-6xl font-display font-black tracking-tighter leading-[0.85] m-0" style={{ color: 'var(--text-primary)' }}>
              Your agents deserve a <br />
              <motion.span className="text-[var(--brand-primary)]">harbormaster.</motion.span>
            </motion.h2>
 
-           <motion.p className="text-2xl sm:text-3xl max-w-3xl mx-auto leading-relaxed opacity-70 font-sans">
+           <motion.p className="text-2xl sm:text-3xl max-w-3xl mx-auto leading-relaxed font-sans" style={{ color: 'var(--text-secondary)' }}>
              The era of wobbly scripts and port conflicts is over. Build swarms that are resilient, cryptographically secure, and always-on.
            </motion.p>
         </motion.div>
 
-        <motion.div className="flex flex-wrap gap-8 justify-center items-center pt-4">
+        <motion.div className="flex flex-wrap gap-6 justify-center items-center pt-4">
           <motion.button 
             className="px-16 py-8 rounded-full bg-[var(--brand-primary)] text-[var(--bg-base)] font-black text-2xl shadow-[0_32px_64px_rgba(58,173,173,0.3)] flex items-center gap-4 transition-all"
             whileHover={{ scale: 1.05, y: -6, boxShadow: '0 40px 80px rgba(58,173,173,0.4)' }}
@@ -74,11 +74,11 @@ export function CTABanner() {
         </motion.div>
 
         <motion.div className="pt-16 flex flex-col items-center gap-6">
-           <motion.div className="flex items-center gap-4 px-8 py-4 rounded-full bg-[var(--bg-overlay)] border border-[var(--border-subtle)] font-mono text-xs font-black uppercase tracking-widest opacity-60 shadow-lg">
+           <motion.div className="flex items-center gap-4 px-8 py-4 rounded-full bg-[var(--bg-overlay)] border border-[var(--border-subtle)] font-mono text-xs font-black uppercase tracking-widest shadow-lg" style={{ color: 'var(--text-muted)' }}>
               <Terminal size={18} className="text-[var(--brand-primary)]" />
               brew install erichowens/port-daddy
            </motion.div>
-           <motion.p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30 m-0">Free · Open Source · MIT License</motion.p>
+           <motion.p className="text-[10px] font-black uppercase tracking-[0.3em] m-0" style={{ color: 'var(--text-muted)', opacity: 0.5 }}>Free · Open Source · MIT License</motion.p>
         </motion.div>
       </motion.div>
     </motion.section>

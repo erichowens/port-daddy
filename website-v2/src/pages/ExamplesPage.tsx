@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/Badge'
-import { Sparkles, Shield, RefreshCw, DollarSign, Database, Terminal, Layers, Anchor, Zap, Globe, MessageSquare } from 'lucide-react'
+import { Sparkles, Shield, RefreshCw, DollarSign, Database, Terminal, Layers, Anchor, Zap, Globe } from 'lucide-react'
 import { Footer } from '@/components/layout/Footer'
 
 interface Example {
@@ -149,7 +149,7 @@ export function ExamplesPage() {
     >
       {/* Hero Section */}
       <motion.section 
-        className="py-24 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden flex flex-col items-center justify-center text-center" 
+        className="py-20 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden flex flex-col items-center justify-center text-center" 
         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
       >
         <motion.div 
@@ -157,10 +157,10 @@ export function ExamplesPage() {
           style={{ background: 'radial-gradient(circle, var(--brand-primary) 0%, transparent 70%)' }} 
         />
         
-        <div className="max-w-5xl mx-auto relative z-10 flex flex-col items-center gap-12">
+        <div className="max-w-5xl mx-auto relative z-10 flex flex-col items-center gap-8">
            <Badge variant="teal" className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">The Coordination Library</Badge>
            <motion.h1 
-             className="text-7xl sm:text-9xl font-black tracking-tighter font-display leading-[0.85] m-0"
+             className="text-4xl sm:text-6xl font-black tracking-tighter font-display leading-[0.85] m-0 text-[var(--text-primary)]"
              initial={{ opacity: 0, y: 32 }}
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -169,7 +169,7 @@ export function ExamplesPage() {
              <span className="text-[var(--brand-primary)]">Patterns.</span>
            </motion.h1>
            <motion.p 
-             className="text-2xl sm:text-4xl max-w-4xl leading-relaxed opacity-70 font-medium"
+             className="text-xl sm:text-2xl max-w-4xl leading-relaxed text-[var(--text-secondary)] font-medium"
              initial={{ opacity: 0, y: 20 }}
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: 0.8, delay: 0.1 }}
@@ -180,8 +180,8 @@ export function ExamplesPage() {
       </motion.section>
 
       {/* Examples Grid */}
-      <motion.main className="flex-1 py-24 px-6 sm:px-8 lg:px-10 max-w-7xl mx-auto w-full font-sans flex flex-col items-center">
-        <div className="grid gap-32 w-full">
+      <motion.main className="flex-1 py-20 px-6 sm:px-8 lg:px-10 max-w-7xl mx-auto w-full font-sans flex flex-col items-center">
+        <div className="grid gap-8 w-full">
           {EXAMPLES.map((ex, i) => (
             <motion.div
               key={ex.id}
@@ -192,11 +192,11 @@ export function ExamplesPage() {
               className="group"
             >
               <motion.div 
-                className="p-16 rounded-[80px] border transition-all duration-500 flex flex-col lg:flex-row gap-20 items-center"
+                className="p-16 rounded-[80px] border transition-all duration-500 flex flex-col lg:flex-row gap-8 items-center"
                 style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-surface)' }}
                 whileHover={{ borderColor: ex.color, boxShadow: `0 40px 80px -20px ${ex.color}15` }}
               >
-                <div className="flex-1 space-y-12 flex flex-col items-center lg:items-start text-center lg:text-left">
+                <div className="flex-1 space-y-8 flex flex-col items-center lg:items-start text-center lg:text-left">
                    <div className="flex flex-col lg:flex-row items-center gap-8">
                       <motion.div 
                         className="w-24 h-24 rounded-[40px] flex items-center justify-center border transition-transform group-hover:scale-110 duration-500 shadow-xl"
@@ -206,21 +206,23 @@ export function ExamplesPage() {
                       </motion.div>
                       <div className="space-y-3 flex flex-col items-center lg:items-start">
                          <div className="flex items-center gap-4">
-                            <Badge variant="neutral" className="text-[10px] font-black uppercase tracking-widest px-4 py-1.5 shadow-sm">{ex.category}</Badge>
+                            <Badge variant="neutral" className="text-[10px] font-black uppercase tracking-widest px-4 py-1.5 shadow-sm">
+                               <span className="text-[var(--text-primary)]">{ex.category}</span>
+                            </Badge>
                             <div className="h-1 w-1 rounded-full bg-[var(--border-strong)]" />
-                            <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-40">{ex.difficulty}</motion.span>
+                            <motion.span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">{ex.difficulty}</motion.span>
                          </div>
                          <motion.h2 className="m-0 text-4xl sm:text-6xl font-display font-black tracking-tight leading-tight text-[var(--text-primary)]">{ex.title}</motion.h2>
                       </div>
                    </div>
 
-                   <motion.p className="text-2xl leading-relaxed opacity-70 m-0 max-w-xl">{ex.description}</motion.p>
+                   <motion.p className="text-xl sm:text-2xl leading-relaxed text-[var(--text-secondary)] m-0 max-w-xl">{ex.description}</motion.p>
 
-                   <div className="grid sm:grid-cols-2 gap-10 w-full">
+                   <div className="grid sm:grid-cols-2 gap-8 w-full">
                       {ex.what.map((point, j) => (
                         <motion.div key={j} className="flex items-start gap-4 group/item">
                            <div className="mt-2 w-2 h-2 rounded-full shrink-0 group-hover/item:scale-150 transition-transform shadow-xl" style={{ background: ex.color }} />
-                           <motion.p className="text-base opacity-60 m-0 leading-relaxed font-bold group-hover/item:opacity-100 transition-opacity">{point}</motion.p>
+                           <motion.p className="text-base text-[var(--text-secondary)] m-0 leading-relaxed font-bold group-hover/item:text-[var(--text-primary)] transition-colors">{point}</motion.p>
                         </motion.div>
                       ))}
                    </div>
@@ -230,10 +232,10 @@ export function ExamplesPage() {
                    <motion.div className="absolute inset-0 blur-3xl opacity-[0.05] pointer-events-none" style={{ background: ex.color }} />
                    <motion.div className="relative p-12 rounded-[64px] bg-[var(--bg-overlay)] border border-[var(--border-strong)] group-hover:border-[var(--brand-primary)]/40 transition-colors shadow-2xl font-mono text-base leading-relaxed overflow-hidden">
                       <div className="absolute top-0 right-0 p-8 opacity-10">
-                         <Terminal size={24} />
+                         <Terminal size={24} className="text-[var(--text-primary)]" />
                       </div>
                       {ex.code.map((line, j) => (
-                        <div key={j} className={line.startsWith('#') ? 'text-[var(--code-comment)] mb-3 opacity-40' : line.startsWith('pd') || line.startsWith('curl') ? 'text-[var(--text-primary)] font-bold mb-2' : 'opacity-60'}>
+                        <div key={j} className={line.startsWith('#') ? 'text-[var(--text-muted)] mb-3 opacity-40' : line.startsWith('pd') || line.startsWith('curl') ? 'text-[var(--text-primary)] font-bold mb-2' : 'text-[var(--text-secondary)] opacity-60'}>
                           {line.startsWith('pd') || line.startsWith('curl') ? (
                             <span><span style={{ color: 'var(--brand-primary)' }}>$</span> {line}</span>
                           ) : line}
@@ -248,7 +250,7 @@ export function ExamplesPage() {
 
         {/* Vision Callout */}
         <motion.div 
-          className="mt-24 p-24 rounded-[100px] border border-dashed border-[var(--border-strong)] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-base)] flex flex-col items-center text-center gap-16 relative overflow-hidden w-full shadow-2xl"
+          className="mt-20 p-24 rounded-[100px] border border-dashed border-[var(--border-strong)] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-base)] flex flex-col items-center text-center gap-8 relative overflow-hidden w-full shadow-2xl mx-auto"
           initial={{ opacity: 0, scale: 0.98 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
@@ -259,16 +261,16 @@ export function ExamplesPage() {
            
            <div className="max-w-4xl relative z-10 space-y-10 flex flex-col items-center">
               <Badge variant="amber" className="px-8 py-3 text-[10px] font-black uppercase tracking-widest shadow-xl">Architectural Integrity</Badge>
-              <motion.h3 className="text-5xl sm:text-8xl font-display font-black tracking-tight leading-[0.95] m-0" style={{ color: 'var(--text-primary)' }}>
+              <motion.h3 className="text-4xl sm:text-6xl font-display font-black tracking-tight leading-[0.95] m-0 text-[var(--text-primary)]">
                 One Mesh. <br />
                 <span className="text-[var(--p-amber-400)]">Infinite Logic.</span>
               </motion.h3>
-              <motion.p className="text-2xl sm:text-3xl leading-relaxed opacity-70 max-w-3xl">
+              <motion.p className="text-xl sm:text-2xl leading-relaxed text-[var(--text-secondary)] max-w-3xl">
                 Port Daddy doesn't care about the intelligence of your agent. It cares about the **reliability of the mesh**. These patterns provide the hard infrastructure that allows soft logic to flourish.
               </motion.p>
            </div>
 
-           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 w-full max-w-6xl relative z-10">
+           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full max-w-6xl relative z-10">
               {[
                 { title: 'Atomic Identity', icon: Anchor },
                 { title: 'Swarm Radio', icon: Zap },
@@ -279,7 +281,7 @@ export function ExamplesPage() {
                    <motion.div className="w-14 h-14 rounded-2xl bg-[var(--bg-surface)] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                       <item.icon size={28} className="text-[var(--brand-primary)]" />
                    </motion.div>
-                   <motion.span className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40 group-hover:opacity-100 transition-opacity text-center">{item.label}</motion.span>
+                   <motion.span className="text-[10px] font-black uppercase tracking-[0.25em] text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors text-center">{item.title}</motion.span>
                 </motion.div>
               ))}
            </div>

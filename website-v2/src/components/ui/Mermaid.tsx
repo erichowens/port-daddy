@@ -1,19 +1,26 @@
-import { motion } from 'framer-motion';
 import React, { useEffect, useRef } from 'react'
 import mermaid from 'mermaid'
 
 mermaid.initialize({
   startOnLoad: true,
-  theme: 'dark',
+  theme: 'base',
   securityLevel: 'loose',
   fontFamily: 'var(--p-font-mono)',
   themeVariables: {
-    primaryColor: '#00ff88',
-    primaryTextColor: '#fff',
-    primaryBorderColor: '#00ff88',
-    lineColor: '#00ff88',
-    secondaryColor: '#00b8ff',
-    tertiaryColor: '#fff',
+    primaryColor: '#3aadad',
+    primaryTextColor: '#ffffff',
+    primaryBorderColor: '#3aadad',
+    lineColor: '#3aadad',
+    secondaryColor: '#56cccc',
+    tertiaryColor: '#ffffff',
+    mainBkg: 'var(--bg-overlay)',
+    nodeBorder: 'var(--border-strong)',
+    clusterBkg: 'var(--bg-surface)',
+    clusterBorder: 'var(--border-subtle)',
+    defaultLinkColor: 'var(--brand-primary)',
+    titleColor: 'var(--text-primary)',
+    edgeLabelBackground: 'var(--bg-surface)',
+    nodeTextColor: 'var(--text-primary)'
   }
 })
 
@@ -27,7 +34,6 @@ export const Mermaid: React.FC<MermaidProps> = ({ chart }) => {
   useEffect(() => {
     if (ref.current && chart) {
       mermaid.contentLoaded()
-      // Use a unique ID for each chart to prevent collisions
       const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`
       mermaid.render(id, chart).then((result) => {
         if (ref.current) {
@@ -38,9 +44,9 @@ export const Mermaid: React.FC<MermaidProps> = ({ chart }) => {
   }, [chart])
 
   return (
-    <motion.div 
-      className="mermaid-container my-8 flex justify-center p-6 rounded-xl border" 
-      style={{ background: 'var(--bg-overlay)', borderColor: 'var(--border-subtle)' }}
+    <div 
+      className="mermaid-container my-12 flex justify-center p-10 rounded-[32px] border border-dashed" 
+      style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-strong)' }}
       ref={ref} 
     />
   )

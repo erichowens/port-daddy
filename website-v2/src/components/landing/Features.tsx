@@ -28,7 +28,7 @@ export function Features() {
   return (
     <motion.section 
       id="features" 
-      className="py-24 px-6 sm:px-8 lg:px-10 font-sans selection:bg-[var(--brand-primary)] selection:text-white bg-[var(--bg-base)]"
+      className="py-20 px-6 sm:px-8 lg:px-10 font-sans selection:bg-[var(--brand-primary)] selection:text-white bg-[var(--bg-base)] flex flex-col items-center text-center"
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}
@@ -39,16 +39,16 @@ export function Features() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7 }}
-          className="text-center mb-24 flex flex-col items-center gap-8"
+          className="text-center mb-16 flex flex-col items-center gap-8"
         >
           <div className="flex flex-col items-center gap-4">
              <Badge variant="teal" className="px-5 py-1.5 text-[10px] font-black uppercase tracking-widest font-sans">The Enumeration</Badge>
-             <motion.h2 className="text-5xl sm:text-7xl font-bold font-display tracking-tight leading-tight m-0" style={{ color: 'var(--text-primary)' }}>
+             <motion.h2 className="text-4xl sm:text-6xl font-bold font-display tracking-tight leading-tight m-0" style={{ color: 'var(--text-primary)' }}>
                The Definitive <br />
                <motion.span className="text-[var(--brand-primary)]">Control Plane.</motion.span>
              </motion.h2>
           </div>
-          <motion.p className="text-xl sm:text-2xl max-w-3xl mx-auto leading-relaxed font-sans opacity-70" style={{ color: 'var(--text-secondary)' }}>
+          <motion.p className="text-xl sm:text-2xl max-w-3xl mx-auto leading-relaxed font-sans" style={{ color: 'var(--text-secondary)' }}>
             Foundational primitives required to turn a collection of scripts into a production-grade, autonomous organization.
           </motion.p>
         </motion.div>
@@ -84,12 +84,12 @@ export function Features() {
                       <motion.h3 className="m-0 text-2xl font-display font-black leading-tight" style={{ color: 'var(--text-primary)' }}>
                         {feature.title}
                       </motion.h3>
-                      <Badge variant={feature.status === 'core' ? 'neutral' : feature.status === 'new' ? 'teal' : 'amber'} className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                      <Badge variant={feature.status === 'core' ? 'neutral' : feature.status === 'new' ? 'teal' : 'amber'} className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-muted)' }}>
                         {feature.status}
                       </Badge>
                     </div>
                     
-                    <motion.p className="m-0 text-base opacity-60 leading-relaxed group-hover:opacity-100 transition-opacity font-medium">
+                    <motion.p className="m-0 text-base leading-relaxed group-hover:opacity-100 transition-opacity font-medium" style={{ color: 'var(--text-muted)' }}>
                       {feature.description}
                     </motion.p>
                   </div>
@@ -110,7 +110,7 @@ export function Features() {
         
         {/* Call to Action */}
         <motion.div 
-          className="mt-32 p-16 rounded-[80px] border border-dashed border-[var(--border-strong)] text-center flex flex-col items-center gap-10 relative overflow-hidden bg-[var(--bg-overlay)] w-full"
+          className="mt-32 p-16 rounded-[80px] border border-dashed border-[var(--border-strong)] text-center flex flex-col items-center gap-8 relative overflow-hidden bg-[var(--bg-overlay)] w-full"
           style={{ borderColor: 'var(--border-subtle)' }}
         >
           <motion.div 
@@ -121,14 +121,14 @@ export function Features() {
              <Share2 size={1000} className="text-[var(--brand-primary)]" />
           </motion.div>
           <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-widest">Deployment Ready</Badge>
-          <motion.h3 className="text-5xl sm:text-7xl font-display font-black m-0 tracking-tight leading-tight" style={{ color: 'var(--text-primary)' }}>
+          <motion.h3 className="text-4xl sm:text-6xl font-display font-black m-0 tracking-tight leading-tight" style={{ color: 'var(--text-primary)' }}>
             One daemon to <br />
             <motion.span className="text-[var(--brand-primary)]">rule the swarm.</motion.span>
           </motion.h3>
-          <motion.p className="text-xl sm:text-2xl max-w-2xl font-sans opacity-70">
+          <motion.p className="text-xl sm:text-2xl max-w-2xl font-sans" style={{ color: 'var(--text-secondary)' }}>
             Port Daddy is open-source and installs in seconds. Start building your autonomous organization today.
           </motion.p>
-          <motion.div className="flex flex-wrap justify-center gap-8">
+          <motion.div className="flex flex-wrap justify-center gap-6">
              <motion.button 
                className="px-12 py-6 rounded-full bg-[var(--brand-primary)] text-[var(--bg-base)] font-black text-xl shadow-xl transition-all flex items-center gap-3"
                whileHover={{ scale: 1.05, y: -4 }}

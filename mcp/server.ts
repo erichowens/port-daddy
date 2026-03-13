@@ -517,13 +517,25 @@ const TOOLS = [
   },
   {
     name: 'list_sessions',
-    description: '[Standard] List sessions. Shows active sessions by default, or all sessions with the "all" flag.',
+    description: '[Standard] List sessions. Supports wildcard patterns for project, agent, and purpose.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         all: {
           type: 'boolean',
           description: 'Show all sessions, not just active ones',
+        },
+        project: {
+          type: 'string',
+          description: 'Filter by project pattern (e.g. "myapp:*")',
+        },
+        agent: {
+          type: 'string',
+          description: 'Filter by agent pattern (e.g. "agent-*")',
+        },
+        purpose: {
+          type: 'string',
+          description: 'Filter by purpose pattern (e.g. "*bug*")',
         },
         limit: {
           type: 'number',
@@ -656,17 +668,17 @@ const TOOLS = [
   },
   {
     name: 'release_lock',
-    description: '[Standard] Release a distributed lock.',
+    description: '[Standard] Release a distributed lock. Supports wildcard patterns (e.g. "myapp:*").',
     inputSchema: {
       type: 'object' as const,
       properties: {
         name: {
           type: 'string',
-          description: 'Lock name to release',
+          description: 'Lock name to release (supports wildcard patterns)',
         },
         owner: {
           type: 'string',
-          description: 'Lock owner (must match the owner who acquired it)',
+          description: 'Lock owner (must match the owner who acquired it, unless using force)',
         },
         force: {
           type: 'boolean',
@@ -678,13 +690,13 @@ const TOOLS = [
   },
   {
     name: 'list_locks',
-    description: '[Standard] List all active distributed locks.',
+    description: '[Standard] List all active distributed locks. Supports wildcard patterns for owner.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         owner: {
           type: 'string',
-          description: 'Filter by lock owner',
+          description: 'Filter by lock owner pattern (e.g. "agent-*")',
         },
       },
     },
@@ -717,13 +729,13 @@ const TOOLS = [
   },
   {
     name: 'get_messages',
-    description: '[Advanced] Get messages from a pub/sub channel.',
+    description: '[Advanced] Get messages from a pub/sub channel. Supports wildcard patterns (e.g. "myapp:*:web").',
     inputSchema: {
       type: 'object' as const,
       properties: {
         channel: {
           type: 'string',
-          description: 'Channel name to read from',
+          description: 'Channel name to read from (supports wildcard patterns)',
         },
         limit: {
           type: 'number',
@@ -834,13 +846,21 @@ const TOOLS = [
   },
   {
     name: 'list_agents',
-    description: '[Standard] List all registered agents with their status and heartbeat info.',
+    description: '[Standard] List all registered agents with their status and heartbeat info. Supports wildcard patterns for identity and purpose.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         active_only: {
           type: 'boolean',
           description: 'Only show active (heartbeating) agents',
+        },
+        identity: {
+          type: 'string',
+          description: 'Filter by identity pattern (e.g. "myapp:*" or "myapp:*:web")',
+        },
+        purpose: {
+          type: 'string',
+          description: 'Filter by purpose pattern (e.g. "*bug*" or "*feature*")',
         },
       },
     },
@@ -1901,6 +1921,9 @@ async function handleTool(
     case 'list_sessions': {
       const params = new URLSearchParams();
       if (args.all) params.set('status', 'all');
+      if (args.project) params.set('project', args.project as string);
+      if (args.agent) params.set('agent', args.agent as string);
+      if (args.purpose) params.set('purpose', args.purpose as string);
       if (args.limit) params.set('limit', String(args.limit));
       const qs = params.toString() ? `?${params.toString()}` : '';
       res = await GET(`/sessions${qs}`);
@@ -2029,7 +2052,11 @@ async function handleTool(
     }
 
     case 'list_agents': {
-      const qs = args.active_only ? '?active=true' : '';
+      const params = new URLSearchParams();
+      if (args.active_only) params.set('active', 'true');
+      if (args.identity) params.set('identity', args.identity as string);
+      if (args.purpose) params.set('purpose', args.purpose as string);
+      const qs = params.toString() ? `?${params.toString()}` : '';
       res = await GET(`/agents${qs}`);
       break;
     }

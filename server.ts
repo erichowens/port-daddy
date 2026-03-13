@@ -42,6 +42,7 @@ import { createSpawner } from './lib/spawner.js';
 import { createBriefing } from './lib/briefing.js';
 import { createSugar } from './lib/sugar.js';
 import { createHarbors } from './lib/harbors.js';
+import { createPheromoneManager } from './lib/pheromone.js';
 import { createReactiveOrchestrator } from './lib/orchestrator.js';
 import { createCorrelationEngine } from './lib/correlation.js';
 import { initDatabase, closeDatabase, resolveDbPath } from './lib/db.js';
@@ -239,6 +240,8 @@ const briefing = createBriefing(db, { sessions, agents, resurrection, activityLo
 const spawner = createSpawner();
 const sugar = createSugar({ agents, sessions, activityLog });
 const harbors = createHarbors(db);
+const pheromones = createPheromoneManager(db);
+pheromones.start();
 const orchestrator = createReactiveOrchestrator(db, messaging, spawner);
 const correlationEngine = createCorrelationEngine(activityLog, sessions);
 
@@ -527,7 +530,7 @@ app.use(createRoutes({
   db, logger, metrics, config,
   services, messaging, locks, health, agents, activityLog, webhooks, projects, sessions,
   agentInbox, resurrection, changelog, tunnel, dns, resolver, briefing, sugar,
-  orchestrator, correlationEngine, spawner,
+  harbors, orchestrator, correlationEngine, spawner,
   VERSION, CODE_HASH, STARTED_AT, __dirname,
   cleanupStale, getSystemPorts
 }));

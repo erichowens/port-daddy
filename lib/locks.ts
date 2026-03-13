@@ -6,6 +6,7 @@
  */
 
 import type Database from 'better-sqlite3';
+import { patternToSql, matchesPattern } from './identity.js';
 
 interface LockRow {
   name: string;
@@ -67,10 +68,13 @@ export function createLocks(db: Database.Database) {
     `),
     release: db.prepare('DELETE FROM locks WHERE name = ?'),
     releaseIfOwner: db.prepare('DELETE FROM locks WHERE name = ? AND owner = ?'),
+    releaseByPattern: db.prepare("DELETE FROM locks WHERE name LIKE ? ESCAPE '\\'"),
     releaseExpired: db.prepare('DELETE FROM locks WHERE expires_at IS NOT NULL AND expires_at < ?'),
     extend: db.prepare('UPDATE locks SET expires_at = ? WHERE name = ?'),
     list: db.prepare('SELECT * FROM locks ORDER BY acquired_at DESC'),
     listByOwner: db.prepare('SELECT * FROM locks WHERE owner = ?'),
+    listByPattern: db.prepare("SELECT * FROM locks WHERE name LIKE ? ESCAPE '\\' ORDER BY acquired_at DESC"),
+    listByOwnerPattern: db.prepare("SELECT * FROM locks WHERE owner LIKE ? ESCAPE '\\' ORDER BY acquired_at DESC"),
   };
 
   function safeJsonParse(value: string | null): Record<string, unknown> | null {
@@ -91,9 +95,13 @@ export function createLocks(db: Database.Database) {
       return { success: false, error: 'lock name must be a non-empty string' };
     }
 
-    // Validate name format (alphanumeric, dashes, colons)
-    if (!/^[a-zA-Z0-9:_-]+$/.test(name)) {
-      return { success: false, error: 'lock name must be alphanumeric with dashes, underscores, or colons' };
+    // Validate name format (alphanumeric, dashes, colons, stars)
+    if (!/^[a-zA-Z0-9._*-]+$/.test(name)) {
+      return { success: false, error: 'lock name must be alphanumeric with dashes, underscores, dots, colons, or stars' };
+    }
+
+    if (name.includes('*')) {
+      return { success: false, error: 'cannot acquire a lock with a wildcard in its name' };
     }
 
     const now = Date.now();
@@ -196,6 +204,35 @@ export function createLocks(db: Database.Database) {
 
     const { owner = null, force = false } = options;
 
+    if (name.includes('*')) {
+      const sqlPattern = patternToSql(name);
+      if (!sqlPattern) return { success: false, error: 'invalid wildcard pattern' };
+
+      if (owner && !force) {
+        // If owner specified, we need to fetch and filter
+        const locks = stmts.listByPattern.all(sqlPattern) as LockRow[];
+        let released = 0;
+        for (const lock of locks) {
+          if (lock.owner === owner) {
+            stmts.release.run(lock.name);
+            released++;
+          }
+        }
+        return {
+          success: true,
+          released,
+          message: `released ${released} lock(s) matching ${name} for owner ${owner}`
+        };
+      }
+
+      const result = stmts.releaseByPattern.run(sqlPattern);
+      return {
+        success: true,
+        released: result.changes,
+        message: `released ${result.changes} lock(s) matching ${name}`
+      };
+    }
+
     const existing = stmts.get.get(name) as LockRow | undefined;
     if (!existing) {
       return { success: true, released: false, message: 'lock not held' };
@@ -261,9 +298,17 @@ export function createLocks(db: Database.Database) {
     // Clean expired first
     stmts.releaseExpired.run(Date.now());
 
-    const locks = (owner
-      ? stmts.listByOwner.all(owner)
-      : stmts.list.all()) as LockRow[];
+    let locks: LockRow[];
+    if (owner) {
+      if (owner.includes('*')) {
+        const sqlPattern = patternToSql(owner);
+        locks = stmts.listByOwnerPattern.all(sqlPattern) as LockRow[];
+      } else {
+        locks = stmts.listByOwner.all(owner) as LockRow[];
+      }
+    } else {
+      locks = stmts.list.all() as LockRow[];
+    }
 
     return {
       success: true,

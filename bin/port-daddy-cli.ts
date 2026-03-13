@@ -83,6 +83,8 @@ import {
   handleSpawn, handleSpawned, handleWatch,
   // Harbors
   handleHarborCreate, handleHarborEnter, handleHarborLeave, handleHarborShow, handleHarborDestroy, handleHarbors,
+  // Demo
+  handleDemo,
 } from '../cli/commands/index.js';
 
 const __dirname: string = dirname(fileURLToPath(import.meta.url));
@@ -118,6 +120,7 @@ const TIER_2_COMMANDS: Set<string> = new Set([
   'up', 'down',
   'channels', 'webhook', 'webhooks',
   'metrics', 'health', 'dashboard',
+  'bench', 'demo'
 ]);
 
 /**
@@ -1888,6 +1891,10 @@ async function main(): Promise<void> {
 
       case 'bench':
         await handleBench(positional);
+        break;
+
+      case 'demo':
+        await handleDemo(positional[0], options);
         break;
 
       case 'hints':

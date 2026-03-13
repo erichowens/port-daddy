@@ -29,7 +29,7 @@ function verifyLibraryChecksum(filePath: string): boolean {
     const hashSum = crypto.createHash('sha256');
     hashSum.update(fileBuffer);
     const hex = hashSum.digest('hex');
-    console.log(`💂‍♂️ Arbiter: Core library hash verified (${hex.substring(0, 8)}...)`);
+    console.error(`💂‍♂️ Arbiter: Core library hash verified (${hex.substring(0, 8)}...)`);
     return true; // Assume valid for now since it changes per compilation
   } catch (e) {
     return false;
@@ -44,7 +44,7 @@ if (verifyLibraryChecksum(libPath)) {
       constantTimeCompare: lib.func('bool harbor_constant_time_compare(const uint8_t *a, size_t a_len, const uint8_t *b, size_t b_len)'),
       verifyCapsSubset: lib.func('bool harbor_verify_caps_subset_json(const char *root_json, const char *sub_json)')
     };
-    console.log('💂‍♂️ Arbiter: Formally verified Rust enforcer loaded and active.');
+    console.error('💂‍♂️ Arbiter: Formally verified Rust enforcer loaded and active.');
   } catch (err) {
     console.warn('⚠️ Arbiter: Rust enforcer FFI failed to initialize.', err);
   }

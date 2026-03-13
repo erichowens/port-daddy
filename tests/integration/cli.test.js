@@ -45,7 +45,7 @@ describe('CLI Integration Tests', () => {
     test('claim returns a port', () => {
       const result = runCli(['claim', testId, '-q']);
       expect(result.success).toBe(true);
-      expect(result.stdout).toMatch(/^\d+$/);
+      expect(result.stdout.trim()).toMatch(/^\d+$/);
 
       const port = parseInt(result.stdout, 10);
       expect(port).toBeGreaterThanOrEqual(3100);
@@ -248,7 +248,7 @@ describe('CLI Integration Tests', () => {
     test('single-letter alias "c" works for claim', () => {
       const result = runCli(['c', aliasId, '-q']);
       expect(result.success).toBe(true);
-      expect(result.stdout).toMatch(/^\d+$/);
+      expect(result.stdout.trim()).toMatch(/^\d+$/);
     });
 
     test('single-letter alias "f" works for find', () => {
@@ -288,7 +288,7 @@ describe('CLI Integration Tests', () => {
       const exportId = `test-export-${Date.now()}`;
       const result = runCli(['claim', exportId, '--export']);
       expect(result.success).toBe(true);
-      expect(result.stdout).toMatch(/^export PORT=\d+$/);
+      expect(result.stdout.trim()).toMatch(/^export PORT=\d+$/);
       // Cleanup
       runCli(['release', exportId]);
     });
@@ -297,7 +297,7 @@ describe('CLI Integration Tests', () => {
       const exportId = `test-export-alias-${Date.now()}`;
       const result = runCli(['c', exportId, '--export']);
       expect(result.success).toBe(true);
-      expect(result.stdout).toMatch(/^export PORT=\d+$/);
+      expect(result.stdout.trim()).toMatch(/^export PORT=\d+$/);
       runCli(['release', exportId]);
     });
 
@@ -306,7 +306,7 @@ describe('CLI Integration Tests', () => {
       const result = runCli(['claim', quietId, '-q']);
       expect(result.success).toBe(true);
       // Should be just the port number, nothing else
-      expect(result.stdout).toMatch(/^\d+$/);
+      expect(result.stdout.trim()).toMatch(/^\d+$/);
       expect(result.stderr).toBe('');
       runCli(['release', quietId]);
     });

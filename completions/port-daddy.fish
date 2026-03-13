@@ -99,6 +99,7 @@ set -l __pd_commands \
     'salvage' 'resurrection' 'changelog' 'dns' 'files' 'who-owns' 'integration' 'briefing' 'history' 'inbox' \
     'begin' 'b' 'done' 'whoami' 'w' 'with-lock' 'n' 'u' 'd' 'learn' 'tutorial' 'spawn' 'spawned' 'watch' 'harbor' 'harbors' \
     'up' 'down' \
+    'bench' 'demo' \
     'dashboard' 'channels' 'webhook' 'webhooks' 'metrics' 'config' 'health' 'ports' \
     'scan' 's' 'projects' 'p' 'doctor' 'diagnose' 'hints' \
     'start' 'stop' 'restart' 'status' 'install' 'uninstall' 'dev' 'ci-gate' 'mcp' \
@@ -187,6 +188,12 @@ for prog in port-daddy pd
     # Orchestration
     complete -c $prog -n __pd_needs_command -a up -d 'Start all services'
     complete -c $prog -n __pd_needs_command -a down -d 'Stop all services started by up'
+
+    # Benchmarking & Demos
+    complete -c $prog -n __pd_needs_command -a bench -d 'Run performance benchmarks'
+    complete -c $prog -n __pd_needs_command -a demo -d 'Interactive demos of Port Daddy features'
+    complete -c $prog -n "__pd_using_command demo" -x -a 'port-conflict' -d 'Demo port conflict resolution'
+    complete -c $prog -n "__pd_using_command demo" -x -a 'coordination' -d 'Demo agent coordination'
 
     # Project
     complete -c $prog -n __pd_needs_command -a scan -d 'Deep-scan project for frameworks'

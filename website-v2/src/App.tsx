@@ -9,28 +9,40 @@ import { AgentEcosystem } from '@/components/landing/AgentEcosystem'
 import { MaturitySection } from '@/components/landing/MaturitySection'
 import { CTABanner } from '@/components/landing/CTABanner'
 import { Footer } from '@/components/layout/Footer'
+import { Nav } from '@/components/landing/Nav'
 import { motion } from 'framer-motion'
 
 export default function App() {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="min-h-screen flex flex-col selection:bg-[var(--brand-primary)] selection:text-white"
-      style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}
-    >
-      <main className="flex-1">
-        <Hero />
-        <DemoGallery />
-        <HowItWorks />
-        <Features />
-        <BlueprintsSection />
-        <HarborsSection />
-        <AgentEcosystem />
-        <MaturitySection />
-        <CTABanner />
+    <div className="min-h-screen bg-[var(--bg-base)] selection:bg-[var(--brand-primary)] selection:text-white">
+      <Nav />
+      
+      {/* 
+        The Centered Master Container 
+        Using max-w-7xl (1280px) for ideal reading width 
+      */}
+      <main className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <Hero />
+        </motion.div>
+
+        <div className="space-y-32 sm:space-y-48 pb-32">
+          <DemoGallery />
+          <HowItWorks />
+          <Features />
+          <BlueprintsSection />
+          <HarborsSection />
+          <AgentEcosystem />
+          <MaturitySection />
+        </div>
       </main>
+
+      <CTABanner />
       <Footer />
-    </motion.div>
+    </div>
   )
 }

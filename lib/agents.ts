@@ -63,6 +63,7 @@ interface RegisterOptions {
   type?: string;
   metadata?: Record<string, unknown> | null;
   agentCard?: Record<string, unknown> | null;
+  skills?: string[] | string | null;
   maxServices?: number;
   maxLocks?: number;
   worktreeId?: string | null;
@@ -75,6 +76,8 @@ interface ListOptions {
   activeOnly?: boolean;
   worktreeId?: string | null;   // Filter by worktree
   identityPrefix?: string | null;  // Filter by identity prefix (project or project:stack)
+  purpose?: string | null;      // Filter by purpose pattern
+  skills?: string | null;       // Filter by skills pattern
 }
 
 interface ReadinessCheck {
@@ -148,6 +151,7 @@ export function createAgents(db: Database.Database) {
       last_heartbeat INTEGER NOT NULL,
       metadata TEXT,
       agent_card TEXT,
+      skills TEXT,
       max_services INTEGER DEFAULT ${DEFAULT_MAX_SERVICES_PER_AGENT},
       max_locks INTEGER DEFAULT ${DEFAULT_MAX_LOCKS_PER_AGENT},
       worktree_id TEXT,
@@ -176,6 +180,7 @@ export function createAgents(db: Database.Database) {
     'ALTER TABLE agents ADD COLUMN readiness TEXT',
     'ALTER TABLE agents ADD COLUMN progress TEXT',
     'ALTER TABLE agents ADD COLUMN agent_card TEXT',
+    'ALTER TABLE agents ADD COLUMN skills TEXT',
   ];
   for (const sql of migrations) {
     try { db.exec(sql); } catch { /* already exists */ }
@@ -184,8 +189,8 @@ export function createAgents(db: Database.Database) {
   const stmts = {
     get: db.prepare('SELECT * FROM agents WHERE id = ?'),
     register: db.prepare(`
-      INSERT OR REPLACE INTO agents (id, name, pid, type, registered_at, last_heartbeat, metadata, agent_card, max_services, max_locks, worktree_id, identity_project, identity_stack, identity_context, purpose, status, readiness, progress)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO agents (id, name, pid, type, registered_at, last_heartbeat, metadata, agent_card, skills, max_services, max_locks, worktree_id, identity_project, identity_stack, identity_context, purpose, status, readiness, progress)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `),
     heartbeat: db.prepare('UPDATE agents SET last_heartbeat = ?, pid = ?, status = COALESCE(?, status), readiness = COALESCE(?, readiness), progress = COALESCE(?, progress) WHERE id = ?'),
     unregister: db.prepare('DELETE FROM agents WHERE id = ?'),
@@ -198,6 +203,35 @@ export function createAgents(db: Database.Database) {
     listStale: db.prepare('SELECT * FROM agents WHERE last_heartbeat < ?'),
     listStaleByWorktree: db.prepare('SELECT * FROM agents WHERE last_heartbeat < ? AND worktree_id = ?'),
     listStaleByProject: db.prepare('SELECT * FROM agents WHERE last_heartbeat < ? AND identity_project = ?'),
+    listByPattern: db.prepare(`
+      SELECT * FROM agents 
+      WHERE (
+        identity_project || 
+        CASE WHEN identity_stack IS NOT NULL THEN ':' || identity_stack ELSE '' END || 
+        CASE WHEN identity_context IS NOT NULL THEN ':' || identity_context ELSE '' END
+      ) LIKE ? ESCAPE '\\'
+      ORDER BY last_heartbeat DESC
+    `),
+    listStaleByPattern: db.prepare(`
+      SELECT * FROM agents 
+      WHERE last_heartbeat < ? AND (
+        identity_project || 
+        CASE WHEN identity_stack IS NOT NULL THEN ':' || identity_stack ELSE '' END || 
+        CASE WHEN identity_context IS NOT NULL THEN ':' || identity_context ELSE '' END
+      ) LIKE ? ESCAPE '\\'
+      ORDER BY last_heartbeat DESC
+    `),
+    listByComplexPattern: db.prepare(`
+      SELECT * FROM agents
+      WHERE (last_heartbeat > ? OR ? = 0)
+        AND (worktree_id = ? OR ? IS NULL)
+        AND (COALESCE(identity_project, '') || 
+             CASE WHEN identity_stack IS NOT NULL THEN ':' || identity_stack ELSE '' END || 
+             CASE WHEN identity_context IS NOT NULL THEN ':' || identity_context ELSE '' END) LIKE ? ESCAPE '\\'
+        AND (purpose LIKE ? ESCAPE '\\' OR ? IS NULL)
+        AND (skills LIKE ? ESCAPE '\\' OR ? IS NULL)
+      ORDER BY last_heartbeat DESC
+    `),
     deleteStale: db.prepare('DELETE FROM agents WHERE last_heartbeat < ?'),
     countServices: db.prepare("SELECT COUNT(*) as count FROM services WHERE metadata LIKE ? ESCAPE '\\'"),
     countLocks: db.prepare('SELECT COUNT(*) as count FROM locks WHERE owner = ?')
@@ -226,6 +260,7 @@ export function createAgents(db: Database.Database) {
       type = 'cli',
       metadata = null,
       agentCard = null,
+      skills = null,
       maxServices = DEFAULT_MAX_SERVICES_PER_AGENT,
       maxLocks = DEFAULT_MAX_LOCKS_PER_AGENT,
       worktreeId = null,
@@ -272,6 +307,8 @@ export function createAgents(db: Database.Database) {
     const existing = stmts.get.get(agentId) as AgentRow | undefined;
 
     try {
+      const skillsValue = Array.isArray(skills) ? skills.join(',') : (skills || null);
+
       stmts.register.run(
         agentId,
         name,
@@ -281,6 +318,7 @@ export function createAgents(db: Database.Database) {
         now,
         metadata ? JSON.stringify(metadata) : null,
         agentCard ? JSON.stringify(agentCard) : null,
+        skillsValue,
         maxServices,
         maxLocks,
         worktreeId,
@@ -441,6 +479,7 @@ export function createAgents(db: Database.Database) {
       maxLocks: agent.max_locks,
       metadata: safeJsonParse(agent.metadata),
       agentCard: safeJsonParse(agent.agent_card),
+      skills: agent.skills ? agent.skills.split(',').map((s: string) => s.trim()) : [],
       worktreeId: agent.worktree_id,
       identity,
       identityProject: agent.identity_project,
@@ -497,13 +536,31 @@ export function createAgents(db: Database.Database) {
    * List all agents
    */
   function list(options: ListOptions = {}) {
-    const { activeOnly = false, worktreeId = null, identityPrefix = null } = options;
+    const { activeOnly = false, worktreeId = null, identityPrefix = null, purpose = null, skills = null } = options;
     const now = Date.now();
+    const threshold = now - DEFAULT_AGENT_TTL;
 
     let agents: AgentRow[];
 
-    // Choose query based on filters
-    if (identityPrefix) {
+    // Use complex pattern matcher if wildcards are present or multiple filters are active
+    if (identityPrefix?.includes('*') || purpose?.includes('*') || skills?.includes('*') || 
+        (identityPrefix && purpose) || (identityPrefix && skills) || (purpose && skills)) {
+      const identityPattern = identityPrefix ? (identityPrefix.includes('*') ? patternToSql(identityPrefix) : identityPrefix + '%') : '%';
+      const purposePattern = purpose ? (purpose.includes('*') ? purpose.replace(/\*/g, '%') : '%' + purpose + '%') : null;
+      const skillsPattern = skills ? (skills.includes('*') ? skills.replace(/\*/g, '%') : '%' + skills + '%') : null;
+
+      agents = stmts.listByComplexPattern.all(
+        threshold,
+        activeOnly ? 1 : 0,
+        worktreeId,
+        worktreeId,
+        identityPattern,
+        purposePattern,
+        purposePattern,
+        skillsPattern,
+        skillsPattern
+      ) as AgentRow[];
+    } else if (identityPrefix) {
       // Parse identity to get project (and optionally stack)
       const parsed = parseIdentity(identityPrefix);
       if (parsed.valid) {
@@ -517,18 +574,22 @@ export function createAgents(db: Database.Database) {
       }
     } else if (worktreeId) {
       agents = (activeOnly
-        ? stmts.listActiveByWorktree.all(now - DEFAULT_AGENT_TTL, worktreeId)
+        ? stmts.listActiveByWorktree.all(threshold, worktreeId)
         : stmts.listByWorktree.all(worktreeId)) as AgentRow[];
     } else {
       agents = (activeOnly
-        ? stmts.listActive.all(now - DEFAULT_AGENT_TTL)
+        ? stmts.listActive.all(threshold)
         : stmts.list.all()) as AgentRow[];
     }
 
-    // Apply active filter if needed and using identity/worktree filter
-    if (activeOnly && (identityPrefix || worktreeId)) {
-      const threshold = now - DEFAULT_AGENT_TTL;
-      agents = agents.filter(a => a.last_heartbeat > threshold);
+    // Apply active/worktree filter if needed and using simple identity filter (complex matcher already handles it)
+    if (!identityPrefix?.includes('*') && !purpose?.includes('*') && !(identityPrefix && purpose)) {
+      if (activeOnly && (identityPrefix || worktreeId)) {
+        agents = agents.filter(a => a.last_heartbeat > threshold);
+      }
+      if (worktreeId && identityPrefix) {
+        agents = agents.filter(a => a.worktree_id === worktreeId);
+      }
     }
 
     return {
@@ -548,15 +609,20 @@ export function createAgents(db: Database.Database) {
     let agents: AgentRow[];
 
     if (options.identityPrefix) {
-      const parsed = parseIdentity(options.identityPrefix);
-      if (parsed.valid) {
-        agents = stmts.listStaleByProject.all(threshold, parsed.project) as AgentRow[];
-        // Further filter by stack if provided
-        if (parsed.stack) {
-          agents = agents.filter(a => a.identity_stack === parsed.stack);
-        }
+      if (options.identityPrefix.includes('*')) {
+        const sqlPattern = patternToSql(options.identityPrefix);
+        agents = stmts.listStaleByPattern.all(threshold, sqlPattern) as AgentRow[];
       } else {
-        agents = [];
+        const parsed = parseIdentity(options.identityPrefix);
+        if (parsed.valid) {
+          agents = stmts.listStaleByProject.all(threshold, parsed.project) as AgentRow[];
+          // Further filter by stack if provided
+          if (parsed.stack) {
+            agents = agents.filter(a => a.identity_stack === parsed.stack);
+          }
+        } else {
+          agents = [];
+        }
       }
     } else if (options.worktreeId) {
       agents = stmts.listStaleByWorktree.all(threshold, options.worktreeId) as AgentRow[];

@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/Badge'
-import { ArrowRight, Terminal, Zap, Shield, RefreshCw, Cpu, Anchor, ArrowDown } from 'lucide-react'
+import { ArrowRight, Terminal, Zap, Shield, RefreshCw, Cpu, Anchor } from 'lucide-react'
 
 interface Step {
   number: string
@@ -61,7 +61,7 @@ export function HowItWorks() {
   return (
     <motion.section 
       id="how-it-works" 
-      className="py-24 px-6 sm:px-8 lg:px-10 font-sans relative bg-[var(--bg-base)]"
+      className="py-20 px-6 sm:px-8 lg:px-10 font-sans relative bg-[var(--bg-base)] flex flex-col items-center text-center"
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}
@@ -72,20 +72,20 @@ export function HowItWorks() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center mb-16 flex flex-col items-center gap-12"
+          className="text-center mb-16 flex flex-col items-center gap-8"
         >
           <Badge variant="teal" className="mb-10 px-6 py-2 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">The Lifecycle</Badge>
-          <motion.h2 className="text-6xl sm:text-9xl font-bold font-display tracking-tight leading-[0.9] mb-10" style={{ color: 'var(--text-primary)' }}>
+          <motion.h2 className="text-4xl sm:text-6xl font-bold font-display tracking-tight leading-[0.9] mb-10" style={{ color: 'var(--text-primary)' }}>
             One daemon. <br />
             <motion.span className="text-[var(--brand-primary)]">Infinite Swarms.</motion.span>
           </motion.h2>
-          <motion.p className="text-2xl sm:text-3xl max-w-4xl mx-auto leading-relaxed opacity-70 font-sans" style={{ color: 'var(--text-secondary)' }}>
+          <motion.p className="text-2xl sm:text-3xl max-w-4xl mx-auto leading-relaxed font-sans" style={{ color: 'var(--text-secondary)' }}>
             Port Daddy manages the low-level coordination so your agents can focus on the logic. 
             From initial handshake to crash recovery, it is the bedrock of your autonomous team.
           </motion.p>
         </motion.div>
 
-        <div className="grid lg:grid-cols-3 gap-16 w-full">
+        <div className="grid lg:grid-cols-3 gap-8 w-full mb-32">
           {STEPS.map((step, i) => (
             <motion.div
               key={step.number}
@@ -110,7 +110,7 @@ export function HowItWorks() {
 
                 <div className="space-y-6 flex flex-col items-center">
                    <motion.h3 className="text-4xl font-display font-black m-0 tracking-tight" style={{ color: 'var(--text-primary)' }}>{step.title}</motion.h3>
-                   <motion.p className="text-xl leading-relaxed opacity-60 m-0 group-hover:opacity-100 transition-opacity max-w-sm">
+                   <motion.p className="text-xl leading-relaxed m-0 transition-opacity max-w-sm" style={{ color: 'var(--text-muted)' }}>
                      {step.description}
                    </motion.p>
                 </div>
@@ -122,7 +122,7 @@ export function HowItWorks() {
                       <Terminal size={20} />
                    </div>
                    {step.code.map((line, j) => (
-                     <div key={j} className={line.startsWith('$') ? 'text-[var(--brand-primary)] font-bold mb-2' : 'opacity-60'}>
+                     <div key={j} className={line.startsWith('$') ? 'text-[var(--brand-primary)] font-bold mb-2' : ''} style={line.startsWith('$') ? {} : { color: 'var(--text-muted)' }}>
                        {line}
                      </div>
                    ))}
@@ -140,20 +140,20 @@ export function HowItWorks() {
 
         {/* Self-Healing / Always-On Highlight */}
         <motion.div 
-          className="mt-24 p-16 sm:p-24 rounded-[100px] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-base)] border border-[var(--border-strong)] relative overflow-hidden flex flex-col lg:flex-row items-center gap-24 shadow-2xl w-full"
+          className="p-16 sm:p-20 rounded-[100px] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-base)] border border-[var(--border-strong)] relative overflow-hidden flex flex-col items-center gap-12 shadow-2xl w-full text-center"
           initial={{ opacity: 0, scale: 0.98 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
         >
-           <div className="flex-1 space-y-10 relative z-10 flex flex-col items-center lg:items-start text-center lg:text-left">
+           <div className="flex-1 space-y-8 relative z-10 flex flex-col items-center">
               <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-widest shadow-2xl">Autonomous Resilience</Badge>
-              <motion.h3 className="text-5xl sm:text-8xl font-display font-black leading-[0.95] m-0" style={{ color: 'var(--text-primary)' }}>
+              <motion.h3 className="text-4xl sm:text-6xl font-display font-black leading-[0.95] m-0" style={{ color: 'var(--text-primary)' }}>
                 The <span className="text-[var(--p-teal-400)]">Self-Healing</span> <br /> Swarm.
               </motion.h3>
-              <motion.p className="text-2xl leading-relaxed opacity-70 max-w-xl">
+              <motion.p className="text-2xl leading-relaxed max-w-xl" style={{ color: 'var(--text-secondary)' }}>
                 Port Daddy doesn't just manage ports—it manages <strong>resilience</strong>. If a critical background agent dies, its state, file claims, and notes are held in an escrow harbor until a replacement is spawned to take its place.
               </motion.p>
-              <div className="flex flex-col sm:flex-row items-center gap-8 pt-6">
+              <div className="flex flex-col sm:flex-row items-center gap-6 pt-6">
                  <div className="flex -space-x-6">
                     {[1,2,3].map(i => (
                       <motion.div 
@@ -165,9 +165,9 @@ export function HowItWorks() {
                       </motion.div>
                     ))}
                  </div>
-                 <div className="flex flex-col items-center sm:items-start">
+                 <div className="flex flex-col items-center">
                     <motion.span className="text-sm font-black uppercase tracking-[0.2em] text-[var(--p-teal-400)]">Active Swarm</motion.span>
-                    <motion.span className="text-xs font-bold opacity-40 uppercase tracking-widest">3 Background Avatars</motion.span>
+                    <motion.span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>3 Background Avatars</motion.span>
                  </div>
               </div>
            </div>
@@ -176,7 +176,7 @@ export function HowItWorks() {
               <motion.div className="absolute inset-0 bg-[var(--brand-primary)] opacity-[0.05] blur-[140px] rounded-full" />
               <motion.div className="relative p-12 rounded-[64px] bg-[var(--bg-overlay)] border border-[var(--border-strong)] shadow-2xl space-y-10">
                  <div className="flex items-center justify-between">
-                    <motion.span className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40">Resurrection Queue</motion.span>
+                    <motion.span className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: 'var(--text-muted)' }}>Resurrection Queue</motion.span>
                     <Badge variant="teal" className="px-3 py-1 shadow-sm">Escrow Active</Badge>
                  </div>
                  <div className="space-y-6">
@@ -187,11 +187,11 @@ export function HowItWorks() {
                        <div className="flex items-center gap-5">
                           <RefreshCw size={24} className="text-[var(--p-teal-400)] animate-spin-slow" />
                           <div className="flex flex-col">
-                             <motion.span className="text-base font-black tracking-tight">Refactor-Agent</motion.span>
-                             <motion.span className="text-[10px] opacity-40 uppercase font-bold">State Preserved</motion.span>
+                             <motion.span className="text-base font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>Refactor-Agent</motion.span>
+                             <motion.span className="text-[10px] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>State Preserved</motion.span>
                           </div>
                        </div>
-                       <motion.span className="text-[10px] font-mono opacity-40 font-bold">2m ago</motion.span>
+                       <motion.span className="text-[10px] font-mono font-bold" style={{ color: 'var(--text-muted)' }}>2m ago</motion.span>
                     </motion.div>
                     <motion.div 
                       className="p-6 rounded-[32px] bg-[var(--bg-surface)] border border-transparent opacity-40 flex items-center justify-between"
@@ -200,10 +200,10 @@ export function HowItWorks() {
                           <Shield size={24} />
                           <div className="flex flex-col">
                              <motion.span className="text-base font-black tracking-tight">Harbor Scopes</motion.span>
-                             <motion.span className="text-[10px] opacity-40 uppercase font-bold">Tokens Locked</motion.span>
+                             <motion.span className="text-[10px] uppercase font-bold">Tokens Locked</motion.span>
                           </div>
                        </div>
-                       <motion.span className="text-[10px] font-mono opacity-40 font-bold">Active</motion.span>
+                       <motion.span className="text-[10px] font-mono font-bold">Active</motion.span>
                     </motion.div>
                  </div>
               </motion.div>

@@ -506,13 +506,17 @@ export async function handleSessions(options: CLIOptions): Promise<void> {
     params.append('status', options.status as string);
   }
 
+  if (options.project) params.append('project', options.project as string);
+  if (options.purpose) params.append('purpose', options.purpose as string);
+  if (options.agent) params.append('agent', options.agent as string);
+
   // Worktree filtering: by default, show current worktree only
   // Use --all-worktrees or --aw to see sessions from all worktrees
   if (options['all-worktrees'] || options.aw) {
     params.append('allWorktrees', 'true');
   }
 
-  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/sessions?${params}`);
+  const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/sessions?${params.toString()}`);
   const data = await res.json();
 
   if (!res.ok) {

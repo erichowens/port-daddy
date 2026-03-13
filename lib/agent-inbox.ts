@@ -125,16 +125,18 @@ export function createAgentInbox(db: Database.Database, onMessage?: (agentId: st
      * If the inbox exceeds MAX_INBOX_MESSAGES (1000), the oldest messages are evicted.
      */
     send(agentId: string, content: unknown, options: SendOptions = {}) {
-      if (!agentId || content === undefined || content === null) {
+      if (!agentId || content === undefined || content === null || content === '') {
         return { success: false, error: 'agentId and content required' };
       }
 
       // Enforce inbox size limit
       const currentCount = (stmts.count.get(agentId) as { count: number }).count;
       if (currentCount >= MAX_INBOX_MESSAGES) {
-        // Evict oldest messages if inbox is at capacity
-        const toDelete = currentCount - MAX_INBOX_MESSAGES + 1; // Make room for the new one
-        stmts.deleteOldestForAgent.run(agentId, toDelete);
+        return {
+          success: false,
+          error: `Inbox full for agent ${agentId} (max ${MAX_INBOX_MESSAGES} messages)`,
+          code: 'RESOURCE_LIMIT'
+        };
       }
 
       const { from = null, type = 'message' } = options;

@@ -31,7 +31,7 @@ interface AgentsRouteDeps {
     heartbeat(id: string, opts: Record<string, unknown>): Record<string, unknown>;
     unregister(id: string): Record<string, unknown>;
     get(id: string): Record<string, unknown>;
-    list(opts: { activeOnly: boolean }): unknown;
+    list(opts: { activeOnly: boolean; identityPrefix?: string; purpose?: string }): unknown;
   };
   agentInbox: {
     send(agentId: string, content: string, opts?: { from?: string; type?: string }): { success: boolean; messageId?: number; error?: string };
@@ -228,8 +228,12 @@ export function createAgentsRoutes(deps: AgentsRouteDeps): Router {
   // ==========================================================================
   router.get('/agents', (req: Request, res: Response) => {
     try {
-      const { active } = req.query;
-      const result = agents.list({ activeOnly: active === 'true' });
+      const { active, identity, purpose } = req.query;
+      const result = agents.list({ 
+        activeOnly: active === 'true',
+        identityPrefix: typeof identity === 'string' ? identity : undefined,
+        purpose: typeof purpose === 'string' ? purpose : undefined
+      });
       res.json(result);
     } catch (error) {
       metrics.errors++;

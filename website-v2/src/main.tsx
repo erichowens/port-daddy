@@ -13,6 +13,8 @@ import MCPPage from '@/pages/MCPPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { BlogPage } from '@/pages/BlogPage'
 import { BlogPostPage } from '@/pages/BlogPostPage'
+import { RoadmapPage } from '@/pages/RoadmapPage'
+import { TemplatesPage } from '@/pages/TemplatesPage'
 
 // Sub-pages
 import { CookbookPage } from '@/pages/cookbook/CookbookPage'
@@ -38,6 +40,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/examples" element={<ExamplesPage />} />
           <Route path="/mcp" element={<MCPPage />} />
+          <Route path="/roadmap" element={<RoadmapPage />} />
+          <Route path="/templates" element={<TemplatesPage />} />
           
           {/* Academy */}
           <Route path="/tutorials" element={<TutorialsPage />} />

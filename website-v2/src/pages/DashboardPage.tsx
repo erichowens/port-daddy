@@ -56,8 +56,8 @@ function UnifiedTimeline() {
 
       <motion.div className="flex-1 overflow-y-auto p-10 font-sans space-y-6">
         {allItems.length === 0 ? (
-          <motion.div className="h-full flex flex-col items-center justify-center gap-6 opacity-20">
-             <Radio size={64} />
+          <motion.div className="h-full flex flex-col items-center justify-center gap-6" style={{ color: 'var(--text-muted)' }}>
+             <Radio size={64} className="opacity-20" />
              <motion.p className="text-sm font-black uppercase tracking-widest">Waiting for swarm signals...</motion.p>
           </motion.div>
         ) : (
@@ -79,9 +79,9 @@ function UnifiedTimeline() {
                <motion.div className="flex-1 space-y-2">
                   <motion.div className="flex items-center justify-between">
                      <motion.span className="text-[10px] font-black uppercase tracking-widest text-[var(--brand-primary)]">{item.agentId || 'system'}</motion.span>
-                     <motion.span className="text-[9px] font-mono opacity-40">{new Date(item.timestamp).toLocaleTimeString()}</motion.span>
+                     <motion.span className="text-[9px] font-mono" style={{ color: 'var(--text-muted)' }}>{new Date(item.timestamp).toLocaleTimeString()}</motion.span>
                   </motion.div>
-                  <motion.p className="text-sm leading-relaxed opacity-70 m-0 group-hover:opacity-100 transition-opacity">{item.details}</motion.p>
+                  <motion.p className="text-sm leading-relaxed m-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-secondary)' }}>{item.details}</motion.p>
                </motion.div>
             </motion.div>
           ))
@@ -110,11 +110,11 @@ export function DashboardPage() {
           style={{ background: 'radial-gradient(circle, var(--brand-primary) 0%, transparent 70%)' }} 
         />
         
-        <motion.div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-16 relative z-10">
-           <motion.div className="max-w-2xl space-y-10">
+        <motion.div className="max-w-7xl mx-auto flex flex-col items-center text-center gap-16 relative z-10">
+           <motion.div className="max-w-3xl flex flex-col items-center gap-10">
               <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">Live Telemetry</Badge>
               <motion.h1 
-                className="text-6xl sm:text-8xl font-black tracking-tighter font-display leading-[0.95]"
+                className="text-6xl sm:text-8xl font-black tracking-tighter font-display leading-[0.95] m-0"
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -123,7 +123,8 @@ export function DashboardPage() {
                 <motion.span className="text-[var(--brand-primary)]">Heads-Up Display.</motion.span>
               </motion.h1>
               <motion.p 
-                className="text-2xl leading-relaxed opacity-70 font-medium"
+                className="text-2xl leading-relaxed font-medium"
+                style={{ color: 'var(--text-secondary)' }}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.1 }}
@@ -132,7 +133,7 @@ export function DashboardPage() {
               </motion.p>
            </motion.div>
 
-           <motion.div className="grid grid-cols-2 gap-6 shrink-0 w-full max-w-sm">
+           <motion.div className="grid grid-cols-2 sm:grid-cols-4 gap-6 w-full max-w-5xl">
               {[
                 { label: 'Active Agents', value: stats?.activeAgents || '0', icon: Users, color: 'var(--p-teal-400)' },
                 { label: 'Harbors', value: stats?.activeHarbors || '0', icon: Shield, color: 'var(--p-amber-400)' },
@@ -144,7 +145,7 @@ export function DashboardPage() {
                       <stat.icon size={20} style={{ color: stat.color }} />
                    </motion.div>
                    <motion.div className="text-3xl font-display font-black leading-none">{stat.value}</motion.div>
-                   <motion.div className="text-[8px] font-black uppercase tracking-widest opacity-40">{stat.label}</motion.div>
+                   <motion.div className="text-[8px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{stat.label}</motion.div>
                 </motion.div>
               ))}
            </motion.div>
@@ -176,7 +177,7 @@ export function DashboardPage() {
                        </motion.div>
                        <motion.h3 className="text-xl font-display font-black m-0">Harbor Health</motion.h3>
                     </motion.div>
-                    <motion.p className="text-base opacity-60 m-0 leading-relaxed">Real-time verification of agent signatures and capability token expiry.</motion.p>
+                    <motion.p className="text-base m-0 leading-relaxed" style={{ color: 'var(--text-muted)' }}>Real-time verification of agent signatures and capability token expiry.</motion.p>
                  </motion.div>
                  <motion.div className="p-10 rounded-[48px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] space-y-6 shadow-xl group hover:border-[var(--p-amber-400)] transition-colors">
                     <motion.div className="flex items-center gap-4">
@@ -185,7 +186,7 @@ export function DashboardPage() {
                        </motion.div>
                        <motion.h3 className="text-xl font-display font-black m-0">Conflict Monitor</motion.h3>
                     </motion.div>
-                    <motion.p className="text-base opacity-60 m-0 leading-relaxed">Instant detection of overlapping file claims or port allocation drifts.</motion.p>
+                    <motion.p className="text-base m-0 leading-relaxed" style={{ color: 'var(--text-muted)' }}>Instant detection of overlapping file claims or port allocation drifts.</motion.p>
                  </motion.div>
               </motion.div>
            </motion.div>
@@ -212,7 +213,7 @@ export function DashboardPage() {
               <motion.h3 className="text-4xl sm:text-7xl font-display font-black tracking-tight leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
                 System <motion.span className="text-[var(--p-teal-400)]">Visibility.</motion.span>
               </motion.h3>
-              <motion.p className="text-2xl leading-relaxed opacity-70">
+              <motion.p className="text-2xl leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                 Multi-agent coordination is only as good as your ability to debug it. The HUD turns your local daemon into a transparent control plane, giving you the high-fidelity evidence needed to scale your swarm with confidence.
               </motion.p>
            </motion.div>
@@ -226,7 +227,7 @@ export function DashboardPage() {
               ].map((item, i) => (
                 <motion.div key={i} className="p-8 rounded-[40px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] flex flex-col items-center gap-4">
                    <item.icon size={24} className="text-[var(--brand-primary)]" />
-                   <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-60">{item.label}</motion.span>
+                   <motion.span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{item.label}</motion.span>
                 </motion.div>
               ))}
            </motion.div>

@@ -59,7 +59,7 @@ export function MaturitySection() {
       </motion.div>
       
       <motion.div className="max-w-7xl mx-auto relative z-10 font-sans text-center flex flex-col items-center">
-        <motion.div className="mb-32 font-sans flex flex-col items-center gap-12">
+        <motion.div className="mb-16 font-sans flex flex-col items-center gap-12">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
@@ -69,7 +69,7 @@ export function MaturitySection() {
             <Badge variant="neutral" className="px-6 py-2 uppercase tracking-[0.25em] text-[10px] font-black shadow-xl">Infrastructure Maturity</Badge>
           </motion.div>
           <motion.h2 
-            className="text-6xl sm:text-9xl font-black tracking-tighter font-display leading-[0.9] m-0"
+            className="text-5xl sm:text-7xl font-black tracking-tighter font-display leading-[0.9] m-0"
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -79,7 +79,7 @@ export function MaturitySection() {
             <motion.span style={{ color: 'var(--brand-primary)' }}>Agentic Reliability.</motion.span>
           </motion.h2>
           <motion.p 
-            className="text-2xl sm:text-3xl text-[var(--text-secondary)] max-w-4xl mx-auto leading-relaxed font-sans opacity-70"
+            className="text-2xl sm:text-3xl text-[var(--text-secondary)] max-w-4xl mx-auto leading-relaxed font-sans opacity-80"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -116,7 +116,7 @@ export function MaturitySection() {
                   <motion.h3 className="m-0 text-3xl font-display font-black leading-tight text-[var(--text-primary)]">
                     {feature.title}
                   </motion.h3>
-                  <motion.p className="m-0 text-lg opacity-60 leading-relaxed text-[var(--text-secondary)] group-hover:opacity-100 transition-opacity">
+                  <motion.p className="m-0 text-lg opacity-80 leading-relaxed text-[var(--text-secondary)] group-hover:opacity-100 transition-opacity">
                     {feature.description}
                   </motion.p>
                 </div>
@@ -124,7 +124,7 @@ export function MaturitySection() {
                 <motion.div className="w-full flex items-center justify-center pt-8 border-t border-[var(--border-subtle)] group-hover:border-transparent transition-colors">
                    <motion.div className="flex items-center gap-3">
                       <motion.div className="w-2 h-2 rounded-full opacity-20 group-hover:opacity-100 transition-opacity" style={{ background: feature.color }} />
-                      <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-30 group-hover:opacity-60">V4 Specs Included</motion.span>
+                      <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-30 group-hover:opacity-80">V4 Specs Included</motion.span>
                    </motion.div>
                 </motion.div>
               </motion.div>
@@ -145,20 +145,20 @@ export function MaturitySection() {
 
            <div className="space-y-8 relative z-10 flex flex-col items-center">
               <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-widest">Formal Verification</Badge>
-              <motion.h3 className="text-5xl sm:text-8xl font-display font-black tracking-tight leading-[0.95] m-0" style={{ color: 'var(--text-primary)' }}>
+              <motion.h3 className="text-5xl sm:text-7xl font-display font-black tracking-tight leading-[0.95] m-0" style={{ color: 'var(--text-primary)' }}>
                 Soundness by <motion.span className="text-[var(--p-teal-400)]">Design.</motion.span>
               </motion.h3>
-              <motion.p className="text-2xl leading-relaxed opacity-70 max-w-3xl">
+              <motion.p className="text-2xl leading-relaxed opacity-80 max-w-3xl">
                 We are formally verifying the Anchor Protocol using ProVerif to ensure zero "executable attack paths" in the harbor handshake. Your swarm's security isn't an afterthought—it's mathematically proven.
               </motion.p>
               <motion.div className="flex flex-wrap justify-center gap-8 pt-6">
                  <motion.div className="flex items-center gap-3 px-8 py-4 rounded-full bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
                     <Zap size={20} className="text-[var(--p-amber-400)]" />
-                    <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-60 text-[var(--text-primary)]">ProVerif 2.05 Validated</motion.span>
+                    <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-80 text-[var(--text-primary)]">ProVerif 2.05 Validated</motion.span>
                  </motion.div>
                  <motion.div className="flex items-center gap-3 px-8 py-4 rounded-full bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
                     <Activity size={20} className="text-[var(--p-teal-400)]" />
-                    <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-60 text-[var(--text-primary)]">HS256 Enforced</motion.span>
+                    <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-80 text-[var(--text-primary)]">HS256 Enforced</motion.span>
                  </motion.div>
               </motion.div>
            </div>

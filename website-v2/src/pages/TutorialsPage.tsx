@@ -204,7 +204,7 @@ export function TutorialsPage() {
     >
       {/* Hero Section */}
       <motion.section 
-        className="py-24 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden flex flex-col items-center justify-center text-center" 
+        className="py-20 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden flex flex-col items-center justify-center text-center" 
         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
       >
         <motion.div 
@@ -212,10 +212,10 @@ export function TutorialsPage() {
           style={{ background: 'radial-gradient(circle, var(--brand-primary) 0%, transparent 70%)' }} 
         />
         
-        <motion.div className="max-w-5xl mx-auto relative z-10 flex flex-col items-center gap-12">
+        <motion.div className="max-w-5xl mx-auto relative z-10 flex flex-col items-center gap-8">
            <Badge variant="teal" className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">Academy of Coordination</Badge>
            <motion.h1 
-             className="text-7xl sm:text-9xl font-black tracking-tighter font-display leading-[0.85] m-0"
+             className="text-4xl sm:text-6xl font-black tracking-tighter font-display leading-[0.85] m-0 text-[var(--text-primary)]"
              initial={{ opacity: 0, y: 32 }}
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -224,7 +224,7 @@ export function TutorialsPage() {
              <span className="text-[var(--brand-primary)]">Swarm Logic.</span>
            </motion.h1>
            <motion.p 
-             className="text-2xl sm:text-4xl max-w-4xl leading-relaxed opacity-70 font-medium"
+             className="text-xl sm:text-2xl max-w-4xl leading-relaxed font-medium text-[var(--text-secondary)]"
              initial={{ opacity: 0, y: 20 }}
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: 0.8, delay: 0.1 }}
@@ -235,8 +235,8 @@ export function TutorialsPage() {
       </motion.section>
 
       {/* Tutorials Grid */}
-      <motion.main className="flex-1 py-24 px-6 sm:px-8 lg:px-10 max-w-7xl mx-auto w-full font-sans flex flex-col items-center">
-        <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-16 w-full">
+      <motion.main className="flex-1 py-20 px-6 sm:px-8 lg:px-10 max-w-7xl mx-auto w-full font-sans flex flex-col items-center">
+        <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
           {TUTORIALS.map((tutorial, i) => (
             <motion.div
               key={tutorial.slug}
@@ -248,7 +248,7 @@ export function TutorialsPage() {
             >
               <Link to={tutorial.href} className="no-underline block h-full">
                 <motion.div 
-                  className="h-full p-12 rounded-[56px] border transition-all duration-[var(--p-transition-spring)] flex flex-col items-center text-center gap-10"
+                  className="h-full p-12 rounded-[56px] border transition-all duration-[var(--p-transition-spring)] flex flex-col items-center text-center gap-8"
                   style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-surface)' }}
                   whileHover={{ y: -12, borderColor: 'var(--brand-primary)', boxShadow: '0 40px 80px -20px rgba(58,173,173,0.15)' }}
                 >
@@ -263,24 +263,24 @@ export function TutorialsPage() {
 
                   <div className="space-y-6 flex-1 flex flex-col items-center">
                     <div className="flex flex-col items-center gap-2">
-                       <motion.span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30 font-mono">Lesson {tutorial.number}</motion.span>
+                       <motion.span className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] font-mono">Lesson {tutorial.number}</motion.span>
                        <motion.h3 className="m-0 text-3xl font-display font-black leading-tight text-[var(--text-primary)]">
                          {tutorial.title}
                        </motion.h3>
                     </div>
-                    <motion.p className="m-0 text-lg opacity-60 leading-relaxed group-hover:opacity-100 transition-opacity">
+                    <motion.p className="m-0 text-lg text-[var(--text-secondary)] leading-relaxed group-hover:text-[var(--text-primary)] transition-colors">
                       {tutorial.description}
                     </motion.p>
                   </div>
 
                   <motion.div className="flex flex-wrap justify-center gap-3">
                      {tutorial.tags.map(tag => (
-                       <motion.span key={tag} className="px-4 py-1.5 rounded-xl bg-[var(--bg-overlay)] text-[10px] font-bold opacity-40 uppercase tracking-widest border border-transparent group-hover:border-[var(--border-subtle)] transition-all">{tag}</motion.span>
+                       <motion.span key={tag} className="px-4 py-1.5 rounded-xl bg-[var(--bg-overlay)] text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest border border-transparent group-hover:border-[var(--border-subtle)] transition-all">{tag}</motion.span>
                      ))}
                   </motion.div>
 
                   <motion.div className="w-full flex items-center justify-between pt-10 border-t border-[var(--border-subtle)] group-hover:border-transparent transition-colors">
-                     <motion.div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-60 transition-opacity">
+                     <motion.div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] group-hover:text-[var(--text-secondary)] transition-colors">
                         <Clock size={14} className="text-[var(--brand-primary)]" />
                         {tutorial.time}
                      </motion.div>
@@ -296,7 +296,7 @@ export function TutorialsPage() {
 
         {/* Vision Callout */}
         <motion.div 
-          className="mt-24 p-24 rounded-[100px] border border-dashed border-[var(--border-strong)] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-base)] flex flex-col items-center text-center gap-12 relative overflow-hidden w-full shadow-2xl"
+          className="mt-20 p-24 rounded-[100px] border border-dashed border-[var(--border-strong)] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-base)] flex flex-col items-center text-center gap-8 relative overflow-hidden w-full shadow-2xl mx-auto"
           initial={{ opacity: 0, scale: 0.98 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
@@ -307,15 +307,15 @@ export function TutorialsPage() {
            
            <div className="space-y-8 max-w-4xl relative z-10 flex flex-col items-center">
               <Badge variant="teal" className="px-8 py-3 text-[10px] font-black uppercase tracking-widest shadow-2xl">Automated Verification</Badge>
-              <motion.h3 className="text-5xl sm:text-8xl font-display font-black tracking-tight leading-[0.95] m-0" style={{ color: 'var(--text-primary)' }}>
-                Certified <span className="text-[var(--p-teal-400)]">Academy.</span>
+              <motion.h3 className="text-4xl sm:text-6xl font-display font-black tracking-tight leading-[0.95] m-0 text-[var(--text-primary)]">
+                Certified <span className="text-[var(--brand-primary)]">Academy.</span>
               </motion.h3>
-              <motion.p className="text-2xl sm:text-3xl leading-relaxed opacity-70">
+              <motion.p className="text-xl sm:text-2xl leading-relaxed text-[var(--text-secondary)]">
                 Every lesson in the Port Daddy Academy is backed by an automated verification service. We use Playwright and VHS to record live CLI sessions and ensure that the code you learn today will work in your harbor tomorrow.
               </motion.p>
            </div>
 
-           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 w-full max-w-6xl relative z-10">
+           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full max-w-6xl relative z-10">
               {[
                 { label: 'VHS Recorded', icon: Play },
                 { label: 'Playwright Verified', icon: Shield },
@@ -326,7 +326,7 @@ export function TutorialsPage() {
                    <motion.div className="w-14 h-14 rounded-2xl bg-[var(--bg-surface)] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                       <item.icon size={28} className="text-[var(--brand-primary)]" />
                    </motion.div>
-                   <motion.span className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40 group-hover:opacity-100 transition-opacity">{item.label}</motion.span>
+                   <motion.span className="text-[10px] font-black uppercase tracking-[0.25em] text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors">{item.label}</motion.span>
                 </motion.div>
               ))}
            </div>

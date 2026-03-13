@@ -308,6 +308,8 @@ export async function handleAgent(subcommand: string | undefined, args: string[]
 export async function handleAgents(options: CLIOptions): Promise<void> {
   const params = new URLSearchParams();
   if (options.active) params.append('active', 'true');
+  if (options.identity) params.append('identity', options.identity as string);
+  if (options.purpose) params.append('purpose', options.purpose as string);
 
   const url: string = `${PORT_DADDY_URL}/agents${params.toString() ? '?' + params : ''}`;
   const res: PdFetchResponse = await pdFetch(url);

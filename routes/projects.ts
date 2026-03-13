@@ -28,7 +28,7 @@ interface ProjectsRouteDeps {
   projects: {
     register(entry: Record<string, unknown>): void;
     get(id: string): ProjectEntry | undefined;
-    list(): ProjectEntry[];
+    list(options?: { pattern?: string }): ProjectEntry[];
     remove(id: string): boolean;
   };
   metrics: { errors: number };
@@ -139,9 +139,12 @@ export function createProjectsRoutes(deps: ProjectsRouteDeps): Router {
   // ==========================================================================
   // GET /projects - List all registered projects
   // ==========================================================================
-  router.get('/projects', (_req: Request, res: Response) => {
+  router.get('/projects', (req: Request, res: Response) => {
     try {
-      const all = projects.list();
+      const { pattern } = req.query;
+      const all = projects.list({ 
+        pattern: typeof pattern === 'string' ? pattern : undefined 
+      });
 
       res.json({
         success: true,

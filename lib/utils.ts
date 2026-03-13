@@ -153,3 +153,12 @@ export function tryParseJson(str: string): unknown {
     return str;
   }
 }
+
+/**
+ * Converts a wildcard pattern (e.g. 'myapp:*:dev') to a SQL LIKE pattern (e.g. 'myapp:%:dev')
+ */
+export function patternToSql(pattern: string): string {
+  if (!pattern) return '%';
+  return pattern.replace(/\*/g, '%');
+}
+

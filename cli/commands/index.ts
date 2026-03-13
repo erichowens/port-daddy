@@ -27,3 +27,4 @@ export * from './inbox.js';
 export * from './spawn.js';
 export * from './harbors.js';
 export * from './bench.js';
+export * from './demo.js';

@@ -49,6 +49,7 @@ export function createProjects(db: Database.Database) {
     getById: db.prepare('SELECT * FROM projects WHERE id = ?'),
     getByPath: db.prepare('SELECT * FROM projects WHERE root = ?'),
     getAll: db.prepare('SELECT * FROM projects ORDER BY last_scanned DESC'),
+    getByPattern: db.prepare("SELECT * FROM projects WHERE id LIKE ? ESCAPE '\\' ORDER BY last_scanned DESC"),
     upsert: db.prepare(`
       INSERT INTO projects (id, root, type, config, services, last_scanned, created_at, metadata)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -102,10 +103,20 @@ export function createProjects(db: Database.Database) {
   }
 
   /**
-   * List all registered projects.
+   * List registered projects.
    */
-  function list(): ProjectDeserialized[] {
-    return (stmts.getAll.all() as ProjectRow[]).map(deserialize);
+  function list(options: { pattern?: string } = {}): ProjectDeserialized[] {
+    const { pattern = null } = options;
+    let rows: ProjectRow[];
+
+    if (pattern) {
+      const sqlPattern = pattern.includes('*') ? pattern.replace(/\*/g, '%') : pattern;
+      rows = stmts.getByPattern.all(sqlPattern) as ProjectRow[];
+    } else {
+      rows = stmts.getAll.all() as ProjectRow[];
+    }
+
+    return rows.map(deserialize);
   }
 
   /**

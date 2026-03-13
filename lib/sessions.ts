@@ -10,6 +10,7 @@ import type Database from 'better-sqlite3';
 import { randomUUID } from 'crypto';
 import { ActivityType } from './activity.js';
 import { getWorktreeId } from './worktree.js';
+import { patternToSql } from './identity.js';
 
 const MAX_NOTES_PER_SESSION = 500;
 
@@ -97,11 +98,14 @@ interface GetNotesOptions {
   limit?: number;
   type?: string;
   since?: number;
+  agentId?: string | null;
 }
 
 interface ListOptions {
   status?: string;
   agentId?: string | null;
+  project?: string | null;
+  purpose?: string | null;
   worktreeId?: string | null;
   allWorktrees?: boolean;
   includeNotes?: boolean;
@@ -284,6 +288,15 @@ export function createSessions(db: Database.Database) {
     listByStatusAgentAndWorktree: db.prepare(`
       SELECT * FROM sessions WHERE status = ? AND agent_id = ? AND worktree_id = ? ORDER BY updated_at DESC LIMIT ?
     `),
+    listByPattern: db.prepare(`
+      SELECT * FROM sessions 
+      WHERE (status = COALESCE(?, status))
+        AND (agent_id LIKE COALESCE(?, agent_id) ESCAPE '\\')
+        AND (identity_project LIKE COALESCE(?, identity_project) ESCAPE '\\')
+        AND (purpose LIKE COALESCE(?, purpose) ESCAPE '\\')
+        AND (worktree_id = COALESCE(?, worktree_id))
+      ORDER BY updated_at DESC LIMIT ?
+    `),
     mostRecentActive: db.prepare(`
       SELECT * FROM sessions WHERE status = 'active' ORDER BY updated_at DESC LIMIT 1
     `),
@@ -415,6 +428,15 @@ export function createSessions(db: Database.Database) {
       SELECT sn.*, s.purpose as session_purpose FROM session_notes sn
       JOIN sessions s ON s.id = sn.session_id
       WHERE sn.created_at >= ? AND sn.type = ?
+      ORDER BY sn.created_at DESC LIMIT ?
+    `),
+    getNotesByPattern: db.prepare(`
+      SELECT sn.*, s.purpose as session_purpose FROM session_notes sn
+      JOIN sessions s ON s.id = sn.session_id
+      WHERE (s.agent_id LIKE ? ESCAPE '\\' OR ? IS NULL)
+        AND (s.identity_project LIKE ? ESCAPE '\\' OR ? IS NULL)
+        AND (sn.type = ? OR ? IS NULL)
+        AND (sn.created_at >= ? OR ? IS NULL)
       ORDER BY sn.created_at DESC LIMIT ?
     `),
     countNotesBySession: db.prepare(`
@@ -773,7 +795,7 @@ export function createSessions(db: Database.Database) {
    * Get notes — by session, or across all sessions
    */
   function getNotes(sessionId?: string | null, options: GetNotesOptions = {}) {
-    const { limit = 50, type, since } = options;
+    const { limit = 50, type, since, agentId } = options;
 
     let notes: Array<SessionNoteRow & { session_purpose?: string }>;
 
@@ -790,15 +812,33 @@ export function createSessions(db: Database.Database) {
         notes = stmts.getNotesBySession.all(sessionId) as SessionNoteRow[];
       }
 
-      // Apply since filter manually for session-specific queries
+      // Apply since/agentId filters manually for session-specific queries if needed
       if (since) {
         notes = notes.filter(n => n.created_at >= since);
+      }
+      if (agentId) {
+        // Simple exact match for session-specific query (usually agent matches session)
+        if (session.agent_id !== agentId) notes = [];
       }
 
       // Apply limit
       if (notes.length > limit) {
         notes = notes.slice(0, limit);
       }
+    } else if (agentId) {
+      // Get notes by agent pattern across sessions
+      const agentPattern = agentId.includes('*') ? agentId.replace(/\*/g, '%') : agentId;
+      notes = stmts.getNotesByPattern.all(
+        agentPattern,
+        agentPattern,
+        null, // project
+        null,
+        type ?? null,
+        type ?? null,
+        since ?? null,
+        since ?? null,
+        limit
+      ) as Array<SessionNoteRow & { session_purpose?: string }>;
     } else {
       // Get recent notes across all sessions
       if (since && type) {
@@ -1030,31 +1070,50 @@ export function createSessions(db: Database.Database) {
    * List sessions
    */
   function list(options: ListOptions = {}) {
-    const { status, agentId, worktreeId, allWorktrees = false, includeNotes = false, limit = 50 } = options;
+    const { status, agentId, project, purpose, worktreeId, allWorktrees = false, includeNotes = false, limit = 50 } = options;
 
     // Auto-detect current worktree unless explicitly showing all
     const effectiveWorktreeId = allWorktrees ? null : (worktreeId ?? getWorktreeId());
 
     let sessions: SessionRow[];
 
-    // Choose the right query based on filters
-    if (status && agentId && effectiveWorktreeId) {
-      sessions = stmts.listByStatusAgentAndWorktree.all(status, agentId, effectiveWorktreeId, limit) as SessionRow[];
-    } else if (status && effectiveWorktreeId) {
-      sessions = stmts.listByStatusAndWorktree.all(status, effectiveWorktreeId, limit) as SessionRow[];
-    } else if (agentId && effectiveWorktreeId) {
-      sessions = stmts.listByAgentAndWorktree.all(agentId, effectiveWorktreeId, limit) as SessionRow[];
-    } else if (effectiveWorktreeId) {
-      sessions = stmts.listByWorktree.all(effectiveWorktreeId, limit) as SessionRow[];
-    } else if (status && agentId) {
-      sessions = stmts.listByStatusAndAgent.all(status, agentId, limit) as SessionRow[];
-    } else if (status) {
-      sessions = stmts.listByStatus.all(status, limit) as SessionRow[];
-    } else if (agentId) {
-      sessions = stmts.listByAgent.all(agentId, limit) as SessionRow[];
+    // Use pattern matching if wildcards are present or if multiple filters are used
+    if (agentId?.includes('*') || project?.includes('*') || purpose?.includes('*') || (agentId && project) || (agentId && purpose) || (project && purpose)) {
+      const agentPattern = agentId ? (agentId.includes('*') ? patternToSql(agentId) : agentId) : null;
+      const projectPattern = project ? (project.includes('*') ? patternToSql(project) : project) : null;
+      const purposePattern = purpose ? (purpose.includes('*') ? purpose.replace(/\*/g, '%') : '%' + purpose + '%') : null;
+      
+      sessions = stmts.listByPattern.all(
+        status ?? null,
+        agentPattern,
+        projectPattern,
+        purposePattern,
+        effectiveWorktreeId,
+        limit
+      ) as SessionRow[];
     } else {
-      // No filter: return all sessions
-      sessions = stmts.listAll.all(limit) as SessionRow[];
+      // Fast paths for common exact matches
+      if (status && agentId && effectiveWorktreeId) {
+        sessions = stmts.listByStatusAgentAndWorktree.all(status, agentId, effectiveWorktreeId, limit) as SessionRow[];
+      } else if (status && effectiveWorktreeId) {
+        sessions = stmts.listByStatusAndWorktree.all(status, effectiveWorktreeId, limit) as SessionRow[];
+      } else if (agentId && effectiveWorktreeId) {
+        sessions = stmts.listByAgentAndWorktree.all(agentId, effectiveWorktreeId, limit) as SessionRow[];
+      } else if (effectiveWorktreeId) {
+        sessions = stmts.listByWorktree.all(effectiveWorktreeId, limit) as SessionRow[];
+      } else if (status && agentId) {
+        sessions = stmts.listByStatusAndAgent.all(status, agentId, limit) as SessionRow[];
+      } else if (status) {
+        sessions = stmts.listByStatus.all(status, limit) as SessionRow[];
+      } else if (agentId) {
+        sessions = stmts.listByAgent.all(agentId, limit) as SessionRow[];
+      } else if (project || purpose) {
+        // Fallback to pattern matcher for project/purpose exact match
+        sessions = stmts.listByPattern.all(status ?? null, null, project ?? null, purpose ?? null, effectiveWorktreeId, limit) as SessionRow[];
+      } else {
+        // No filter: return all sessions
+        sessions = stmts.listAll.all(limit) as SessionRow[];
+      }
     }
 
     const formatted = sessions.map(s => {

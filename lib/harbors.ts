@@ -116,6 +116,7 @@ export function createHarbors(db: Database.Database, deps: HarborsDeps = {}) {
     `),
     getByName: db.prepare('SELECT * FROM harbors WHERE name = ?'),
     listAll: db.prepare('SELECT * FROM harbors ORDER BY created_at DESC LIMIT ?'),
+    listByPattern: db.prepare("SELECT * FROM harbors WHERE name LIKE ? ESCAPE '\\' ORDER BY created_at DESC LIMIT ?"),
     deleteByName: db.prepare('DELETE FROM harbors WHERE name = ?'),
     deleteExpired: db.prepare('DELETE FROM harbors WHERE expires_at IS NOT NULL AND expires_at < ?'),
 
@@ -197,12 +198,21 @@ export function createHarbors(db: Database.Database, deps: HarborsDeps = {}) {
     },
 
     /**
-     * List all harbors (with member counts, no member details).
+     * List harbors (with member details).
      */
-    list(limit = 50): Harbor[] {
+    list(options: { limit?: number; pattern?: string } = {}): Harbor[] {
+      const { limit = 50, pattern = null } = options;
       // Clean expired harbors first
       stmts.deleteExpired.run(Date.now());
-      const rows = stmts.listAll.all(limit) as HarborRow[];
+
+      let rows: HarborRow[];
+      if (pattern) {
+        const sqlPattern = pattern.includes('*') ? pattern.replace(/\*/g, '%') : pattern;
+        rows = stmts.listByPattern.all(sqlPattern, limit) as HarborRow[];
+      } else {
+        rows = stmts.listAll.all(limit) as HarborRow[];
+      }
+
       return rows.map(row => {
         const members = stmts.listMembers.all(row.name) as HarborMemberRow[];
         return parseHarbor(row, members);

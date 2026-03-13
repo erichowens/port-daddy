@@ -14,7 +14,7 @@ export function BlogPage() {
     >
       {/* Hero Section */}
       <motion.section 
-        className="py-24 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden flex flex-col items-center justify-center text-center" 
+        className="py-20 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden flex flex-col items-center justify-center text-center" 
         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
       >
         <motion.div 
@@ -22,10 +22,10 @@ export function BlogPage() {
           style={{ background: 'radial-gradient(circle, var(--brand-primary) 0%, transparent 70%)' }} 
         />
         
-        <div className="max-w-5xl mx-auto relative z-10 flex flex-col items-center gap-12">
+        <div className="max-w-5xl mx-auto relative z-10 flex flex-col items-center gap-8">
            <Badge variant="teal" className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">Engineering Log</Badge>
            <motion.h1 
-             className="text-7xl sm:text-9xl font-black tracking-tighter font-display leading-[0.85] m-0"
+             className="text-4xl sm:text-6xl font-black tracking-tighter font-display leading-[0.85] m-0 text-[var(--text-primary)]"
              initial={{ opacity: 0, y: 32 }}
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -34,7 +34,7 @@ export function BlogPage() {
              <motion.span className="text-[var(--brand-primary)]">Control Plane.</motion.span>
            </motion.h1>
            <motion.p 
-             className="text-2xl sm:text-4xl max-w-4xl leading-relaxed opacity-70 font-medium"
+             className="text-xl sm:text-2xl max-w-4xl leading-relaxed text-[var(--text-secondary)] font-medium"
              initial={{ opacity: 0, y: 20 }}
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: 0.8, delay: 0.1 }}
@@ -45,8 +45,8 @@ export function BlogPage() {
       </motion.section>
 
       {/* Blog Feed */}
-      <motion.main className="flex-1 py-24 px-6 sm:px-8 lg:px-10 max-w-5xl mx-auto w-full font-sans flex flex-col items-center">
-        <div className="space-y-24 w-full flex flex-col items-center">
+      <motion.main className="flex-1 py-20 px-6 sm:px-8 lg:px-10 max-w-5xl mx-auto w-full font-sans flex flex-col items-center">
+        <div className="flex flex-col items-center gap-8 w-full">
           {blogPosts.map((post, index) => (
             <motion.article 
               key={post.id}
@@ -58,12 +58,12 @@ export function BlogPage() {
             >
               <Link to={`/blog/${post.slug}`} className="no-underline block">
                 <motion.div 
-                  className="p-16 rounded-[80px] border transition-all duration-[var(--p-transition-spring)] flex flex-col items-center text-center gap-12 shadow-2xl"
+                  className="p-16 rounded-[80px] border transition-all duration-[var(--p-transition-spring)] flex flex-col items-center text-center gap-8 shadow-2xl"
                   style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-surface)' }}
                   whileHover={{ y: -12, borderColor: 'var(--brand-primary)', boxShadow: '0 40px 80px -20px rgba(58,173,173,0.15)' }}
                 >
                   <div className="w-full flex flex-col items-center gap-6">
-                     <div className="flex items-center justify-center gap-8 text-[10px] font-black uppercase tracking-[0.3em] opacity-40 font-mono">
+                     <div className="flex items-center justify-center gap-8 text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] font-mono">
                         <div className="flex items-center gap-3">
                            <Calendar size={16} className="text-[var(--brand-primary)]" />
                            {post.date}
@@ -74,28 +74,30 @@ export function BlogPage() {
                            {post.author}
                         </div>
                      </div>
-                     <Badge variant="neutral" className="px-4 py-1.5 text-[8px] font-black uppercase tracking-widest bg-[var(--bg-overlay)] shadow-sm">Engineering Depth</Badge>
+                     <Badge variant="neutral" className="px-4 py-1.5 text-[8px] font-black uppercase tracking-widest bg-[var(--bg-overlay)] shadow-sm">
+                        <span className="text-[var(--text-primary)]">Engineering Depth</span>
+                     </Badge>
                   </div>
 
-                  <div className="space-y-8 flex flex-col items-center">
+                  <div className="space-y-6 flex flex-col items-center">
                     <motion.h2 className="m-0 text-4xl sm:text-6xl font-display font-black tracking-tight leading-tight text-[var(--text-primary)] group-hover:text-[var(--brand-primary)] transition-colors">
                       {post.title}
                     </motion.h2>
-                    <motion.p className="m-0 text-2xl leading-relaxed text-[var(--text-secondary)] opacity-70 group-hover:opacity-100 transition-opacity max-w-2xl">
+                    <motion.p className="m-0 text-xl sm:text-2xl leading-relaxed text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors max-w-2xl">
                       {post.excerpt}
                     </motion.p>
                   </div>
 
                   <div className="flex flex-wrap justify-center gap-3">
                      {post.tags.map(tag => (
-                       <motion.span key={tag} className="px-5 py-2 rounded-xl bg-[var(--bg-overlay)] text-[10px] font-black uppercase tracking-widest border border-transparent group-hover:border-[var(--border-subtle)] transition-all shadow-sm">{tag}</motion.span>
+                       <motion.span key={tag} className="px-5 py-2 rounded-xl bg-[var(--bg-overlay)] text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest border border-transparent group-hover:border-[var(--border-subtle)] transition-all shadow-sm">{tag}</motion.span>
                      ))}
                   </div>
 
-                  <div className="w-full flex items-center justify-between pt-12 border-t border-[var(--border-subtle)] group-hover:border-transparent transition-colors">
+                  <div className="w-full flex items-center justify-between pt-10 border-t border-[var(--border-subtle)] group-hover:border-transparent transition-colors">
                      <div className="flex items-center gap-3">
                         <div className="w-3 h-3 rounded-full bg-[var(--status-success)] pulse-active shadow-[0_0_12px_var(--status-success)]" />
-                        <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-60 transition-opacity">Protocol Verified</motion.span>
+                        <motion.span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] group-hover:text-[var(--text-secondary)] transition-colors">Protocol Verified</motion.span>
                      </div>
                      <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-[var(--brand-primary)] group-hover:gap-6 transition-all">
                         Dive Deeper
@@ -110,7 +112,7 @@ export function BlogPage() {
 
         {/* Vision Callout */}
         <motion.div 
-          className="mt-24 p-24 rounded-[100px] border border-dashed border-[var(--border-strong)] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-base)] flex flex-col items-center text-center gap-16 relative overflow-hidden w-full shadow-2xl"
+          className="mt-20 p-24 rounded-[100px] border border-dashed border-[var(--border-strong)] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-base)] flex flex-col items-center text-center gap-8 relative overflow-hidden w-full shadow-2xl mx-auto"
           initial={{ opacity: 0, scale: 0.98 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
@@ -121,16 +123,16 @@ export function BlogPage() {
            
            <div className="space-y-10 max-w-4xl relative z-10 flex flex-col items-center">
               <Badge variant="teal" className="px-8 py-3 text-[10px] font-black uppercase tracking-widest shadow-2xl">Formal Methods</Badge>
-              <h3 className="text-5xl sm:text-8xl font-display font-black tracking-tight leading-[0.95] m-0" style={{ color: 'var(--text-primary)' }}>
+              <h3 className="text-4xl sm:text-6xl font-display font-black tracking-tight leading-[0.95] m-0 text-[var(--text-primary)]">
                 Soundness by <br />
                 <span className="text-[var(--p-teal-400)]">Design.</span>
               </h3>
-              <p className="text-2xl sm:text-3xl leading-relaxed opacity-70 max-w-3xl">
+              <p className="text-xl sm:text-2xl leading-relaxed text-[var(--text-secondary)] max-w-3xl">
                 The Journal isn't just about features—it's about proofs. We document our journey through symbolic analysis, noise protocol implementation, and the mathematical underpinnings of agentic coordination.
               </p>
            </div>
 
-           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-10 w-full max-w-5xl relative z-10">
+           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-5xl relative z-10">
               {[
                 { label: 'ProVerif 2.05', icon: ShieldCheck },
                 { label: 'Noise Protocol', icon: Activity },
@@ -140,7 +142,7 @@ export function BlogPage() {
                    <motion.div className="w-14 h-14 rounded-2xl bg-[var(--bg-surface)] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                       <item.icon size={28} className="text-[var(--brand-primary)]" />
                    </motion.div>
-                   <motion.span className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40 group-hover:opacity-100 transition-opacity text-center">{item.label}</motion.span>
+                   <motion.span className="text-[10px] font-black uppercase tracking-[0.25em] text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors text-center">{item.label}</motion.span>
                 </motion.div>
               ))}
            </div>

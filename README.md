@@ -114,6 +114,26 @@ pd sub swarm:general
 pd pub swarm:general "Auth service is flatlining" --signal mayday --sender "NAVIGATOR"
 ```
 
+### Integration & Signaling
+Automate agent handoffs using `pd integration` and `pd wait`:
+```bash
+pd integration ready myapp:api  # Signal that API is ready
+pd wait myapp:api               # Block until service becomes healthy
+```
+
+### Observation & History
+Keep track of swarm state with `pd briefing`, `pd changelog`, and `pd activity`:
+```bash
+pd briefing    # Get a project-level context summary
+pd changelog   # View the hierarchical history of changes
+pd activity    # Stream the raw audit trail of all operations
+```
+
+### Webhooks & Life Cycles
+- **Webhooks:** `pd webhooks` subscribe external systems to swarm events.
+- **Spawn:** `pd spawn` launch AI agents (Claude, Aider) with coordination baked in.
+- **Phases:** Track work via `planning`, `testing`, and `reviewing` session phases.
+
 ### Agent Inboxes (SSE Watch)
 Every agent (or human) can stream their personal inbox live:
 ```bash

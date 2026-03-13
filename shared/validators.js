@@ -109,7 +109,7 @@ export function validateChannel(channel) {
   if (channel.length > 100) {
     return { valid: false, error: 'channel name too long (max 100 characters)' };
   }
-  if (!/^[a-zA-Z0-9._:-]+$/.test(channel)) {
+  if (!/^[a-zA-Z0-9._:*-]+$/.test(channel)) {
     return { valid: false, error: 'channel contains invalid characters' };
   }
   return { valid: true };
@@ -191,8 +191,8 @@ export function validateLockName(name) {
   if (name.length > 100) {
     return { valid: false, error: 'lock name too long (max 100 characters)' };
   }
-  if (!/^[a-zA-Z0-9:_-]+$/.test(name)) {
-    return { valid: false, error: 'lock name must be alphanumeric with dashes, underscores, or colons' };
+  if (!/^[a-zA-Z0-9._:*-]+$/.test(name)) {
+    return { valid: false, error: 'lock name must be alphanumeric with dashes, underscores, dots, colons, or stars' };
   }
   return { valid: true };
 }
@@ -207,7 +207,7 @@ export function validateAgentId(id) {
   if (id.length > 100) {
     return { valid: false, error: 'agent id too long (max 100 characters)' };
   }
-  if (!/^[a-zA-Z0-9._:-]+$/.test(id)) {
+  if (!/^[a-zA-Z0-9._:*-]+$/.test(id)) {
     return { valid: false, error: 'agent id contains invalid characters' };
   }
   return { valid: true };
