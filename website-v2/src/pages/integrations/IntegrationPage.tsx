@@ -1,83 +1,163 @@
-import { motion } from 'framer-motion'
-import { useParams, Link } from 'react-router-dom'
+import { motion, useScroll, useSpring } from 'framer-motion'
+import { useParams, Link, Navigate } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
 import { CodeBlock } from '@/components/ui/CodeBlock'
-import { TutorialLayout } from '@/components/tutorials/TutorialLayout'
 import { INTEGRATIONS } from '@/data/integrations'
-import { ChevronLeft, Puzzle, CheckCircle2 } from 'lucide-react'
+import { ChevronLeft, Puzzle, CheckCircle2, Zap, Shield, Rocket, Cpu, Terminal, Sparkles, Globe, MessageSquare, ArrowRight, Info, Activity } from 'lucide-react'
+import { Footer } from '@/components/layout/Footer'
 
 export function IntegrationPage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const integration = INTEGRATIONS.find(i => i.id === id);
+  const { scrollYProgress } = useScroll()
+  
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001
+  })
 
-  if (!integration) return <motion.div className="p-20 text-center font-sans">Integration not found</motion.div>;
+  if (!integration) return <Navigate to="/integrations" replace />;
 
   return (
-    <TutorialLayout
-      title={`${integration.name} Integration`}
-      description={integration.description}
-      number="Integration"
-      total="Swarm"
-      level="Intermediate"
-      readTime="5 min read"
+    <motion.div 
+      className="min-h-screen bg-[var(--bg-base)] flex flex-col pt-[var(--nav-height)] font-sans selection:bg-[var(--brand-primary)] selection:text-white"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
     >
-      <motion.div className="flex items-center gap-2 mb-8 font-sans">
-        <Link to="/integrations" className="text-sm font-bold text-[var(--brand-primary)] no-underline flex items-center gap-1 hover:underline font-sans">
-          <ChevronLeft size={14} /> Back to Integrations
-        </Link>
-      </motion.div>
+      <motion.div
+        className="fixed top-0 left-0 right-0 h-1 bg-[var(--brand-primary)] z-[100] origin-left shadow-[0_0_12px_rgba(58,173,173,0.5)]"
+        style={{ scaleX, top: 'var(--nav-height)' }}
+      />
 
-      <motion.div className="flex flex-col md:flex-row md:items-center gap-8 mb-12 p-8 rounded-[32px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] shadow-xl relative overflow-hidden font-sans">
-        <motion.div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none font-sans">
-           <Puzzle size={200} />
-        </motion.div>
-        <motion.div className="w-20 h-20 rounded-3xl bg-[var(--bg-base)] flex items-center justify-center text-[var(--brand-primary)] shadow-2xl shrink-0 border border-[var(--border-subtle)]">
-          <Puzzle size={40} />
-        </motion.div>
-        <motion.div className="font-sans">
-          <motion.h3 className="m-0 text-3xl font-bold font-display leading-tight" style={{ color: 'var(--text-primary)' }}>
-            {integration.name} <motion.span className="opacity-30 font-display">×</motion.span> Port Daddy
-          </motion.h3>
-          <motion.div className="flex items-center gap-3 mt-3 font-sans">
-            <Badge variant={integration.status === 'official' ? 'teal' : 'neutral'} className="font-sans">
-              {integration.status} integration
-            </Badge>
-            <motion.span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] font-sans">Verified for v3.7.0</motion.span>
-          </motion.div>
-        </motion.div>
-      </motion.div>
-
-      <motion.section className="mb-12 font-sans">
-        <motion.h2 className="text-2xl font-bold mb-6 font-display" style={{ color: 'var(--text-primary)' }}>Capabilities</motion.h2>
-        <motion.div className="grid gap-4 font-sans">
-          {integration.details.map((detail, idx) => (
-            <motion.div 
-              key={idx}
-              initial={{ opacity: 0, x: -10 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className="flex items-start gap-4 p-5 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] font-sans"
-            >
-              <CheckCircle2 size={20} className="text-[var(--p-teal-400)] shrink-0 mt-0.5" />
-              <motion.p className="m-0 text-base text-[var(--text-secondary)] leading-relaxed font-sans">{detail}</motion.p>
-            </motion.div>
-          ))}
-        </motion.div>
-      </motion.section>
-
-      <motion.section className="mb-12 font-sans">
-        <motion.h2 className="text-2xl font-bold mb-6 font-display" style={{ color: 'var(--text-primary)' }}>Quick Start</motion.h2>
-        <motion.p className="mb-6 font-sans text-[var(--text-secondary)]">Integrate {integration.name} with your local Port Daddy daemon using the following pattern:</motion.p>
-        <CodeBlock
-          language={integration.id === 'langgraph' || integration.id === 'crewai' ? 'python' : 'typescript'}
-          children={integration.setupCode}
+      {/* Hero Section */}
+      <motion.header 
+        className="py-32 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden" 
+        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
+      >
+        <motion.div 
+          className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full blur-[140px] opacity-[0.08] pointer-events-none" 
+          style={{ background: 'radial-gradient(circle, var(--brand-primary) 0%, transparent 70%)' }} 
         />
-      </motion.section>
+        
+        <div className="max-w-4xl mx-auto relative z-10 flex flex-col items-center text-center gap-10">
+           <Link to="/integrations" className="no-underline group">
+              <motion.div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.25em] opacity-40 group-hover:opacity-100 group-hover:text-[var(--brand-primary)] transition-all">
+                 <ChevronLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                 Back to Swarm Ecosystem
+              </motion.div>
+           </Link>
 
-      <motion.section className="font-sans">
-        <motion.h2 className="text-2xl font-bold mb-6 font-display" style={{ color: 'var(--text-primary)' }}>Why use this?</motion.h2>
-        <motion.p className="font-sans text-[var(--text-secondary)] leading-relaxed">Port Daddy serves as the shared infrastructure layer for your {integration.name} agents. It provides the necessary state management and resource isolation that primitive agent frameworks lack, turning a group of scripts into a coordinated swarm.</motion.p>
-      </motion.section>
-    </TutorialLayout>
+           <div className="flex items-center gap-6">
+              <div className="w-24 h-24 rounded-[32px] bg-[var(--interactive-active)] flex items-center justify-center border border-[var(--brand-primary)] shadow-2xl shadow-[var(--brand-primary)]/10">
+                 <Puzzle size={48} className="text-[var(--brand-primary)]" />
+              </div>
+           </div>
+
+           <div className="space-y-4">
+              <Badge variant={integration.status === 'official' ? 'teal' : 'neutral'} className="px-4 py-1.5 text-[8px] font-black uppercase tracking-widest">{integration.status} Integration</Badge>
+              <motion.h1 
+                className="text-5xl sm:text-7xl font-black tracking-tighter font-display leading-[1.05]"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {integration.name}
+              </motion.h1>
+           </div>
+
+           <motion.p 
+             className="text-2xl leading-relaxed opacity-70 font-medium max-w-2xl"
+             initial={{ opacity: 0, y: 20 }}
+             animate={{ opacity: 1, y: 0 }}
+             transition={{ duration: 0.8, delay: 0.1 }}
+           >
+             {integration.description}
+           </motion.p>
+        </div>
+      </motion.header>
+
+      {/* Main Content */}
+      <motion.main className="flex-1 py-24 px-6 sm:px-8 lg:px-10 max-w-4xl mx-auto w-full font-sans">
+        <div className="space-y-24">
+           
+           {/* Detailed Features */}
+           <section className="space-y-12">
+              <div className="flex items-center gap-4 border-b border-[var(--border-subtle)] pb-8">
+                 <div className="w-10 h-10 rounded-xl bg-[var(--p-teal-500)]/10 flex items-center justify-center border border-[var(--p-teal-500)]/20">
+                    <Sparkles size={20} className="text-[var(--p-teal-400)]" />
+                 </div>
+                 <h2 className="text-3xl font-display font-black m-0">Integration Capabilities</h2>
+              </div>
+              
+              <div className="grid gap-6">
+                 {integration.details.map((detail, i) => (
+                   <motion.div 
+                     key={i}
+                     className="p-8 rounded-[32px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] flex items-start gap-6 group hover:border-[var(--brand-primary)] transition-colors"
+                     initial={{ opacity: 0, x: -20 }}
+                     whileInView={{ opacity: 1, x: 0 }}
+                     viewport={{ once: true }}
+                     transition={{ delay: i * 0.1 }}
+                   >
+                      <div className="w-10 h-10 rounded-full bg-[var(--bg-overlay)] flex items-center justify-center shrink-0 border border-[var(--border-subtle)] group-hover:scale-110 transition-transform">
+                         <CheckCircle2 size={18} className="text-[var(--p-teal-400)]" />
+                      </div>
+                      <p className="text-lg leading-relaxed opacity-70 m-0 group-hover:opacity-100 transition-opacity">{detail}</p>
+                   </motion.div>
+                 ))}
+              </div>
+           </section>
+
+           {/* Setup Guide */}
+           <section className="space-y-12">
+              <div className="flex items-center gap-4 border-b border-[var(--border-subtle)] pb-8">
+                 <div className="w-10 h-10 rounded-xl bg-[var(--p-amber-500)]/10 flex items-center justify-center border border-[var(--p-amber-500)]/20">
+                    <Terminal size={20} className="text-[var(--p-amber-400)]" />
+                 </div>
+                 <h2 className="text-3xl font-display font-black m-0">Quick Start</h2>
+              </div>
+
+              <div className="p-10 rounded-[48px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] space-y-8 shadow-2xl relative overflow-hidden">
+                 <div className="absolute top-0 right-0 p-8 opacity-5">
+                    <Rocket size={100} />
+                 </div>
+                 <p className="text-sm font-black uppercase tracking-widest opacity-40 m-0">Terminal Setup</p>
+                 <CodeBlock language="bash">{integration.setupCode}</CodeBlock>
+                 <div className="flex items-center gap-3 p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+                    <Info size={16} className="text-[var(--brand-primary)] shrink-0" />
+                    <p className="text-sm m-0 opacity-60">This integration requires Port Daddy v3.7.0+ running in the background.</p>
+                 </div>
+              </div>
+           </section>
+
+           {/* Documentation CTA */}
+           <motion.div 
+             className="p-16 rounded-[60px] border border-dashed border-[var(--brand-primary)] bg-[var(--bg-overlay)] flex flex-col items-center text-center gap-8 relative overflow-hidden"
+             whileHover={{ scale: 1.01 }}
+           >
+              <div className="absolute top-0 right-0 p-10 opacity-[0.03] pointer-events-none">
+                 <BookOpen size={400} />
+              </div>
+              <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-widest shadow-xl">Full Reference</Badge>
+              <h3 className="text-4xl font-display font-black m-0" style={{ color: 'var(--text-primary)' }}>Need more detail?</h3>
+              <p className="text-xl max-w-xl opacity-70">
+                Explore the complete API reference and coordination patterns in our technical documentation.
+              </p>
+              <Link to="/docs" className="no-underline">
+                 <motion.button 
+                   className="px-10 py-5 rounded-full bg-[var(--brand-primary)] text-[var(--bg-base)] font-black text-sm flex items-center gap-2 transition-all shadow-xl"
+                   whileHover={{ scale: 1.05, y: -4 }}
+                 >
+                   VIEW SDK MANUAL
+                   <ArrowRight size={16} />
+                 </motion.button>
+              </Link>
+           </motion.div>
+        </div>
+      </motion.main>
+
+      <Footer />
+    </motion.div>
   )
 }

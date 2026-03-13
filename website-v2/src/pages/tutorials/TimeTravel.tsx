@@ -70,7 +70,7 @@ export function TimeTravel() {
              <div className="flex items-center gap-4">
                 <span className="w-20">12:04:05</span>
                 <span className="text-[var(--p-amber-400)]">[radio]</span>
-                <span className="font-bold text-[var(--text-primary)]">swarm:task:new -> {"{id: 42}"}</span>
+                <span className="font-bold text-[var(--text-primary)]">swarm:task:new {'->'} {"{id: 42}"}</span>
              </div>
              <div className="flex items-center gap-4 opacity-40">
                 <span className="w-20">12:04:12</span>
