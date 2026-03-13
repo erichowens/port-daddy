@@ -1,5 +1,3 @@
-}
-import { motion } from "framer-motion"
 import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/Badge'
 import { ShieldCheck, HardDrive, Lock, Activity, Globe, Scale } from 'lucide-react'
@@ -29,14 +27,14 @@ export function MaturitySection() {
         <Scale size={600} />
       </motion.div>
       
-      <motion.div className="max-w-7xl mx-auto relative z-10">
-        <motion.div className="text-center mb-24">
+      <motion.div className="max-w-7xl mx-auto relative z-10 font-sans">
+        <motion.div className="text-center mb-24 font-sans">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
           >
-            <Badge variant="neutral" className="mb-6 px-4 py-1.5 uppercase tracking-widest text-[10px]">Enterprise Maturity</Badge>
+            <Badge variant="neutral" className="mb-6 px-4 py-1.5 uppercase tracking-widest text-[10px] font-sans">Enterprise Maturity</Badge>
           </motion.div>
           <motion.h2 
             className="text-5xl sm:text-6xl font-bold tracking-tight font-display mb-8"
@@ -68,7 +66,7 @@ export function MaturitySection() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="flex flex-col gap-6 p-10 rounded-[40px] transition-all hover:bg-[var(--bg-overlay)] group border border-transparent hover:border-[var(--border-subtle)] shadow-sm hover:shadow-xl"
+                className="flex flex-col gap-6 p-10 rounded-[40px] transition-all hover:bg-[var(--bg-overlay)] group border border-transparent hover:border-[var(--border-subtle)] shadow-sm hover:shadow-xl font-sans"
               >
                 <motion.div 
                   className="w-16 h-14 rounded-2xl bg-[var(--bg-overlay)] flex items-center justify-center text-[var(--brand-primary)] shadow-inner group-hover:bg-[var(--brand-primary)] group-hover:text-white transition-all"
@@ -76,7 +74,7 @@ export function MaturitySection() {
                 >
                   <Icon size={28} />
                 </motion.div>
-                <motion.div>
+                <motion.div className="font-sans">
                   <motion.h3 className="text-2xl font-bold font-display mb-4">{feat.title}</motion.h3>
                   <motion.p className="text-base text-[var(--text-secondary)] leading-relaxed font-sans opacity-80 group-hover:opacity-100 transition-opacity">
                     {feat.description}
@@ -89,3 +87,4 @@ export function MaturitySection() {
       </motion.div>
     </motion.section>
   )
+}

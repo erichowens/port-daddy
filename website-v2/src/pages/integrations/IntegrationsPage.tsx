@@ -1,12 +1,9 @@
-}
-import { motion } from "framer-motion"
 import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Link } from 'react-router-dom'
-import { Cpu, Globe, Boxes, Layout, Layers, ChevronRight } from 'lucide-react'
+import { Boxes, ChevronRight } from 'lucide-react'
 import { INTEGRATIONS } from '@/data/integrations'
-import type { Integration } from '@/data/integrations'
 import { Footer } from '@/components/layout/Footer'
 
 export function IntegrationsPage() {
@@ -23,7 +20,7 @@ export function IntegrationsPage() {
       >
         <motion.div className="max-w-5xl mx-auto text-center flex flex-col items-center">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <Badge variant="teal" className="mb-6 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest">The Swarm Ecosystem</Badge>
+            <Badge variant="teal" className="mb-6 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest font-sans">The Swarm Ecosystem</Badge>
             <motion.h1 className="text-5xl sm:text-7xl font-bold mb-8 tracking-tight font-display">
               Connect <motion.span className="text-[var(--brand-primary)]">Everything</motion.span>
             </motion.h1>
@@ -36,7 +33,7 @@ export function IntegrationsPage() {
       </motion.section>
 
       <motion.div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-24 font-sans">
-        <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 font-sans">
           {INTEGRATIONS.map((int, i) => (
             <motion.div
               key={int.id}
@@ -44,14 +41,15 @@ export function IntegrationsPage() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.05 }}
+              className="font-sans"
             >
-              <Card className="h-full hover:border-[var(--brand-primary)] transition-all group rounded-[32px] overflow-hidden shadow-sm hover:shadow-2xl">
+              <Card className="h-full hover:border-[var(--brand-primary)] transition-all group rounded-[32px] overflow-hidden shadow-sm hover:shadow-2xl font-sans">
                 <CardContent className="p-8 flex flex-col gap-6 font-sans h-full">
                   <motion.div className="flex items-center justify-between font-sans">
                     <motion.div className="w-12 h-12 rounded-2xl bg-[var(--bg-overlay)] flex items-center justify-center text-[var(--brand-primary)] shadow-inner">
                       <Boxes size={24} />
                     </motion.div>
-                    <Badge variant={int.status === 'official' ? 'teal' : int.status === 'preview' ? 'amber' : 'neutral'}>
+                    <Badge variant={int.status === 'official' ? 'teal' : int.status === 'preview' ? 'amber' : 'neutral'} className="font-sans">
                       {int.status}
                     </Badge>
                   </motion.div>
@@ -71,3 +69,4 @@ export function IntegrationsPage() {
       <Footer />
     </motion.div>
   )
+}

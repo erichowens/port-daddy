@@ -1,139 +1,66 @@
+import { motion } from 'framer-motion'
 import { TutorialLayout } from '@/components/tutorials/TutorialLayout'
-import { Link } from 'react-router-dom'
+import { CodeBlock } from '@/components/ui/CodeBlock'
 
 export function Harbors() {
   return (
     <TutorialLayout
-      title="Harbors"
-      description="Permission namespaces for multi-agent systems. Issue HMAC-signed capability tokens so agents can only touch what they're supposed to touch."
+      title="Harbor Tokens"
+      description="Create permission namespaces for agent teams. Scope tunnels, file claims, and pub/sub to a harbor. HMAC-signed tokens with TTLs and a full audit trail."
       number="12"
-      total="12"
+      total="16"
       level="Advanced"
-      readTime="8 min read"
-      prev={{ title: 'pd spawn', href: '/tutorials/pd-spawn' }}
+      readTime="12 min read"
+      prev={{ title: 'pd spawn: Launch Agent Fleets', href: '/tutorials/pd-spawn' }}
+      next={{ title: 'Live Dashboard', href: '/tutorials/dashboard' }}
     >
-      <p>Harbors are the answer to "what happens when you have 20 agents running and one rogue agent starts claiming ports it shouldn't?" They provide cryptographic permission boundaries: agents without a valid harbor token simply can't perform operations outside their scope.</p>
+      <motion.div className="font-sans">
+        <motion.p className="text-lg leading-relaxed font-sans mb-8" style={{ color: 'var(--text-secondary)' }}>
+          As your swarm grows, identity management becomes mission-critical. **Harbors** provide cryptographic boundaries for your agents.
+        </motion.p>
 
-      <h2>What Are Harbors?</h2>
-      <p>A harbor is a named permission namespace. When you create a harbor, you define what operations are allowed inside it. When you issue a capability token for that harbor, any agent holding that token can perform those operations — and only those operations — within the harbor's scope.</p>
-      <p>Tokens are HMAC-signed JWTs (HS256) with embedded JTI identifiers. Every grant is written to the audit trail. Tokens expire by default after 1 hour, but you can set any TTL.</p>
-      <pre><code><span style={{ color: 'var(--code-comment)' }}># The mental model:</span>
-<span style={{ color: 'var(--code-comment)' }}>#</span>
-<span style={{ color: 'var(--code-comment)' }}>#   Harbor = Permission Boundary</span>
-<span style={{ color: 'var(--code-comment)' }}>#   Token  = Proof of permission, time-limited, signed</span>
-<span style={{ color: 'var(--code-comment)' }}>#   Agent  = Must present token to perform scoped operations</span>
-<span style={{ color: 'var(--code-comment)' }}>#</span>
-<span style={{ color: 'var(--code-comment)' }}># An agent WITHOUT a harbor token is unrestricted (default behavior).</span>
-<span style={{ color: 'var(--code-comment)' }}># An agent WITH a harbor token can ONLY do what the token permits.</span></code></pre>
+        <motion.h2 className="text-3xl font-bold mt-12 mb-6 font-display" style={{ color: 'var(--text-primary)' }}>What is a Harbor?</motion.h2>
+        <motion.p className="mb-6 font-sans">
+          A harbor is a named workspace within the Port Daddy daemon. When an agent "enters" a harbor, it receives a signed **Capability Token** (JWT). This token defines exactly what the agent is allowed to do.
+        </motion.p>
 
-      <h2>Creating a Harbor</h2>
-      <pre><code><span style={{ color: 'var(--code-comment)' }}># Create a harbor for the security review workflow</span>
-<span style={{ color: 'var(--code-prompt)' }}>$</span> <span style={{ color: 'var(--text-primary)' }}>pd harbor create myapp:security-review \</span>
-    <span style={{ color: 'var(--code-comment)' }}>--capabilities "code:read,notes:write,locks:acquire"</span>
+        <motion.h2 className="text-3xl font-bold mt-16 mb-6 font-display" style={{ color: 'var(--text-primary)' }}>1. Create a Harbor</motion.h2>
+        <CodeBlock language="bash">
+          {`$ pd harbor create myapp:security-review --cap "code:read,notes:write,lock:acquire" --ttl 2h`}
+        </CodeBlock>
+        <motion.p className="mt-8 font-sans">
+          This command creates a harbor named <motion.code className="font-mono bg-[var(--bg-overlay)] px-1.5 py-0.5 rounded font-mono">myapp:security-review</motion.code> with three specific capabilities. Any agent attempting to perform a restricted action without a token from this harbor will be blocked.
+        </motion.p>
 
-<span style={{ color: 'var(--code-output)' }}>Harbor created: myapp:security-review
-Capabilities: code:read, notes:write, locks:acquire
-Status: active</span>
+        <motion.h2 className="text-3xl font-bold mt-16 mb-6 font-display" style={{ color: 'var(--text-primary)' }}>2. Enter and Receive a Token</motion.h2>
+        <CodeBlock language="bash">
+          {`$ pd harbor enter myapp:security-review\n✓ Entered harbor: myapp:security-review\ntoken: eyJhbGciOiJIUzI1NiJ9... (expires in 2h)`}
+        </CodeBlock>
 
-<span style={{ color: 'var(--code-comment)' }}># List all harbors</span>
-<span style={{ color: 'var(--code-prompt)' }}>$</span> <span style={{ color: 'var(--text-primary)' }}>pd harbors</span>
-<span style={{ color: 'var(--code-output)' }}>HARBOR                  CAPABILITIES                        AGENTS
-myapp:security-review   code:read,notes:write,locks:acquire  0
-myapp:deploy            ports:claim,tunnels:start             1</span></code></pre>
+        <motion.h2 className="text-3xl font-bold mt-16 mb-6 font-display" style={{ color: 'var(--text-primary)' }}>3. Use the Token</motion.h2>
+        <motion.p className="mb-6 font-sans">
+          Agents must provide their token in the <motion.code className="font-mono bg-[var(--bg-overlay)] px-1.5 py-0.5 rounded font-mono">Authorization</motion.code> header (HTTP) or the <motion.code className="font-mono bg-[var(--bg-overlay)] px-1.5 py-0.5 rounded font-mono">--token</motion.code> flag (CLI).
+        </motion.p>
+        <CodeBlock language="bash">
+          {`$ pd claim myapp:api --token eyJhbGciOiJIUzI1NiJ9...`}
+        </CodeBlock>
 
-      <h2>Issuing Tokens</h2>
-      <pre><code><span style={{ color: 'var(--code-comment)' }}># Issue a token for a specific agent identity</span>
-<span style={{ color: 'var(--code-prompt)' }}>$</span> <span style={{ color: 'var(--text-primary)' }}>pd harbor token myapp:security-review \</span>
-    <span style={{ color: 'var(--code-comment)' }}>--for myapp:reviewer \</span>
-    <span style={{ color: 'var(--code-comment)' }}>--ttl 2h</span>
+        <motion.h2 className="text-3xl font-bold mt-16 mb-6 font-display" style={{ color: 'var(--text-primary)' }}>Capability Scopes</motion.h2>
+        <motion.ul className="space-y-3 list-none p-0 mb-8 font-sans">
+          <motion.li className="flex gap-3 font-sans"><motion.span className="text-[var(--brand-primary)] font-sans">✓</motion.span> <motion.span className="font-sans"><motion.strong className="font-sans" style={{ color: 'var(--text-primary)' }}>code:read</motion.strong> -- Access source code via file claims</motion.span></motion.li>
+          <motion.li className="flex gap-3 font-sans"><motion.span className="text-[var(--brand-primary)] font-sans">✓</motion.span> <motion.span className="font-sans"><motion.strong className="font-sans" style={{ color: 'var(--text-primary)' }}>notes:write</motion.strong> -- Post updates to the session timeline</motion.span></motion.li>
+          <motion.li className="flex gap-3 font-sans"><motion.span className="text-[var(--brand-primary)] font-sans">✓</motion.span> <motion.span className="font-sans"><motion.strong className="font-sans" style={{ color: 'var(--text-primary)' }}>tunnel:create</motion.strong> -- Expose services to the internet</motion.span></motion.li>
+          <motion.li className="flex gap-3 font-sans"><motion.span className="text-[var(--brand-primary)] font-sans">✓</motion.span> <motion.span className="font-sans"><motion.strong className="font-sans" style={{ color: 'var(--text-primary)' }}>lock:acquire</motion.strong> -- Participate in distributed locking</motion.span></motion.li>
+        </motion.ul>
 
-<span style={{ color: 'var(--code-output)' }}>Token issued (expires in 2h):
-etje JhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-
-Audit entry written:
-  harbor: myapp:security-review
-  agent:  myapp:reviewer
-  caps:   code:read,notes:write,locks:acquire
-  jti:    tok-a1b2c3d4
-  exp:    2026-03-11T10:23:41.000Z</span>
-
-<span style={{ color: 'var(--code-comment)' }}># Pass the token to the agent via environment variable</span>
-<span style={{ color: 'var(--code-prompt)' }}>$</span> <span style={{ color: 'var(--text-primary)' }}>PD_HARBOR_TOKEN=eyJhbGci... \</span>
-    <span style={{ color: 'var(--text-primary)' }}>pd spawn --backend claude --model claude-haiku-4-5 \</span>
-    <span style={{ color: 'var(--text-primary)' }}>--identity myapp:reviewer \</span>
-    <span style={{ color: 'var(--text-primary)' }}>-- "Review src/auth.ts for security vulnerabilities"</span></code></pre>
-
-      <h2>Capability Reference</h2>
-      <p>These are the scoped capabilities you can grant in a harbor token:</p>
-      <pre><code><span style={{ color: 'var(--code-comment)' }}># Port operations</span>
-<span style={{ color: 'var(--text-primary)' }}>ports:claim       </span><span style={{ color: 'var(--code-comment)' }}># pd claim — assign a port</span>
-<span style={{ color: 'var(--text-primary)' }}>ports:release     </span><span style={{ color: 'var(--code-comment)' }}># pd release — free a port</span>
-
-<span style={{ color: 'var(--code-comment)' }}># Note and session operations</span>
-<span style={{ color: 'var(--text-primary)' }}>notes:write       </span><span style={{ color: 'var(--code-comment)' }}># pd note — add session notes</span>
-<span style={{ color: 'var(--text-primary)' }}>sessions:read     </span><span style={{ color: 'var(--code-comment)' }}># pd sessions — list sessions</span>
-
-<span style={{ color: 'var(--code-comment)' }}># Distributed locks</span>
-<span style={{ color: 'var(--text-primary)' }}>locks:acquire     </span><span style={{ color: 'var(--code-comment)' }}># pd lock acquire</span>
-<span style={{ color: 'var(--text-primary)' }}>locks:release     </span><span style={{ color: 'var(--code-comment)' }}># pd lock release</span>
-
-<span style={{ color: 'var(--code-comment)' }}># Pub/sub messaging</span>
-<span style={{ color: 'var(--text-primary)' }}>messages:publish  </span><span style={{ color: 'var(--code-comment)' }}># pd msg publish</span>
-<span style={{ color: 'var(--text-primary)' }}>messages:read     </span><span style={{ color: 'var(--code-comment)' }}># pd msg get</span>
-
-<span style={{ color: 'var(--code-comment)' }}># Tunnel management</span>
-<span style={{ color: 'var(--text-primary)' }}>tunnels:start     </span><span style={{ color: 'var(--code-comment)' }}># pd tunnel start</span>
-<span style={{ color: 'var(--text-primary)' }}>tunnels:stop      </span><span style={{ color: 'var(--code-comment)' }}># pd tunnel stop</span>
-
-<span style={{ color: 'var(--code-comment)' }}># Catch-all for reading code (advisory, not enforced at FS level)</span>
-<span style={{ color: 'var(--text-primary)' }}>code:read         </span><span style={{ color: 'var(--code-comment)' }}># Signals this agent is allowed to read code</span></code></pre>
-
-      <h2>Scoping Operations</h2>
-      <p>When an agent presents a harbor token, every operation it performs is automatically scoped to that harbor's audit trail. Other agents and the dashboard can filter by harbor to see exactly what each scoped agent did.</p>
-      <pre><code><span style={{ color: 'var(--code-comment)' }}># As an agent with a harbor token, all operations are scoped:</span>
-<span style={{ color: 'var(--code-prompt)' }}>$</span> <span style={{ color: 'var(--text-primary)' }}>PD_HARBOR_TOKEN=eyJhbGci... pd note "Found XSS in /api/search"</span>
-<span style={{ color: 'var(--code-output)' }}>Note added (harbor: myapp:security-review)
-  session: sess-d4e5f6
-  harbor:  myapp:security-review
-  content: Found XSS in /api/search</span>
-
-<span style={{ color: 'var(--code-comment)' }}># Attempting an operation outside the token's capabilities fails:</span>
-<span style={{ color: 'var(--code-prompt)' }}>$</span> <span style={{ color: 'var(--text-primary)' }}>PD_HARBOR_TOKEN=eyJhbGci... pd msg deploy-queue publish "deploy now"</span>
-<span style={{ color: 'var(--p-red-400)' }}>Error: Harbor token for myapp:security-review does not include messages:publish</span>
-
-<span style={{ color: 'var(--code-comment)' }}># Revoking a token (by JTI)</span>
-<span style={{ color: 'var(--code-prompt)' }}>$</span> <span style={{ color: 'var(--text-primary)' }}>pd harbor revoke tok-a1b2c3d4</span>
-<span style={{ color: 'var(--code-output)' }}>Token tok-a1b2c3d4 revoked. Audit entry written.</span></code></pre>
-
-      <h2>SDK Equivalent</h2>
-      <pre><code><span style={{ color: 'var(--code-keyword)' }}>import</span> <span style={{ color: 'var(--text-primary)' }}>{'{ PortDaddy }'}</span> <span style={{ color: 'var(--code-keyword)' }}>from</span> <span style={{ color: 'var(--code-string)' }}>'port-daddy'</span><span style={{ color: 'var(--text-primary)' }}>;</span>
-
-<span style={{ color: 'var(--code-keyword)' }}>const</span> <span style={{ color: 'var(--text-primary)' }}>pd =</span> <span style={{ color: 'var(--code-keyword)' }}>new</span> <span style={{ color: 'var(--text-primary)' }}>PortDaddy();</span>
-
-<span style={{ color: 'var(--code-comment)' }}>// Create a harbor</span>
-<span style={{ color: 'var(--code-keyword)' }}>await</span> <span style={{ color: 'var(--text-primary)' }}>pd.createHarbor({'{'}</span>
-  name:</span> <span style={{ color: 'var(--code-string)' }}>'myapp:security-review'</span><span style={{ color: 'var(--text-primary)' }}>,
-  capabilities: [</span><span style={{ color: 'var(--code-string)' }}>'code:read'</span><span style={{ color: 'var(--text-primary)' }}>,</span> <span style={{ color: 'var(--code-string)' }}>'notes:write'</span><span style={{ color: 'var(--text-primary)' }}>,</span> <span style={{ color: 'var(--code-string)' }}>'locks:acquire'</span><span style={{ color: 'var(--text-primary)' }}>],
-{'}'});</span>
-
-<span style={{ color: 'var(--code-comment)' }}>// Issue a capability token</span>
-<span style={{ color: 'var(--code-keyword)' }}>const</span> <span style={{ color: 'var(--text-primary)' }}>token =</span> <span style={{ color: 'var(--code-keyword)' }}>await</span> <span style={{ color: 'var(--text-primary)' }}>pd.issueHarborToken({'{'}</span>
-  harbor:</span> <span style={{ color: 'var(--code-string)' }}>'myapp:security-review'</span><span style={{ color: 'var(--text-primary)' }}>,
-  forAgent:</span> <span style={{ color: 'var(--code-string)' }}>'myapp:reviewer'</span><span style={{ color: 'var(--text-primary)' }}>,
-  ttl:</span> <span style={{ color: 'var(--code-string)' }}>'2h'</span><span style={{ color: 'var(--text-primary)' }}>,
-{'}'});</span>
-
-<span style={{ color: 'var(--code-comment)' }}>// The spawned agent receives the token and is automatically scoped</span>
-<span style={{ color: 'var(--code-keyword)' }}>const</span> <span style={{ color: 'var(--text-primary)' }}>agent =</span> <span style={{ color: 'var(--code-keyword)' }}>await</span> <span style={{ color: 'var(--text-primary)' }}>pd.spawn({'{'}</span>
-  backend:</span> <span style={{ color: 'var(--code-string)' }}>'claude'</span><span style={{ color: 'var(--text-primary)' }}>,
-  model:</span> <span style={{ color: 'var(--code-string)' }}>'claude-haiku-4-5'</span><span style={{ color: 'var(--text-primary)' }}>,
-  identity:</span> <span style={{ color: 'var(--code-string)' }}>'myapp:reviewer'</span><span style={{ color: 'var(--text-primary)' }}>,
-  harborToken: token,
-  prompt:</span> <span style={{ color: 'var(--code-string)' }}>'Review src/auth.ts for security vulnerabilities'</span><span style={{ color: 'var(--text-primary)' }}>,
-{'}'});</span>
-
-<span style={{ color: 'var(--code-keyword)' }}>await</span> <span style={{ color: 'var(--text-primary)' }}>agent.wait();</span></code></pre>
-
+        <motion.div className="mt-12 p-10 rounded-[40px] font-sans shadow-xl border border-dashed" style={{ borderColor: 'var(--brand-primary)', background: 'var(--bg-overlay)' }}>
+          <motion.h3 className="m-0 mb-4 font-display text-2xl" style={{ color: 'var(--text-primary)' }}>Security First</motion.h3>
+          <motion.p className="mb-0 text-lg font-sans">
+            Harbors are the foundation of our **Formal Verification** roadmap. In V4, the daemon will automatically 
+            isolate agents that violate their harbor's state machine.
+          </motion.p>
+        </motion.div>
+      </motion.div>
     </TutorialLayout>
   )
 }

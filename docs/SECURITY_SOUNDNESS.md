@@ -43,10 +43,25 @@ The Arbiter does not just monitor logs; it continuously audits the live state of
 
 ---
 
+## 📦 4. Verified Distribution & Signing
+
+Formal proof is meaningless if the user runs an unverified artifact.
+
+### Objective
+Ensure the integrity of the Port Daddy daemon from the build server to the user's machine.
+
+### Methodology
+- **Binary Compilation:** Transition from interpreted JS to a standalone, AOT-compiled binary.
+- **Supply Chain Security:** Implement **SLSA (Supply-chain Levels for Software Artifacts)** Level 3 compliance.
+- **Code Signing:** All releases are signed with a cryptographic hardware security module (HSM) or verified Developer IDs.
+- **Deterministic Builds:** Ensure that any user can re-compile the source and achieve the exact same binary hash as the official release.
+
+---
+
 ## 🚀 Near-Term SMART Goals
 
-1.  **S:** Author a complete ProVerif model of the current HS256 Harbor Card exchange.
-2.  **M:** Achieve zero "executable attack paths" in the symbolic model for the primary ingress handshake.
-3.  **A:** Utilize the existing `lib/harbor-tokens.ts` logic as the specification source.
-4.  **R:** Provides the security foundation required for the "Wild West" multi-agent P2P roadmap.
-5.  **T:** Complete initial verification draft by the v3.8.0 release.
+- [x] **S:** Author a complete ProVerif model of the current HS256 Harbor Card exchange.
+- [x] **M:** Achieve zero "executable attack paths" in the symbolic model for the primary ingress handshake.
+- [x] **A:** Utilize the existing `lib/harbor-tokens.ts` logic as the specification source.
+- [x] **R:** Provides the security foundation required for the "Wild West" multi-agent P2P roadmap.
+- [x] **T:** Complete initial verification draft by the v3.8.0 release.

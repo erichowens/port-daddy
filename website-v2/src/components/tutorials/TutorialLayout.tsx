@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { motion, useScroll, useSpring } from 'framer-motion'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
 import { Clock, BookOpen, ChevronRight, Home, Layout, List } from 'lucide-react'
 

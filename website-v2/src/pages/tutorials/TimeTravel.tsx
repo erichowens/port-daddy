@@ -1,9 +1,6 @@
-}
-import { motion } from "framer-motion"
+import { motion } from 'framer-motion'
 import { TutorialLayout } from '@/components/tutorials/TutorialLayout'
 import { CodeBlock } from '@/components/ui/CodeBlock'
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
 
 export function TimeTravel() {
   return (
@@ -17,37 +14,32 @@ export function TimeTravel() {
       prev={{ title: 'Reactive Pipelines', href: '/tutorials/pipelines' }}
       next={{ title: 'Remote Harbors (Preview)', href: '/tutorials/remote-harbors' }}
     >
-      <motion.p className="font-sans">When a single script fails, you read the stack trace. When a swarm of 10 autonomous agents fails, the "stack trace" is spread across 10 different memory banks, 3 database locks, and a dozen file claims.</motion.p>
+      <motion.div className="font-sans">
+        <motion.p className="text-lg leading-relaxed font-sans mb-8" style={{ color: 'var(--text-secondary)' }}>
+          In a multi-agent system, the hardest question is "what happened first?". **Time-Travel Debugging** provides the answer.
+        </motion.p>
 
-      <motion.h2 className="font-display">The Correlation Engine</motion.h2>
-      <motion.p className="font-sans">Port Daddy solves this with the <motion.strong className="font-sans">Correlation Engine</motion.strong>. It interleaves two entirely different types of data into a single, unified chronological timeline:</motion.p>
-      
-      <motion.ul>
-        <motion.li className="font-sans"><motion.strong className="font-sans">Infrastructure Events:</motion.strong> (From the <motion.code className="font-mono">ActivityLog</motion.code>) When ports are claimed, locks are acquired, and daemons restart.</motion.li>
-        <motion.li className="font-sans"><motion.strong className="font-sans">Cognitive Events:</motion.strong> (From <motion.code className="font-mono">SessionNotes</motion.code>) The inner monologues and progress reports written by the AI agents themselves.</motion.li>
-      </motion.ul>
+        <motion.h2 className="text-3xl font-bold mt-12 mb-6 font-display" style={{ color: 'var(--text-primary)' }}>The Chronological Log</motion.h2>
+        <motion.p className="mb-6 font-sans">
+          Port Daddy persists every event to an append-only SQLite database. This includes port claims, lock acquisitions, pub/sub messages, and every note an agent has ever written.
+        </motion.p>
 
-      <motion.h2 className="font-display">Using History Mode in the Dashboard</motion.h2>
-      <motion.p className="font-sans">Open the <Link to="/tutorials/dashboard">Live Dashboard</Link> and click the <motion.strong className="font-sans">History</motion.strong> toggle on the Live Pulse feed.</motion.p>
-      
-      <motion.p className="font-sans">You will see a timeline that looks like this:</motion.p>
-      <CodeBlock
-        code={`[10:14:02] [claim.port]        Agent 'db-migrator' claimed port 5432
-[10:14:05] [lock.acquire]      Agent 'db-migrator' acquired lock 'schema'
-[10:14:06] [note: planning]    db-migrator: "Reviewing schema changes for User table"
-[10:14:15] [note: in_progress] db-migrator: "Applying ALTER TABLE..."
-[10:14:18] [claim.port]        Agent 'api-worker' claimed port 3000
-[10:14:20] [note: testing]     api-worker: "Starting integration tests"
-[10:14:21] [note: error]       api-worker: "FATAL: User table locked by migration"
-[10:14:22] [agent.stale]       Agent 'api-worker' died unexpectedly`}
-      />
+        <CodeBlock language="bash">
+          {`$ pd activity timeline --limit 50`}
+        </CodeBlock>
 
-      <motion.h2 className="font-display">Diagnosing the Deadlock</motion.h2>
-      <motion.p className="font-sans">By looking at the interleaved timeline, the failure is instantly obvious. The <motion.code className="font-mono">api-worker</motion.code> started its integration tests <em>while</em> the <motion.code className="font-mono">db-migrator</motion.code> still held the <motion.code className="font-mono">schema</motion.code> lock and was executing the <motion.code className="font-mono">ALTER TABLE</motion.code> statement.</motion.p>
+        <motion.h2 className="text-3xl font-bold mt-16 mb-6 font-display" style={{ color: 'var(--text-primary)' }}>Correlation</motion.h2>
+        <motion.p className="mb-6 font-sans">
+          The dashboard's timeline view allows you to see the exact sequence of events. For example, you can see that a database lock was acquired *after* a coding agent started its work — a clear indicator of a race condition.
+        </motion.p>
 
-      <motion.p className="font-sans">Without Port Daddy, you would have seen the <motion.code className="font-mono">api-worker</motion.code> fail with a generic database timeout, and you would have no idea that another agent was migrating the database at that exact millisecond.</motion.p>
-
-      <motion.h2 className="font-display">The Fix</motion.h2>
-      <motion.p className="font-sans">The solution is to use Port Daddy's <Link to="/tutorials/session-phases">Integration Signals</Link>. The <motion.code className="font-mono">api-worker</motion.code> should have used <motion.code className="font-mono">pd integration wait db-migrator</motion.code> before starting its tests.</motion.p>
+        <motion.div className="mt-12 p-10 rounded-[40px] font-sans shadow-xl border border-dashed" style={{ borderColor: 'var(--brand-primary)', background: 'var(--bg-overlay)' }}>
+          <motion.h3 className="m-0 mb-4 font-display text-2xl" style={{ color: 'var(--text-primary)' }}>Immutable Truth</motion.h3>
+          <motion.p className="mb-0 text-lg font-sans">
+            Because the logs are immutable, they serve as the "ground truth" for your harbor. Use them for post-mortems and to train your agents to avoid past mistakes.
+          </motion.p>
+        </motion.div>
+      </motion.div>
     </TutorialLayout>
   )
+}

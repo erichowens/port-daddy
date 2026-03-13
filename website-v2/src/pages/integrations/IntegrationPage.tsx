@@ -1,12 +1,9 @@
-}
-import { motion } from "framer-motion"
 import { motion } from 'framer-motion'
 import { useParams, Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
 import { CodeBlock } from '@/components/ui/CodeBlock'
 import { TutorialLayout } from '@/components/tutorials/TutorialLayout'
 import { INTEGRATIONS } from '@/data/integrations'
-import type { Integration } from '@/data/integrations'
 import { ChevronLeft, Puzzle, CheckCircle2 } from 'lucide-react'
 
 export function IntegrationPage() {
@@ -42,7 +39,7 @@ export function IntegrationPage() {
             {integration.name} <motion.span className="opacity-30 font-display">×</motion.span> Port Daddy
           </motion.h3>
           <motion.div className="flex items-center gap-3 mt-3 font-sans">
-            <Badge variant={integration.status === 'official' ? 'teal' : 'neutral'}>
+            <Badge variant={integration.status === 'official' ? 'teal' : 'neutral'} className="font-sans">
               {integration.status} integration
             </Badge>
             <motion.span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] font-sans">Verified for v3.7.0</motion.span>
@@ -73,7 +70,7 @@ export function IntegrationPage() {
         <motion.p className="mb-6 font-sans text-[var(--text-secondary)]">Integrate {integration.name} with your local Port Daddy daemon using the following pattern:</motion.p>
         <CodeBlock
           language={integration.id === 'langgraph' || integration.id === 'crewai' ? 'python' : 'typescript'}
-          code={integration.setupCode}
+          children={integration.setupCode}
         />
       </motion.section>
 
@@ -83,3 +80,4 @@ export function IntegrationPage() {
       </motion.section>
     </TutorialLayout>
   )
+}

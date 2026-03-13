@@ -8,9 +8,9 @@ import { AgentCard } from '@/components/viz/AgentCard'
 import { WorkflowsTable } from '@/components/viz/WorkflowsTable'
 import { Badge } from '@/components/ui/Badge'
 import { 
-  Lock, Users, Terminal, Zap, Shield, AlertCircle, 
-  Network, GitBranch, Search, MessageSquare, 
-  History, Activity, LayoutGrid, Heart, 
+  Lock, Users, Terminal, Zap, AlertCircle, 
+  Network, GitBranch, MessageSquare, 
+  History, 
   Skull, LifeBuoy, Anchor, Globe, Radio
 } from 'lucide-react'
 

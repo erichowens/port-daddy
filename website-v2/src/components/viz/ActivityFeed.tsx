@@ -1,5 +1,3 @@
-}
-import { motion } from "framer-motion"
 import * as React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useActivityStream } from '@/hooks/useActivityStream'
@@ -122,3 +120,4 @@ export function ActivityFeed() {
       </motion.div>
     </motion.div>
   )
+}

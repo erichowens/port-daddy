@@ -1,6 +1,4 @@
-})
-import { motion } from "framer-motion"
-import * as React from 'react'
+// import * as React from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardHeader, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -29,16 +27,16 @@ export function AgentCard({ agent }: AgentCardProps) {
   const protocols = agent.agentCard?.protocols || [];
 
   return (
-    <Card className="overflow-hidden border-[var(--border-default)] bg-[var(--bg-surface)] shadow-lg hover:shadow-xl transition-all font-sans">
-      <CardHeader className="p-6 border-b border-[var(--border-subtle)] bg-[var(--bg-overlay)] flex flex-row items-center justify-between gap-4">
-        <motion.div className="flex items-center gap-4">
+    <Card className="overflow-hidden border-[var(--border-default)] bg-[var(--bg-surface)] shadow-lg hover:shadow-xl transition-all font-sans rounded-3xl">
+      <CardHeader className="p-6 border-b border-[var(--border-subtle)] bg-[var(--bg-overlay)] flex flex-row items-center justify-between gap-4 font-sans">
+        <motion.div className="flex items-center gap-4 font-sans">
           <motion.div className={`p-2.5 rounded-xl bg-[var(--brand-primary)]/10 text-[var(--brand-primary)]`}>
             <Users size={20} />
           </motion.div>
-          <motion.div>
+          <motion.div className="font-sans">
             <motion.h3 className="text-base font-bold truncate max-w-[180px] font-display" style={{ color: 'var(--text-primary)' }}>{agent.name || agent.id}</motion.h3>
-            <motion.div className="flex items-center gap-2 mt-1">
-              <Badge variant={agent.healthAssessment.liveness === 'alive' ? 'teal' : 'neutral'} className="text-[9px] px-1.5 py-0">
+            <motion.div className="flex items-center gap-2 mt-1 font-sans">
+              <Badge variant={agent.healthAssessment.liveness === 'alive' ? 'teal' : 'neutral'} className="text-[9px] px-1.5 py-0 font-sans">
                 {agent.healthAssessment.liveness}
               </Badge>
               <motion.span className="text-[10px] text-[var(--text-muted)] font-mono uppercase tracking-tighter">{agent.type}</motion.span>
@@ -46,7 +44,7 @@ export function AgentCard({ agent }: AgentCardProps) {
           </motion.div>
         </motion.div>
         {isA2A && (
-          <Badge variant="teal" className="bg-[var(--p-teal-400)]/15 text-[var(--p-teal-400)] border-[var(--p-teal-400)]/30 font-black text-[10px] tracking-widest px-2 py-0.5 uppercase">
+          <Badge variant="teal" className="bg-[var(--p-teal-400)]/15 text-[var(--p-teal-400)] border-[var(--p-teal-400)]/30 font-black text-[10px] tracking-widest px-2 py-0.5 uppercase font-sans">
             A2A Enabled
           </Badge>
         )}
@@ -93,7 +91,7 @@ export function AgentCard({ agent }: AgentCardProps) {
               </motion.div>
               <motion.div className="flex flex-wrap gap-2 font-sans">
                 {capabilities.map((cap: string) => (
-                  <Badge key={cap} variant="neutral" className="text-[10px] font-black uppercase tracking-widest bg-[var(--bg-overlay)] border-[var(--border-subtle)]">
+                  <Badge key={cap} variant="neutral" className="text-[10px] font-black uppercase tracking-widest bg-[var(--bg-overlay)] border-[var(--border-subtle)] font-sans">
                     {cap}
                   </Badge>
                 ))}
@@ -107,7 +105,7 @@ export function AgentCard({ agent }: AgentCardProps) {
               </motion.div>
               <motion.div className="flex flex-wrap gap-2 font-sans">
                 {protocols.map((proto: string) => (
-                  <Badge key={proto} variant="neutral" className="text-[10px] font-mono font-bold uppercase">
+                  <Badge key={proto} variant="neutral" className="text-[10px] font-mono font-bold uppercase font-mono">
                     {proto}
                   </Badge>
                 ))}
@@ -143,3 +141,4 @@ export function AgentCard({ agent }: AgentCardProps) {
       </CardContent>
     </Card>
   )
+}

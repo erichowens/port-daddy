@@ -1,9 +1,6 @@
-}
-import { motion } from "framer-motion"
+import { motion } from 'framer-motion'
 import { TutorialLayout } from '@/components/tutorials/TutorialLayout'
 import { CodeBlock } from '@/components/ui/CodeBlock'
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
 
 export function Pipelines() {
   return (
@@ -17,38 +14,28 @@ export function Pipelines() {
       prev={{ title: 'Live Dashboard', href: '/tutorials/dashboard' }}
       next={{ title: 'Time-Travel Debugging', href: '/tutorials/time-travel' }}
     >
-      <motion.p className="font-sans">Port Daddy isn't just a static registry. It includes a reactive Orchestrator Engine that lets you build Directed Acyclic Graphs (DAGs) of agentic workflows.</motion.p>
+      <motion.div className="font-sans">
+        <motion.p className="text-lg leading-relaxed font-sans mb-8" style={{ color: 'var(--text-secondary)' }}>
+          **Pipelines** are the automation layer of Port Daddy. They allow you to define rules that react to swarm events.
+        </motion.p>
 
-      <motion.h2 className="font-display">The Orchestrator Engine</motion.h2>
-      <motion.p className="font-sans">Instead of manually running <motion.code className="font-mono">pd spawn</motion.code>, you can define rules that listen to pub/sub channels and automatically trigger actions when messages arrive.</motion.p>
-      
-      <motion.p className="font-sans">You can manage these rules via the "Agentic Pipelines" tab in the <Link to="/tutorials/dashboard">Live Dashboard</Link>, or via the CLI.</motion.p>
+        <motion.h2 className="text-3xl font-bold mt-12 mb-6 font-display" style={{ color: 'var(--text-primary)' }}>1. Define a Rule</motion.h2>
+        <CodeBlock language="bash">
+          {`$ pd orchestrator add "Auto-Fix" --channel "test:fail" --action "pd spawn --backend aider -- Fix the broken tests"`}
+        </CodeBlock>
 
-      <motion.h2 className="font-display">Creating a Rule</motion.h2>
-      <motion.p className="font-sans">A rule consists of a <motion.strong className="font-sans">trigger</motion.strong> (a channel pattern) and an <motion.strong className="font-sans">action</motion.strong> (spawning an agent or executing a shell command).</motion.p>
-      
-      <CodeBlock
-        code={`# Add a rule that triggers a Linter Agent whenever code changes
-$ pd orchestrator add-rule \\
-    --name "Auto-Linter" \\
-    --channel "fs:changed" \\
-    --action spawn \\
-    --payload '{ "backend": "claude", "model": "claude-haiku-4-5", "task": "Lint the changed files in {{msg}}" }'`}
-      />
+        <motion.h2 className="text-3xl font-bold mt-16 mb-6 font-display" style={{ color: 'var(--text-primary)' }}>2. Execution</motion.h2>
+        <motion.p className="mb-6 font-sans">
+          When a message is published to the <motion.code className="font-mono bg-[var(--bg-overlay)] px-1.5 py-0.5 rounded font-mono">test:fail</motion.code> channel, Port Daddy will automatically launch the specified action.
+        </motion.p>
 
-      <motion.p className="font-sans">Notice the <motion.code className="font-mono">{'{'}{'{'}msg{'}'}{'}'}</motion.code> template variable? The Orchestrator automatically injects the payload of the pub/sub message into the spawn task or shell command.</motion.p>
-
-      <motion.h2 className="font-display">Example: A Self-Healing CI Pipeline</motion.h2>
-      <motion.p className="font-sans">Using the Orchestrator, you can build a fully autonomous, self-healing CI loop:</motion.p>
-
-      <motion.ol>
-        <motion.li className="font-sans">A file-watcher script publishes to <motion.code className="font-mono">code:changed</motion.code>.</motion.li>
-        <motion.li className="font-sans"><motion.strong className="font-sans">Rule 1:</motion.strong> Listens to <motion.code className="font-mono">code:changed</motion.code> and runs the test suite via <motion.code className="font-mono">exec</motion.code>.</motion.li>
-        <motion.li className="font-sans">The test script publishes either <motion.code className="font-mono">test:passed</motion.code> or <motion.code className="font-mono">test:failed</motion.code>.</motion.li>
-        <motion.li className="font-sans"><motion.strong className="font-sans">Rule 2:</motion.strong> Listens to <motion.code className="font-mono">test:failed</motion.code> and <motion.code className="font-mono">spawn</motion.code>s a Debugger Agent, passing the error logs in the message.</motion.li>
-        <motion.li className="font-sans">The Debugger Agent fixes the code, saving the file, which triggers step 1 again.</motion.li>
-      </motion.ol>
-
-      <motion.p className="font-sans">This entire loop is managed by Port Daddy's internal engine, visible and stoppable from the dashboard at any time.</motion.p>
+        <motion.div className="mt-12 p-10 rounded-[40px] font-sans shadow-xl border border-dashed" style={{ borderColor: 'var(--brand-primary)', background: 'var(--bg-overlay)' }}>
+          <motion.h3 className="m-0 mb-4 font-display text-2xl" style={{ color: 'var(--text-primary)' }}>Dynamic DAGs</motion.h3>
+          <motion.p className="mb-0 text-lg font-sans">
+            Unlike static CI/CD pipelines, Port Daddy pipelines are dynamic and reactive. They live inside your swarm and grow with your agents.
+          </motion.p>
+        </motion.div>
+      </motion.div>
     </TutorialLayout>
   )
+}

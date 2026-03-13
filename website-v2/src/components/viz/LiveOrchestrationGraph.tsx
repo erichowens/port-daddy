@@ -2,13 +2,13 @@ import * as React from 'react'
 import { motion } from 'framer-motion'
 import { SailorAgent } from './SailorAgent'
 
-interface Node {
-  id: string
-  type: 'service' | 'agent' | 'core'
-  label: string
-  status?: 'healthy' | 'unhealthy' | 'active' | 'idle' | 'dead'
-  port?: number
-}
+// interface Node {
+//   id: string
+//   type: 'service' | 'agent' | 'core'
+//   label: string
+//   status?: 'healthy' | 'unhealthy' | 'active' | 'idle' | 'dead'
+//   port?: number
+// }
 
 interface LiveOrchestrationGraphProps {
   services: any[]

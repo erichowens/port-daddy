@@ -1,11 +1,10 @@
-import * as React from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { PRODUCT_FEATURES } from '@/data/product'
 import { 
-  Terminal, Zap, Shield, History, Radio, 
-  LifeBuoy, Anchor, Globe, Lock, Code, Network 
+  Shield, History, Radio, 
+  Anchor, Code 
 } from 'lucide-react'
 
 const ICON_MAP: Record<string, any> = {
@@ -55,7 +54,7 @@ export function Features() {
                 whileHover={{ y: -8 }}
                 className="font-sans"
               >
-                <Card className="h-full border-[var(--border-subtle)] hover:border-[var(--brand-primary)] transition-all group bg-[var(--bg-surface)] rounded-[40px] overflow-hidden shadow-sm hover:shadow-2xl">
+                <Card className="h-full border-[var(--border-subtle)] hover:border-[var(--brand-primary)] transition-all group bg-[var(--bg-surface)] rounded-[40px] overflow-hidden shadow-sm hover:shadow-2xl font-sans">
                   <CardContent className="p-10 flex flex-col gap-6 h-full font-sans">
                     <motion.div
                       className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all bg-[var(--bg-overlay)] text-[var(--brand-primary)] group-hover:bg-[var(--brand-primary)] group-hover:text-white group-hover:shadow-xl"
@@ -80,7 +79,7 @@ export function Features() {
                     </motion.p>
 
                     <motion.div className="mt-auto pt-8 font-sans">
-                      <motion.div className="font-mono text-[11px] px-5 py-3.5 rounded-2xl bg-[var(--bg-overlay)] border border-[var(--border-subtle)] opacity-60 group-hover:opacity-100 group-hover:border-[var(--brand-primary)] transition-all overflow-hidden whitespace-nowrap">
+                      <motion.div className="font-mono text-[11px] px-5 py-3.5 rounded-2xl bg-[var(--bg-overlay)] border border-[var(--border-subtle)] opacity-60 group-hover:opacity-100 group-hover:border-[var(--brand-primary)] transition-all overflow-hidden whitespace-nowrap font-mono">
                         <motion.span className="text-[var(--brand-primary)] font-mono">$ </motion.span>
                         <motion.span className="font-mono">{feature.cli}</motion.span>
                       </motion.div>

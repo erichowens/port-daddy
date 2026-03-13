@@ -1,5 +1,3 @@
-}
-import { motion } from "framer-motion"
 import { motion } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -22,7 +20,7 @@ export function BlueprintsSection() {
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}
     >
-      <motion.div className="max-w-7xl mx-auto">
+      <motion.div className="max-w-7xl mx-auto font-sans">
         <motion.div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-20 font-sans">
           <motion.div className="max-w-2xl font-sans">
             <motion.div
@@ -30,7 +28,7 @@ export function BlueprintsSection() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
-              <Badge variant="teal" className="mb-6 px-4 py-1 uppercase tracking-widest text-[10px]">Product Blueprints</Badge>
+              <Badge variant="teal" className="mb-6 px-4 py-1.5 uppercase tracking-widest text-[10px] font-sans">Product Blueprints</Badge>
             </motion.div>
             <motion.h2 
               className="text-5xl sm:text-6xl font-bold tracking-tight font-display mb-8"
@@ -70,8 +68,9 @@ export function BlueprintsSection() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, duration: 0.5 }}
                 whileHover={{ y: -8 }}
+                className="font-sans"
               >
-                <Card className="group overflow-hidden border-[var(--border-subtle)] hover:border-[var(--brand-primary)] transition-all bg-[var(--bg-surface)] shadow-sm hover:shadow-2xl">
+                <Card className="group overflow-hidden border-[var(--border-subtle)] hover:border-[var(--brand-primary)] transition-all bg-[var(--bg-surface)] shadow-sm hover:shadow-2xl rounded-[40px]">
                   <CardContent className="p-0 flex flex-col sm:flex-row h-full font-sans">
                     <motion.div className="sm:w-1/3 bg-[var(--bg-overlay)] flex items-center justify-center p-10 transition-colors group-hover:bg-[rgba(58,173,173,0.05)] font-sans">
                       <motion.div
@@ -93,7 +92,7 @@ export function BlueprintsSection() {
                         >
                           Get Template
                         </Link>
-                        <motion.span className="text-[10px] font-mono text-[var(--text-muted)] opacity-40 group-hover:opacity-100 transition-opacity font-mono">
+                        <motion.span className="text-[10px] font-mono text-[var(--text-muted)] opacity-40 group-hover:opacity-100 transition-opacity">
                           {bp.templatePath}
                         </motion.span>
                       </motion.div>
@@ -107,3 +106,4 @@ export function BlueprintsSection() {
       </motion.div>
     </motion.section>
   )
+}
