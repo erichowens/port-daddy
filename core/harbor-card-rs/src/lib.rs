@@ -149,3 +149,51 @@ fn proof_capability_attenuation() {
     sub.push("admin".to_string());
     assert!(!HarborCardVerifier::verify_capability_subset(&root, &sub));
 }
+
+// ─── FFI / Shared Library Boundary ──────────────────────────────────────────
+
+use std::ffi::CStr;
+use std::os::raw::c_char;
+
+/// FFI: Constant-time byte comparison.
+#[no_mangle]
+pub extern "C" fn harbor_constant_time_compare(
+    a: *const u8, 
+    a_len: usize, 
+    b: *const u8, 
+    b_len: usize
+) -> bool {
+    if a.is_null() || b.is_null() {
+        return false;
+    }
+    let a_slice = unsafe { std::slice::from_raw_parts(a, a_len) };
+    let b_slice = unsafe { std::slice::from_raw_parts(b, b_len) };
+    HarborCardVerifier::constant_time_compare(a_slice, b_slice)
+}
+
+/// FFI: Verify if sub_caps JSON string is a subset of root_caps JSON string.
+/// Returns true if valid, false if escalation detected or malformed.
+#[no_mangle]
+pub extern "C" fn harbor_verify_caps_subset_json(
+    root_json: *const c_char,
+    sub_json: *const c_char
+) -> bool {
+    if root_json.is_null() || sub_json.is_null() {
+        return false;
+    }
+    
+    let root_str = unsafe { CStr::from_ptr(root_json).to_string_lossy() };
+    let sub_str = unsafe { CStr::from_ptr(sub_json).to_string_lossy() };
+    
+    let root_vec: Vec<String> = match serde_json::from_str(&root_str) {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
+    
+    let sub_vec: Vec<String> = match serde_json::from_str(&sub_str) {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
+    
+    HarborCardVerifier::verify_capability_subset(&root_vec, &sub_vec)
+}

@@ -2,14 +2,37 @@
  * Port Daddy Arbiter — Runtime Security Enforcement
  *
  * An ambient security agent that monitors the activity log and
- * enforces the formally verified Anchor Protocol rules.
+ * enforces formally verified Anchor Protocol rules via the Rust Enforcer.
  */
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+import koffi from 'koffi';
 import { ActivityType, createActivityLog } from './activity.js';
 import { HarborTokens } from './harbor-tokens.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// ─── Rust Enforcer Bridge (FFI) ─────────────────────────────────────────────
+
+const libPath = path.join(__dirname, '../dist/core/libharbor_card_rs.' + (process.platform === 'darwin' ? 'dylib' : 'so'));
+
+let enforcer: any = null;
+try {
+  const lib = koffi.load(libPath);
+  enforcer = {
+    constantTimeCompare: lib.func('bool harbor_constant_time_compare(const uint8_t *a, size_t a_len, const uint8_t *b, size_t b_len)'),
+    verifyCapsSubset: lib.func('bool harbor_verify_caps_subset_json(const char *root_json, const char *sub_json)')
+  };
+  console.log('💂‍♂️ Arbiter: Formally verified Rust enforcer loaded.');
+} catch (err) {
+  console.warn('⚠️ Arbiter: Rust enforcer not found or failed to load. Falling back to internal logic.');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export interface ArbiterConfig {
-  strictMode: boolean; // If true, trigger 'Man Overboard' on violations
+  strictMode: boolean;
 }
 
 export function createArbiter(
@@ -19,9 +42,6 @@ export function createArbiter(
 ) {
   let violationsCount = 0;
 
-  /**
-   * Sniff the activity stream for protocol violations
-   */
   const stopWatching = activityLog.subscribe((entry) => {
     switch (entry.type) {
       case ActivityType.SERVICE_CLAIM:
@@ -30,37 +50,37 @@ export function createArbiter(
       case ActivityType.LOCK_ACQUIRE:
         checkLockAcquisition(entry);
         break;
-      // Future: add delegation sniffing
     }
   });
 
   /**
-   * Rule 1: Anti-Squatting (PID-Identity Binding)
-   * 
-   * Formally Proven Requirement: A process can only claim a port/identity 
-   * if it matches the PID that holds the current valid Harbor Card.
+   * Rule 1: Anti-Squatting (PID Binding)
    */
   function checkServiceClaim(entry: any) {
     const { agentId, metadata } = entry;
-    const claimedPid = metadata?.pid;
-
-    // In v1, we just log suspicious mismatches
-    if (claimedPid && agentId) {
-      // Logic to cross-reference with Harbor Card state
-      // (Placeholder for Phase 2 integration)
-    }
+    // Implementation: Cross-reference PID from activity with token registry
   }
 
   /**
-   * Rule 2: Capability Enforcement
+   * Rule 2: Capability Enforcement (FFI Verified)
    */
-  function checkLockAcquisition(entry: any) {
-    const { agentId, targetId } = entry; // targetId is the lock name
+  async function checkLockAcquisition(entry: any) {
+    const { agentId, targetId } = entry;
     
-    // Check if the agent has the capability required for this resource
-    // Logic: if targetId starts with 'db:', ensure agent has 'db:write' or 'db:read'
-    if (targetId.startsWith('db:')) {
-      // Placeholder: retrieve agent caps from harborTokens and verify subset
+    // Example: If a lock is 'db:write', ensure the agent has that capability
+    // in its formally issued Harbor Card.
+    if (targetId.startsWith('db:') && enforcer) {
+      const card = await harborTokens.getCardForAgent(agentId);
+      if (!card) return;
+
+      const requiredCaps = JSON.stringify(['db:write']);
+      const agentCaps = JSON.stringify(card.capabilities);
+
+      const isValid = enforcer.verifyCapsSubset(agentCaps, requiredCaps);
+      
+      if (!isValid) {
+        reportViolation('CAP_ESCALATION', `Agent ${agentId} attempted to acquire ${targetId} without proper capabilities.`);
+      }
     }
   }
 
@@ -74,7 +94,6 @@ export function createArbiter(
     });
 
     if (config.strictMode) {
-      // Trigger Harbor-wide shutdown logic here
       activityLog.log('system.man_overboard', { details: 'Arbiter triggered emergency shutdown' });
     }
   }

@@ -1,9 +1,8 @@
 import { motion, useScroll, useSpring } from 'framer-motion'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
-import { CodeBlock } from '@/components/ui/CodeBlock'
 import { COOKBOOK_RECIPES } from '@/data/cookbook'
-import { ChevronLeft, Shield, Activity, Zap, MessageSquare, UserMinus, Network, Share2, Anchor, Cpu, Search, RefreshCw, Layers, CheckCircle2, Info, Rocket, BookOpen, ArrowRight } from 'lucide-react'
+import { ChevronLeft, Shield, Activity, Zap, MessageSquare, UserMinus, Network, Share2, Anchor, Cpu, Search, RefreshCw, Layers, BookOpen } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { Footer } from '@/components/layout/Footer'
 

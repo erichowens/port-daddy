@@ -36,7 +36,7 @@ In this post, you'll learn:
 
 ---
 
-## ⚓ Section 1: The Anchor Handshake
+## &#9875; Section 1: The Anchor Handshake
 
 The Anchor Protocol manages the lifecycle of a "Harbor Card"—a cryptographically signed identity token that proves an agent's authority within a specific namespace.
 
@@ -67,7 +67,7 @@ By using **Symbolic Analysis**, we treat cryptography as a set of formal algebra
 
 ---
 
-## 🔐 Section 2: Defending Against Algorithm Confusion
+## &#128274; Section 2: Defending Against Algorithm Confusion
 
 A common pitfall in JWT implementations is trusting the \`alg\` header. If your verifier sees \`{ "alg": "none" }\`, it might skip verification. This is the root cause of **CVE-2026-22817**.
 
@@ -91,7 +91,7 @@ let SecureHarbor(k: key) =
 
 ---
 
-## ⛓️ Section 3: Advanced Multi-hop Delegation
+## &#9939; Section 3: Advanced Multi-hop Delegation
 
 The heart of Port Daddy v4 is **Agent-to-Agent (A2A) Delegation**. This allows Agent A to delegate a *restricted subset* of its capabilities to Agent B without involving the Daemon for every hop. This is inspired by the design of **Biscuits** ([biscuitsec.org](https://www.biscuitsec.org/)) and **Macaroons** ([Google Research](https://research.google/pubs/macaroons-cookies-with-contextual-caveats-for-decentralized-authorization-in-the-cloud/)).
 
@@ -121,7 +121,7 @@ query b: id, cap: capability, a: id;
 
 ---
 
-## 📊 Summary of Findings
+## &#128202; Summary of Findings
 
 | Property | Phase | Result | Citation |
 | :--- | :--- | :--- | :--- |
@@ -132,7 +132,7 @@ query b: id, cap: capability, a: id;
 
 ---
 
-## 🛠️ Complete Implementation Example
+## &#128736; Complete Implementation Example
 
 You can run our simplified Phase 2 (Asymmetric) verification model today.
 
@@ -154,7 +154,7 @@ process
 
 ---
 
-## 🏁 Conclusion
+## &#127937; Conclusion
 
 By combining **Formal Verification** with a modern developer experience, Port Daddy is moving identity from "hope-based security" to "math-based security." The Anchor Protocol ensures that your agents are exactly who they say they are, even in the most chaotic P2P environments.
 

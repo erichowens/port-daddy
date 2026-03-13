@@ -1,4 +1,3 @@
-import * as React from 'react'
 import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/Badge'
 import { Sparkles, Shield, RefreshCw, DollarSign, Database, Terminal, Layers, Anchor, Zap, Globe } from 'lucide-react'
