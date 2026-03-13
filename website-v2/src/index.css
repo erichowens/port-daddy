@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @import "./styles/tokens.css";
 
 /* ─── Global resets & base ──────────────────────────────────────────────────── */
@@ -22,18 +23,37 @@ body {
   font-size: var(--p-text-base);
   line-height: 1.6;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
-/* ─── Typography defaults ─────────────────────────────────────────────────── */
-h1, h2, h3, h4, h5, h6 {
+/* ─── Smooth Scrolling & Motion ────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ─── Typography defaults (Strict Unification) ─────────────────────────────── */
+h1, h2, h3, .font-display {
   font-family: var(--p-font-display);
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.1;
+  margin: 0;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+h4, h5, h6, .uppercase-label, .font-sans-bold {
+  font-family: var(--p-font-sans);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
   margin: 0;
   color: var(--text-primary);
 }
 
-p {
+p, li, span, button, .font-sans {
+  font-family: var(--p-font-sans);
   margin: 0;
   color: var(--text-secondary);
 }
@@ -41,52 +61,78 @@ p {
 a {
   color: var(--brand-primary);
   text-decoration: none;
+  transition: color 0.2s ease;
+  font-family: var(--p-font-sans);
 }
 
 a:hover {
   color: var(--brand-secondary);
 }
 
-code, pre, kbd {
+code, pre, kbd, .font-mono {
   font-family: var(--p-font-mono);
 }
 
-/* ─── Inline code ─────────────────────────────────────────────────────────── */
-:not(pre) > code {
-  background: rgba(58, 173, 173, 0.1);
-  color: var(--text-code);
-  padding: 0.1em 0.4em;
-  border-radius: var(--p-radius-sm);
-  font-size: 0.875em;
-}
-
-/* ─── Scrollbar styling ─────────────────────────────────────────────────────── */
+/* ─── Custom Scrollbar ───────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--bg-base);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-default);
-  border-radius: var(--p-radius-full);
+  background: var(--border-subtle);
+  border: 3px solid var(--bg-base);
+  border-radius: 10px;
+  transition: background 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--border-strong);
+  background: var(--brand-primary);
+}
+
+/* ─── Glassmorphism ────────────────────────────────────────────────────────── */
+.glass {
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid var(--border-subtle);
+}
+
+.glass-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  border-color: var(--brand-primary);
+  box-shadow: 0 10px 40px rgba(58, 173, 173, 0.1);
+  transform: translateY(-4px);
 }
 
 /* ─── Selection ────────────────────────────────────────────────────────────── */
 ::selection {
-  background: rgba(58, 173, 173, 0.25);
-  color: var(--text-primary);
+  background: var(--brand-primary);
+  color: white;
 }
 
 /* ─── Focus visible ─────────────────────────────────────────────────────────── */
 :focus-visible {
   outline: 2px solid var(--brand-primary);
-  outline-offset: 2px;
+  outline-offset: 4px;
+}
+
+/* ─── Animations ───────────────────────────────────────────────────────────── */
+@keyframes pulse-teal {
+  0% { box-shadow: 0 0 0 0 rgba(58, 173, 173, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(58, 173, 173, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(58, 173, 173, 0); }
+}
+
+.pulse-active {
+  animation: pulse-teal 2s infinite;
 }

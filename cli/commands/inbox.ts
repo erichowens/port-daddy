@@ -6,12 +6,19 @@ import { status as maritimeStatus } from '../../lib/maritime.js';
 import { pdFetch, PORT_DADDY_URL } from '../utils/fetch.js';
 import { CLIOptions, isQuiet, isJson } from '../types.js';
 import type { PdFetchResponse } from '../utils/fetch.js';
+import { handleSub } from './messaging.js';
 
 /**
  * Handle `pd inbox <subcommand>` command — top-level standalone inbox access.
  */
 export async function handleInbox(subcommand: string | undefined, args: string[], options: CLIOptions): Promise<void> {
   const agentId: string = (options.agent as string) || process.env.AGENT_ID || `cli-${process.pid}`;
+
+  if (subcommand === 'watch' || options.watch) {
+    // Watch inbox in real-time using SSE sub system
+    const channel = `inbox:${agentId}`;
+    return handleSub(channel, options);
+  }
 
   if (!subcommand || subcommand === 'list') {
     // Read inbox

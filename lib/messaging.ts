@@ -18,6 +18,7 @@ interface MessageRow {
   id: number;
   channel: string;
   payload: string;
+  content_type: string;
   sender: string | null;
   created_at: number;
   expires_at: number | null;
@@ -32,6 +33,7 @@ interface ChannelRow {
 interface PublishOptions {
   sender?: string | null;
   expires?: string | number | null;
+  contentType?: 'text' | 'json' | 'binary';
 }
 
 interface GetMessagesOptions {
@@ -42,7 +44,8 @@ interface GetMessagesOptions {
 interface MessagePayload {
   id: number | bigint;
   channel?: string;
-  payload: string;
+  payload: unknown;
+  contentType: string;
   sender: string | null;
   createdAt: number;
 }
@@ -53,11 +56,30 @@ type SubscriberCallback = (msg: MessagePayload) => void;
  * Initialize the messaging module with a database connection
  */
 export function createMessaging(db: Database.Database) {
+  // Ensure table and columns exist
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      channel TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      content_type TEXT DEFAULT 'text',
+      sender TEXT,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel);
+    CREATE INDEX IF NOT EXISTS idx_messages_expiry ON messages(expires_at);
+  `);
+
+  try {
+    db.exec('ALTER TABLE messages ADD COLUMN content_type TEXT DEFAULT "text"');
+  } catch { /* already exists */ }
+
   // Prepared statements
   const stmts = {
     insert: db.prepare(`
-      INSERT INTO messages (channel, payload, sender, created_at, expires_at)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO messages (channel, payload, content_type, sender, created_at, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?)
     `),
     getLatest: db.prepare<[string, number]>(`
       SELECT * FROM messages
@@ -107,14 +129,10 @@ export function createMessaging(db: Database.Database) {
     if (payload === null || payload === undefined) {
       return { success: false, error: 'payload is required', code: 'VALIDATION_ERROR' };
     }
-    if (typeof payload === 'string') {
-      if (!payload.trim()) {
-        return { success: false, error: 'payload must be a non-empty string', code: 'VALIDATION_ERROR' };
-      }
-    }
 
     const now = Date.now();
     const { sender = null, expires = null } = options;
+    let { contentType } = options;
 
     let expiresAt: number | null = null;
     if (expires) {
@@ -122,15 +140,29 @@ export function createMessaging(db: Database.Database) {
       expiresAt = parsed !== null ? now + parsed : null;
     }
 
-    const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    let payloadStr: string;
+    if (!contentType) {
+      if (typeof payload === 'string') contentType = 'text';
+      else if (Buffer.isBuffer(payload)) contentType = 'binary';
+      else contentType = 'json';
+    }
+
+    if (contentType === 'json') {
+      payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    } else if (contentType === 'binary') {
+      payloadStr = Buffer.isBuffer(payload) ? payload.toString('base64') : String(payload);
+    } else {
+      payloadStr = String(payload);
+    }
 
     try {
-      const result = stmts.insert.run(trimmedChannel, payloadStr, sender, now, expiresAt);
+      const result = stmts.insert.run(trimmedChannel, payloadStr, contentType, sender, now, expiresAt);
 
       const message: MessagePayload = {
         id: result.lastInsertRowid,
         channel: trimmedChannel,
-        payload: payloadStr,
+        payload: formatPayload(payloadStr, contentType),
+        contentType,
         sender,
         createdAt: now
       };
@@ -146,6 +178,12 @@ export function createMessaging(db: Database.Database) {
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }
+  }
+
+  function formatPayload(payload: string, contentType: string): unknown {
+    if (contentType === 'json') return tryParseJson(payload);
+    if (contentType === 'binary') return payload; // Return base64 string
+    return payload;
   }
 
   /**
@@ -175,7 +213,8 @@ export function createMessaging(db: Database.Database) {
       channel: trimmedChannel,
       messages: messages.map(m => ({
         id: m.id,
-        payload: tryParseJson(m.payload),
+        payload: formatPayload(m.payload, m.content_type),
+        contentType: m.content_type,
         sender: m.sender,
         createdAt: m.created_at
       })),
@@ -208,7 +247,8 @@ export function createMessaging(db: Database.Database) {
       channel: trimmedChannel,
       message: {
         id: first.id,
-        payload: tryParseJson(first.payload),
+        payload: formatPayload(first.payload, first.content_type),
+        contentType: first.content_type,
         sender: first.sender,
         createdAt: first.created_at
       },

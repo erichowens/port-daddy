@@ -38,9 +38,12 @@ import { createChangelog } from './lib/changelog.js';
 import { createTunnel } from './lib/tunnel.js';
 import { createDns } from './lib/dns.js';
 import { createResolver } from './lib/resolver.js';
+import { createSpawner } from './lib/spawner.js';
 import { createBriefing } from './lib/briefing.js';
 import { createSugar } from './lib/sugar.js';
 import { createHarbors } from './lib/harbors.js';
+import { createReactiveOrchestrator } from './lib/orchestrator.js';
+import { createCorrelationEngine } from './lib/correlation.js';
 import { initDatabase, closeDatabase, resolveDbPath } from './lib/db.js';
 
 // Route aggregator
@@ -216,7 +219,15 @@ const webhooks = createWebhooks(db);
 const projects = createProjects(db);
 const sessions = createSessions(db);
 sessions.setActivityLog(activityLog);
-const agentInbox = createAgentInbox(db);
+
+// Agent Inbox handles direct messages. Broadcast to "inbox:[agentId]" for real-time.
+const agentInbox = createAgentInbox(db, (agentId, message) => {
+  messaging.broadcast(`inbox:${agentId}`, {
+    ...message,
+    sender: message.from || 'SYSTEM',
+    signal: (message as any).signal || 'report'
+  });
+});
 const resurrection = createResurrection(db);
 const changelog = createChangelog(db);
 const tunnel = createTunnel(db);
@@ -225,8 +236,11 @@ dns.setActivityLog(activityLog);
 const resolver = createResolver(db);
 dns.setResolver(resolver);
 const briefing = createBriefing(db, { sessions, agents, resurrection, activityLog, services, messaging });
+const spawner = createSpawner();
 const sugar = createSugar({ agents, sessions, activityLog });
 const harbors = createHarbors(db);
+const orchestrator = createReactiveOrchestrator(db, messaging, spawner);
+const correlationEngine = createCorrelationEngine(activityLog, sessions);
 
 // Wire resurrection events to broadcast on the radio
 resurrection.on('agent:stale', (agent) => {
@@ -465,7 +479,7 @@ app.use(rateLimit({
 }));
 
 app.use(cors({
-  origin: /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/,
+  origin: /^https?:\/\/(localhost|127\.0\.0\.1|.*\.pd\.local)(:\d+)?$/,
   credentials: true
 }));
 
@@ -513,6 +527,7 @@ app.use(createRoutes({
   db, logger, metrics, config,
   services, messaging, locks, health, agents, activityLog, webhooks, projects, sessions,
   agentInbox, resurrection, changelog, tunnel, dns, resolver, briefing, sugar,
+  orchestrator, correlationEngine, spawner,
   VERSION, CODE_HASH, STARTED_AT, __dirname,
   cleanupStale, getSystemPorts
 }));

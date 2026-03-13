@@ -1,98 +1,62 @@
-# Port Daddy Roadmap & Feature Requests
+# Port Daddy Roadmap & Future Ideas
 
-**Last Updated**: 2026-02-24
+This document captures the ambitious, industry-defining vision for Port Daddy as the definitive "Agentic OS" Control Plane. It outlines "things for later" and serves as a living synthesis of conceptual ideas.
 
-This document tracks feature requests and planned work. Items are added the moment they're discussed.
+## Core Philosophical Architecture
 
----
+- **Data Structures for Swarms:** Avoid monolithic, mistake-prone trees for writing overlapping diffs. Instead, lean into *event-sourcing* and *pub/sub messaging*. Agents communicate intentions, acquire distributed locks for exclusive resources, and rely on Git (via `lib/worktree.ts`) as the ultimate concurrent data store. 
+- **The "Shared Whiteboard" & Memory:** Rather than a giant key/value store, use a **Shared Neural Memory** (like an embedding-backed contextual ledger) and a semantic **Whiteboard** (via `SessionNotes`) for high-level state handoffs.
+- **Values & Policy Models:** As swarms grow, a shared RL-style value model ensures agents align on quality (e.g., "is this code idiomatic?") while policy models guide immediate actions.
 
-## v3.3: Install Experience & Integrations
+## 1. Network & Naming (The Local DNS Revolution)
 
-From Desktop Commander inspiration — make the install experience delightful and integrated.
+- **Abstracting Port Numbers:** The dashboard and daemon should be accessible via `.local` addresses (e.g., `dashboard.pd.local`, `api.pd.local`) instead of numeric ports.
+- **Harbor Addresses:** "Do harbors have addresses?" Yes! In V4, Remote Harbors will be addressable via the Anchor Protocol (Lighthouses). Locally, they should bind to subdomains (e.g., `harbor1.pd.local`).
+- **Implementation:** Extend `lib/dns.ts` to hook into system DNS resolvers (`/etc/resolver/pd.local` on macOS) seamlessly.
+- **Local DNS Proxy:** Build a tiny, `sudo`-powered reverse proxy on port 80/443 that routes traffic based on hostnames (e.g., `dashboard.pd.local` -> `:3144`), allowing users to drop port numbers entirely.
 
-### Install Experience
-- [ ] **ASCII Art Banner** — Ship/anchor themed on `npx port-daddy` first run
-- [ ] **Auto-Add to Claude MCP Config** — Detect Claude desktop, add MCP server entry
-- [ ] **Auto-Restart Claude** — After MCP install, restart Claude app automatically
-- [ ] **Calendar Invite Link** — "Need help? Book a call" in install output
-- [ ] **Discord/Community Link** — Community invite in install output
-- [ ] **Auto-Updates** — Check GitHub releases on daemon start, notify user of updates
+## 2. Infrastructure & Tooling
 
-### Integrations (MCP & IDE Plugins)
-- [ ] **MCP Server** — Port Daddy as an MCP server so Claude agents can claim ports directly
-  - `mcp-server.json` definition
-  - Tools: `claim_port`, `release_port`, `get_services`, `create_session`, `add_note`
-- [ ] **VS Code Extension** — Port status in status bar, commands in palette
-- [ ] **Tailwind Plugin** — TBD (what would this even do?)
-- [ ] **XCode Plugin** — Port management for iOS dev servers
+- **VHS Automation:** Integrate Charmbracelet's `vhs` for rich, scripted GIFs and tutorials. Wire `.tape` files to GitHub Actions to regenerate visual documentation automatically whenever code changes, establishing a visual "gold set".
+- **Multi-Verse Harvesting:** Create background agents to continuously scan `.claude/worktrees/` to harvest unique features and divergent timelines into the main trunk.
+- **Maritime Aesthetic Revival:** Reintroduce maritime signal flags to the CLI and tools. The aesthetic should be ambitious, industry-defining, clearly CUTE and CHARMING.
 
----
+## 3. Dedicated Background Agents
 
-## v4.0: Agent Coordination Vision
+To sustain development, Port Daddy needs its own "crew":
+- **The Cartographer:** An agent responsible for maintaining this Roadmap and scanning the horizon for new ideas.
+- **The Archivist:** An agent that tends to `README.md`, `McpPage.tsx`, and the documentation hub.
+- **The Shipwright:** A background agent dedicated exclusively to fixing bugs and squashing regressions.
+- **The Vibe Matcher:** An agent that ensures the "purring and beautiful" Tailwind UI remains coherent.
 
-From the unified roadmap plan. These build on Sessions & Notes.
+## 4. Website vs. Local Dashboard
 
-- [ ] **Agent KV Scratchpads** — Per-agent key-value namespace
-- [ ] **Inbox/Outbox Messaging** — Directed 1:1 messages between registered agents
-- [ ] **Lock Priority for Registered Agents** — Latency tax for unregistered agents on contested locks
-- [ ] **Session Auto-Binding** — Sessions auto-link to registering agent's ID
-- [ ] **Pro-Forma Task Reporting** — Session completion can auto-generate changelog entries
-- [ ] **Breadcrumbs & `pd salvage`** — Recover useful work from abandoned sessions
-- [ ] **Inline Markup for Agent Messages** — `@agent-id`, `#file:path`, `$session-id` sigils
+- **Clarification of Roles:** The dashboard is the *local* Control Plane served by the daemon (`localhost:9876` -> `pd.local`). The website (currently in `website-v2/`) is the *public-facing* marketing and documentation hub hosted on Cloudflare. We need to clearly separate their visual identities and routing to prevent confusion.
 
----
+## 5. The "Wild West" & Agentic Criminality (V4 Vision)
 
-## Code Quality
+As swarms grow beyond local machines, we need a "Code of the Sea" for agents.
 
-- [ ] **Dynamic Daemon Port** — Handle 9876 being taken
-  - Currently: Hardcodes 9876 everywhere, fails if taken
-  - Fix: Server tries 9876-9899 range, writes actual port to `~/.port-daddy/daemon.json`
-  - CLI reads state file OR relies on Unix socket (socket is port-agnostic)
-  - Unix socket (`/tmp/port-daddy.sock`) is already primary transport
-  - TCP is fallback for cross-machine or when socket unavailable
+- **Float Plans & Manifests:** Agents must declare a "Float Plan" (what they intend to do) and a "Manifest" (what resources they need) before entering a Harbor.
+- **Agentic Escrow:** Use Port Daddy locks as escrows. Payouts (messages, file access, tokens) are released only when a "Quality Judge" agent (The Arbiter) verifies the work meets the manifest criteria.
+- **Agentic Piracy:** Any deviation from the Float Plan or unauthorized resource consumption is flagged as "Piracy", leading to automatic "Brig" isolation or salvage.
+- **Agent OAuth:** Cryptographic identity verification for remote agents to prevent "hailing hacks" or spoofing.
+- **Ephemeral Data Harbors (FUSE):** Attach ephemeral data storage to Harbors. When a venture ends, the FUSE drive is unmounted and the data is archived or shredded based on the manifest.
 
-- [ ] **Dashboard Maritime Parity** — Add signal flags to dashboard
-  - CLI has full maritime design system (`lib/maritime.ts`): Charlie, November, Kilo, Uniform, Victor, Lima flags
-  - Dashboard has ZERO maritime flag references
-  - Need: CSS signal flag rendering (colored blocks), status badges using flag semantics
-  - Need: Agent voice styling (mayday=red, pan-pan=yellow, securite=cyan, etc.)
+## 6. Secure Networking & P2P
 
-- [ ] **API Maritime Voice** — Add maritime flavor to JSON responses
-  - Error messages should use nautical metaphors
-  - Status fields could include maritime voice variants
-  - Example: "service anchored at port 3100" vs "assigned new port"
+- **Noise Protocol Tunnels:** V4 will prioritize P2P encrypted tunnels between Harbors, allowing agents to coordinate across the global internet as if they were on the same local network.
 
-- [ ] **Break Up CLI Monolith** — Split `bin/port-daddy-cli.ts` (4000+ lines) into:
-  - `cli/commands/` — One file per command group
-  - `cli/handlers/` — Business logic for each command
-  - `cli/output/` — Formatting utilities (maritime, tables, etc.)
-  - `cli/index.ts` — Entry point that wires it together
+## 7. Formal Verification & Cryptographic Soundness
 
----
+As Port Daddy evolves to support Agentic Escrows and secure P2P Harbors (V4), we must mathematically prove our security models. Relying purely on unit tests is insufficient for adversarial multi-agent networks.
 
-## Adversarial Testing (In Progress)
+### Proof of Protocol (The Design)
+- **Tooling:** Use **ProVerif** or **Tamarin Prover** to formally verify the Port Daddy Anchor Protocol (the P2P handshake and JWT Harbor Card exchange).
+- **Goal:** Mathematically prove that the protocol prevents man-in-the-middle (MITM) attacks, token replay, and unauthorized Harbor ingress.
+- **Why?** Remote agents (especially untrusted ones) will attempt to forge identity tokens. We must prove our HS256/Asymmetric JWT rotation scheme is fundamentally sound.
 
-Bugs found and fixed during adversarial testing sweep:
-
-### Fixed
-- [x] Bug #16: Lock TTL string concatenation (`"300s"` → invalid expiry)
-- [x] Bug #17: Negative TTL creates already-expired locks
-- [x] Bug #18: Whitespace-only session purpose accepted
-- [x] Bug #19: Non-array files parameter silently ignored
-- [x] Bug #20: Numeric arrays in files parameter accepted
-- [x] Bug #21: Non-string agentId accepted
-- [x] Bug #22: Whitespace-only note content accepted
-- [x] Bug #23: Empty string message payload accepted
-- [x] Bug #24: Whitespace-only message payload accepted
-- [x] Bug #25: Non-integer maxServices/maxLocks accepted in agent registration
-- [x] Bug #26: Non-array webhook events iterated as string characters
-
-### Pending Testing
-- [x] Service claim edge cases — validated (port range, id validation)
-- [x] Lock concurrency edge cases — validated (negative TTL clamps to default, string TTL rejected)
-
----
-
-## UX Friction (Pending)
-
-- [ ] **23-Persona Audit** — Full UX friction analysis across all personas (Task #1)
+### Proof of Implementation (The Code)
+- **Tooling:** Explore **F*** (F-star) or **Dafny** for verifying critical cryptographic pathways (e.g., the JWT signing and validation logic).
+- **Goal:** Prove memory safety, absence of timing side-channels, and strict algorithmic pinning (e.g., preventing CVE-2026-22817 style algorithm confusion attacks) in the compiled artifact.
+- **Why?** A sound protocol can still be ruined by a flawed implementation.

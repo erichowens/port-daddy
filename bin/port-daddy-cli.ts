@@ -67,6 +67,8 @@ import {
   handleMetrics, handleConfigCmd, handleHealth, handlePorts, handleDashboard, handleDoctor, handleStatus, handleVersion, handleHints,
   // Daemon
   handleDaemon, handleDev,
+  // Benchmarking
+  handleBench,
   // DNS, Briefing, Integration
   handleDns, handleBriefing, handleIntegration,
   // Sugar commands
@@ -811,7 +813,7 @@ const ALL_COMMANDS: string[] = [
   'n', 'u', 'd',
   'dashboard', 'channels', 'webhook', 'webhooks', 'metrics', 'config', 'health', 'ports',
   'start', 'stop', 'restart', 'status', 'install', 'uninstall', 'dev', 'ci-gate',
-  'doctor', 'diagnose', 'hints', 'mcp', 'version', 'help',
+  'doctor', 'diagnose', 'hints', 'mcp', 'version', 'help', 'bench',
   'salvage', 'resurrection', 'changelog', 'tunnel',
   'services', 'dns', 'briefing', 'integration',
   'b', 'w', 'who-owns', 'history', 'tutorial', 'files',
@@ -1882,6 +1884,10 @@ async function main(): Promise<void> {
       case 'doctor':
       case 'diagnose':
         await handleDoctor();
+        break;
+
+      case 'bench':
+        await handleBench(positional);
         break;
 
       case 'hints':

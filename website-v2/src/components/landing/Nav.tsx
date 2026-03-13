@@ -25,6 +25,7 @@ const NAV_LINKS = [
   { label: 'Claude Code', href: '/mcp', internal: true },
   { label: 'Docs', href: '/docs', internal: true },
   { label: 'Tutorials', href: '/tutorials', internal: true },
+  { label: 'Blog', href: '/blog', internal: true },
   { label: 'GitHub', href: 'https://github.com/erichowens/port-daddy', external: true },
 ]
 

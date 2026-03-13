@@ -6,7 +6,8 @@
 
 import http from 'node:http';
 import type { IncomingMessage, ClientRequest } from 'node:http';
-import { status as maritimeStatus, highlightChannel } from '../../lib/maritime.js';
+import { status as maritimeStatus, highlightChannel, formatRadioMessage, ANSI } from '../../lib/maritime.js';
+import type { RadioMessage, SignalType } from '../../lib/maritime.js';
 import { pdFetch, PORT_DADDY_URL, resolveTarget } from '../utils/fetch.js';
 import type { ConnectionTarget, PdFetchResponse } from '../utils/fetch.js';
 import { CLIOptions, isQuiet, isJson } from '../types.js';
@@ -18,7 +19,7 @@ import { canPrompt, promptText } from '../utils/prompt.js';
  */
 export async function handlePub(channel: string | undefined, message: string | undefined, options: CLIOptions): Promise<void> {
   if (!channel) {
-    console.error('Usage: port-daddy pub <channel> <message> [--message "text"] [-m "text"]');
+    console.error('Usage: port-daddy pub <channel> <message> [--message "text"] [-m "text"] [--signal mayday|pan-pan|roger|...]');
     process.exit(1);
   }
 
@@ -43,7 +44,11 @@ export async function handlePub(channel: string | undefined, message: string | u
   const res: PdFetchResponse = await pdFetch(`${PORT_DADDY_URL}/msg/${encodeURIComponent(channel)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ payload, sender: options.sender })
+    body: JSON.stringify({ 
+      payload, 
+      sender: options.sender || 'CLI',
+      signal: options.signal || 'report'
+    })
   });
 
   const data = await res.json();
@@ -98,8 +103,18 @@ export async function handleSub(channel: string | undefined, options: CLIOptions
             console.log(data);
           } else {
             try {
-              const msg = JSON.parse(data) as { createdAt: number; payload: unknown };
-              console.log(`[${new Date(msg.createdAt).toISOString()}] ${JSON.stringify(msg.payload)}`);
+              const msg = JSON.parse(data) as any;
+              if (msg.payload && msg.createdAt) {
+                const radioMsg: RadioMessage = {
+                  callsign: msg.sender || 'UNKNOWN',
+                  signal: (msg.signal as SignalType) || 'report',
+                  message: typeof msg.payload === 'string' ? msg.payload : JSON.stringify(msg.payload),
+                  timestamp: msg.createdAt
+                };
+                console.log(formatRadioMessage(radioMsg));
+              } else {
+                console.log(`[${new Date(msg.createdAt).toISOString()}] ${JSON.stringify(msg.payload)}`);
+              }
             } catch {
               console.log(data);
             }
@@ -131,7 +146,6 @@ export async function handleSub(channel: string | undefined, options: CLIOptions
 export async function handleWait(serviceIds: string[], options: CLIOptions): Promise<void> {
   if (!serviceIds || serviceIds.length === 0) {
     console.error('Usage: port-daddy wait <service> [service2] [...]');
-    console.error('       port-daddy wait myapp:api myapp:frontend');
     process.exit(1);
   }
 
@@ -153,7 +167,7 @@ export async function handleWait(serviceIds: string[], options: CLIOptions): Pro
     if (isJson(options)) {
       console.log(JSON.stringify(data, null, 2));
     } else {
-      console.log(`\u2713 ${serviceIds[0]} is healthy (${data.latency}ms)`);
+      console.log(`${ANSI.fgGreen}\u2713${ANSI.reset} ${serviceIds[0]} is healthy (${data.latency}ms)`);
     }
   } else {
     // Multiple services wait
@@ -175,10 +189,10 @@ export async function handleWait(serviceIds: string[], options: CLIOptions): Pro
     } else {
       const svcList = data.services as Array<{ serviceId: string; healthy: boolean; latency?: number; error?: string }>;
       for (const svc of svcList) {
-        const icon: string = svc.healthy ? '\u2713' : '\u2717';
+        const icon: string = svc.healthy ? `${ANSI.fgGreen}\u2713${ANSI.reset}` : `${ANSI.fgRed}\u2717${ANSI.reset}`;
         console.log(`${icon} ${svc.serviceId} ${svc.healthy ? `(${svc.latency}ms)` : svc.error || 'unhealthy'}`);
       }
-      console.log(`\nAll services healthy: ${data.allHealthy}`);
+      console.log(`\nAll services healthy: ${data.allHealthy ? ANSI.fgGreen + 'YES' : ANSI.fgRed + 'NO'}${ANSI.reset}`);
     }
   }
 }
@@ -235,7 +249,6 @@ export async function handleChannels(subcommand: string | undefined, args: strin
   separator(72);
 
   for (const ch of channels) {
-    // Use highlighted channel name with padding calculation based on raw name length
     const name = ch.channel || '-';
     const highlighted = highlightChannel(name);
     const padding = 40 - name.length;

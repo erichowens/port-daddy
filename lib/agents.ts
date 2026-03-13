@@ -1,7 +1,8 @@
 /**
  * Agent Registry Module
  *
- * Tracks active agents, handles heartbeats, enforces resource limits
+ * Tracks active agents, handles heartbeats, enforces resource limits.
+ * Supported by a fully autonomous, reactive self-building swarm (v18).
  * Pure SQLite operations - no shell commands
  */
 
@@ -41,6 +42,7 @@ interface AgentRow {
   registered_at: number;
   last_heartbeat: number;
   metadata: string | null;
+  agent_card: string | null;
   max_services: number;
   max_locks: number;
   worktree_id: string | null;
@@ -60,6 +62,7 @@ interface RegisterOptions {
   pid?: number;
   type?: string;
   metadata?: Record<string, unknown> | null;
+  agentCard?: Record<string, unknown> | null;
   maxServices?: number;
   maxLocks?: number;
   worktreeId?: string | null;
@@ -99,6 +102,7 @@ interface AgentFormatted {
   maxServices: number;
   maxLocks: number;
   metadata: Record<string, unknown> | null;
+  agentCard: Record<string, unknown> | null;
   worktreeId: string | null;
   // Semantic identity components
   identity: string | null;  // Full identity string (computed from components)
@@ -143,6 +147,7 @@ export function createAgents(db: Database.Database) {
       registered_at INTEGER NOT NULL,
       last_heartbeat INTEGER NOT NULL,
       metadata TEXT,
+      agent_card TEXT,
       max_services INTEGER DEFAULT ${DEFAULT_MAX_SERVICES_PER_AGENT},
       max_locks INTEGER DEFAULT ${DEFAULT_MAX_LOCKS_PER_AGENT},
       worktree_id TEXT,
@@ -170,6 +175,7 @@ export function createAgents(db: Database.Database) {
     "ALTER TABLE agents ADD COLUMN status TEXT DEFAULT 'ready'",
     'ALTER TABLE agents ADD COLUMN readiness TEXT',
     'ALTER TABLE agents ADD COLUMN progress TEXT',
+    'ALTER TABLE agents ADD COLUMN agent_card TEXT',
   ];
   for (const sql of migrations) {
     try { db.exec(sql); } catch { /* already exists */ }
@@ -178,8 +184,8 @@ export function createAgents(db: Database.Database) {
   const stmts = {
     get: db.prepare('SELECT * FROM agents WHERE id = ?'),
     register: db.prepare(`
-      INSERT OR REPLACE INTO agents (id, name, pid, type, registered_at, last_heartbeat, metadata, max_services, max_locks, worktree_id, identity_project, identity_stack, identity_context, purpose, status, readiness, progress)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO agents (id, name, pid, type, registered_at, last_heartbeat, metadata, agent_card, max_services, max_locks, worktree_id, identity_project, identity_stack, identity_context, purpose, status, readiness, progress)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `),
     heartbeat: db.prepare('UPDATE agents SET last_heartbeat = ?, pid = ?, status = COALESCE(?, status), readiness = COALESCE(?, readiness), progress = COALESCE(?, progress) WHERE id = ?'),
     unregister: db.prepare('DELETE FROM agents WHERE id = ?'),
@@ -219,6 +225,7 @@ export function createAgents(db: Database.Database) {
       pid = process.pid,
       type = 'cli',
       metadata = null,
+      agentCard = null,
       maxServices = DEFAULT_MAX_SERVICES_PER_AGENT,
       maxLocks = DEFAULT_MAX_LOCKS_PER_AGENT,
       worktreeId = null,
@@ -273,6 +280,7 @@ export function createAgents(db: Database.Database) {
         existing?.registered_at || now,
         now,
         metadata ? JSON.stringify(metadata) : null,
+        agentCard ? JSON.stringify(agentCard) : null,
         maxServices,
         maxLocks,
         worktreeId,
@@ -432,6 +440,7 @@ export function createAgents(db: Database.Database) {
       maxServices: agent.max_services,
       maxLocks: agent.max_locks,
       metadata: safeJsonParse(agent.metadata),
+      agentCard: safeJsonParse(agent.agent_card),
       worktreeId: agent.worktree_id,
       identity,
       identityProject: agent.identity_project,

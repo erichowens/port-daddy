@@ -7,6 +7,8 @@ import { TutorialsPage } from '@/pages/TutorialsPage'
 import { DocsPage } from '@/pages/DocsPage'
 import { ExamplesPage } from '@/pages/ExamplesPage'
 import { MCPPage } from '@/pages/MCPPage'
+import { BlogPage } from '@/pages/BlogPage'
+import { BlogPostPage } from '@/pages/BlogPostPage'
 import App from './App.tsx'
 import './index.css'
 
@@ -19,6 +21,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/" element={<App />} />
           <Route path="/tutorials" element={<TutorialsPage />} />
           <Route path="/docs" element={<DocsPage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:slug" element={<BlogPostPage />} />
           <Route path="/examples" element={<ExamplesPage />} />
           <Route path="/mcp" element={<MCPPage />} />
         </Routes>

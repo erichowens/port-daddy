@@ -1,9 +1,0 @@
-{
-  "name": "demo-static-site",
-  "version": "1.0.0",
-  "description": "Demo static site for Port Daddy dashboard",
-  "scripts": {
-    "start": "npx serve -l ${PORT:-3200} -s .",
-    "dev": "npx serve -l ${PORT:-3200} -s ."
-  }
-}

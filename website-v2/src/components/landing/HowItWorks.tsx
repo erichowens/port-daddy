@@ -62,36 +62,39 @@ const STEPS: Step[] = [
 
 export function HowItWorks() {
   return (
-    <section
-      className="py-8 px-4 sm:px-6 lg:px-8"
+    <motion.section
+      className="py-20 px-4 sm:px-6 lg:px-8 font-sans"
       style={{ background: 'var(--bg-surface)' }}
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true }}
     >
-      <div className="max-w-7xl mx-auto">
+      <motion.div className="max-w-7xl mx-auto font-sans">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-10"
+          className="text-center mb-16 font-sans"
         >
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
-            Three commands to coordinate anything
-          </h2>
-          <p className="text-lg max-w-2xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
+          <motion.h2 className="text-4xl sm:text-5xl font-bold mb-6 font-display" style={{ color: 'var(--text-primary)' }}>
+            Three commands to coordinate <motion.span className="text-[var(--brand-primary)]">Anything</motion.span>
+          </motion.h2>
+          <motion.p className="text-xl max-w-2xl mx-auto leading-relaxed font-sans" style={{ color: 'var(--text-secondary)' }}>
             Port Daddy wraps every agent session. Register, do your work, then finish — or let the next agent
             pick up if something goes wrong.
-          </p>
+          </motion.p>
         </motion.div>
 
         {/* Steps — horizontal connector line on desktop */}
-        <div className="relative">
+        <motion.div className="relative font-sans">
           {/* Connector line */}
-          <div
+          <motion.div
             className="hidden lg:block absolute top-8 left-0 right-0 h-px"
             style={{ background: 'var(--border-default)', zIndex: 0 }}
           />
 
-          <div className="grid lg:grid-cols-3 gap-8 lg:gap-6 relative">
+          <motion.div className="grid lg:grid-cols-3 gap-12 lg:gap-8 relative font-sans">
             {STEPS.map((step, i) => (
               <motion.div
                 key={step.number}
@@ -99,11 +102,11 @@ export function HowItWorks() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: i * 0.12 }}
-                className="flex flex-col gap-5"
+                className="flex flex-col gap-6 font-sans"
               >
                 {/* Step number circle */}
-                <div className="relative z-10 flex items-center gap-4">
-                  <div
+                <motion.div className="relative z-10 flex items-center gap-4 font-sans">
+                  <motion.div
                     className="w-16 h-16 rounded-full flex items-center justify-center font-mono font-bold text-xl flex-shrink-0"
                     style={{
                       background: 'var(--bg-elevated)',
@@ -111,66 +114,68 @@ export function HowItWorks() {
                       color: step.color,
                       boxShadow: `0 0 20px color-mix(in srgb, ${step.color} 30%, transparent)`,
                     }}
+                    whileHover={{ scale: 1.1, rotate: 5 }}
                   >
                     {step.number}
-                  </div>
-                  <div className="lg:hidden">
-                    <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+                  </motion.div>
+                  <motion.div className="lg:hidden font-sans">
+                    <motion.h3 className="text-xl font-bold font-display" style={{ color: 'var(--text-primary)' }}>
                       {step.title}
-                    </h3>
-                  </div>
-                </div>
+                    </motion.h3>
+                  </motion.div>
+                </motion.div>
 
-                <div className="hidden lg:block">
-                  <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+                <motion.div className="hidden lg:block font-sans">
+                  <motion.h3 className="text-2xl font-bold mb-2 font-display" style={{ color: 'var(--text-primary)' }}>
                     {step.title}
-                  </h3>
-                </div>
+                  </motion.h3>
+                </motion.div>
 
-                <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, fontSize: '0.9375rem' }}>
+                <motion.p className="font-sans text-base leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                   {step.description}
-                </p>
+                </motion.p>
 
                 {/* Code block */}
-                <div
-                  className="rounded-xl p-4 font-mono text-xs leading-relaxed flex-1"
+                <motion.div
+                  className="rounded-2xl p-6 font-mono text-xs leading-relaxed flex-1 shadow-inner relative overflow-hidden"
                   style={{
-                    background: 'var(--codeblock-bg)',
+                    background: 'var(--code-bg)',
                     border: '1px solid var(--border-default)',
                     borderTop: `2px solid ${step.color}`,
                   }}
+                  whileHover={{ borderColor: step.color }}
                 >
                   {step.code.map((line, li) => {
-                    if (line === '') return <div key={li} className="h-3" />
+                    if (line === '') return <motion.div key={li} className="h-3" />
                     const isComment = line.startsWith('#')
                     const isOutput = !line.startsWith('$') && !isComment
                     return (
-                      <div key={li}>
+                      <motion.div key={li} className="flex gap-2 font-mono">
                         {isComment ? (
-                          <span style={{ color: 'var(--code-comment)' }}>{line}</span>
+                          <motion.span style={{ color: 'var(--code-comment)' }} className="italic opacity-60 font-mono">{line}</motion.span>
                         ) : isOutput ? (
-                          <span style={{ color: 'var(--code-output)' }}>
+                          <motion.span style={{ color: 'var(--code-output)' }} className="opacity-80 font-mono">
                             {line.includes('⚓') || line.includes('✓') ? (
-                              <span style={{ color: step.color }}>{line}</span>
+                              <motion.span style={{ color: step.color }} className="font-mono">{line}</motion.span>
                             ) : line.includes('Dead:') || line.includes('Last note:') ? (
-                              <span style={{ color: 'var(--status-warning)' }}>{line}</span>
-                            ) : line}
-                          </span>
+                              <motion.span style={{ color: 'var(--status-warning)' }} className="font-mono">{line}</motion.span>
+                            ) : <motion.span className="font-mono">{line}</motion.span>}
+                          </motion.span>
                         ) : (
-                          <span>
-                            <span style={{ color: 'var(--code-prompt)' }}>{line.slice(0, 2)}</span>
-                            <span style={{ color: 'var(--text-primary)' }}>{line.slice(2)}</span>
-                          </span>
+                          <motion.span className="font-mono">
+                            <motion.span style={{ color: 'var(--code-prompt)' }} className="opacity-40 font-mono">{line.slice(0, 2)}</motion.span>
+                            <motion.span style={{ color: 'var(--text-primary)' }} className="font-mono">{line.slice(2)}</motion.span>
+                          </motion.span>
                         )}
-                      </div>
+                      </motion.div>
                     )
                   })}
-                </div>
+                </motion.div>
               </motion.div>
             ))}
-          </div>
-        </div>
-      </div>
-    </section>
+          </motion.div>
+        </motion.div>
+      </motion.div>
+    </motion.section>
   )
 }

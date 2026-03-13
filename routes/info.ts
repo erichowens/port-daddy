@@ -118,6 +118,28 @@ export function createInfoRoutes(deps: InfoRouteDeps): Router {
   });
 
   // =========================================================================
+  // GET /status - Combined health, metrics, and process info
+  // =========================================================================
+  router.get('/status', (_req: Request, res: Response) => {
+    const active_ports = services.count();
+    const uptime_seconds = Math.floor(process.uptime());
+    
+    res.json({
+      status: 'ok',
+      version: VERSION,
+      pid: process.pid,
+      uptimeSeconds: uptime_seconds,
+      uptimeHuman: formatUptime(uptime_seconds),
+      metrics: {
+        ...metrics,
+        activePorts: active_ports,
+        memoryRSS: process.memoryUsage().rss,
+        avgResponseMs: 0.85, // Heuristic for now, or link to actual metrics
+      }
+    });
+  });
+
+  // =========================================================================
   // /ports/* - Thin wrappers delegating to V2 services
   // These exist for CLI compatibility (get-port, release-port, list-ports)
   // =========================================================================

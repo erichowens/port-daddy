@@ -5,8 +5,7 @@
  * services with dependency ordering, port claiming, environment injection,
  * health checking, and colored log output.
  *
- * This is CLI-only process management. The daemon stays stateless about
- * processes; the orchestrator owns its children.
+ * Also includes the Reactive Orchestrator for daemon-side event-driven triggers.
  */
 
 import { spawn } from 'node:child_process';
@@ -15,7 +14,7 @@ import http from 'node:http';
 import { existsSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import type { Transform } from 'node:stream';
-import { createPrefixer, getServiceColor } from './log-prefix.js';
+import { createPrefixer } from './log-prefix.js';
 
 const DEFAULT_SOCK = '/tmp/port-daddy.sock';
 
@@ -44,7 +43,7 @@ interface DaemonResponse {
 }
 
 /** Raw service config as it appears in a port-daddy manifest */
-interface RawServiceConfig {
+export interface RawServiceConfig {
   cmd?: string;
   dev?: string;
   port?: number;
@@ -180,9 +179,8 @@ export function topologicalSort(services: ServiceMap): TopoSortResult {
   const names = Object.keys(services);
   if (names.length === 0) return { order: [] };
 
-  // Build adjacency list and in-degree map
   const inDegree = new Map<string, number>();
-  const dependents = new Map<string, string[]>(); // dep -> [services that depend on it]
+  const dependents = new Map<string, string[]>();
 
   for (const name of names) {
     inDegree.set(name, 0);
@@ -200,7 +198,6 @@ export function topologicalSort(services: ServiceMap): TopoSortResult {
     }
   }
 
-  // Kahn's algorithm: start with nodes that have no dependencies
   const queue: string[] = [];
   for (const [name, degree] of inDegree) {
     if (degree === 0) queue.push(name);
@@ -218,10 +215,8 @@ export function topologicalSort(services: ServiceMap): TopoSortResult {
     }
   }
 
-  // If we haven't visited all nodes, there's a cycle
   if (order.length !== names.length) {
     const cycleMembers = names.filter(n => !order.includes(n));
-    // Trace the cycle for a clear error message
     const cyclePath = traceCycle(services, cycleMembers);
     return { order: [], error: `Circular dependency: ${cyclePath}` };
   }
@@ -229,9 +224,6 @@ export function topologicalSort(services: ServiceMap): TopoSortResult {
   return { order };
 }
 
-/**
- * Trace a dependency cycle for error reporting.
- */
 function traceCycle(services: ServiceMap, cycleMembers: string[]): string {
   const start = cycleMembers[0];
   const visited = new Set<string>();
@@ -251,10 +243,6 @@ function traceCycle(services: ServiceMap, cycleMembers: string[]): string {
   return path.join(' \u2192 ');
 }
 
-/**
- * Resolve transitive dependencies for a target service.
- * Used by `--service <name>` to start a service and all its deps.
- */
 export function resolveDependencies(target: string, services: ServiceMap): ResolveDepsResult {
   if (!services[target]) {
     return { deps: new Set(), error: `Service "${target}" not found` };
@@ -282,12 +270,6 @@ export function resolveDependencies(target: string, services: ServiceMap): Resol
   return { deps };
 }
 
-/**
- * Normalize service config -- handle both old and new field names.
- *
- * Old: { dev, preferredPort, health }
- * New: { cmd, port, healthPath }
- */
 export function normalizeServiceConfig(name: string, svc: RawServiceConfig): NormalizedServiceConfig {
   return {
     name,
@@ -303,13 +285,6 @@ export function normalizeServiceConfig(name: string, svc: RawServiceConfig): Nor
   };
 }
 
-/**
- * Build environment variable maps for all services.
- * Each service gets:
- * - PORT=<its own port>
- * - {SIBLING}_PORT=<port> and {SIBLING}_URL=<url> for every other local service
- * - {SIBLING}_URL=<remote url> for remote services (no PORT var)
- */
 export function buildEnvMap(
   services: Record<string, NormalizedServiceConfig>,
   portMap: Record<string, number>
@@ -318,28 +293,18 @@ export function buildEnvMap(
 
   for (const [name, svc] of Object.entries(services)) {
     const env: Record<string, string> = { ...svc.env };
+    if (portMap[name]) env.PORT = String(portMap[name]);
 
-    // Own port
-    if (portMap[name]) {
-      env.PORT = String(portMap[name]);
-    }
-
-    // Sibling services
     for (const [siblingName, siblingSvc] of Object.entries(services)) {
       if (siblingName === name) continue;
-
       const varPrefix = siblingName.toUpperCase().replace(/[^A-Z0-9]/g, '_');
-
       if (siblingSvc.remote) {
-        // Remote service -- inject URL only
         env[`${varPrefix}_URL`] = siblingSvc.remote;
       } else if (portMap[siblingName]) {
-        // Local service -- inject both port and URL
         env[`${varPrefix}_PORT`] = String(portMap[siblingName]);
         env[`${varPrefix}_URL`] = `http://localhost:${portMap[siblingName]}`;
       }
     }
-
     envMaps[name] = env;
   }
 
@@ -347,275 +312,211 @@ export function buildEnvMap(
 }
 
 // =============================================================================
-// Orchestrator Factory (stateful, manages processes)
+// CLI Process Orchestrator
 // =============================================================================
 
-/**
- * Create an orchestrator instance.
- */
 export function createOrchestrator(options: OrchestratorOptions): OrchestratorInstance {
-  const {
-    services,
-    identities,
-    config: orchestratorConfig = {}
-  } = options;
-
-  const {
-    noHealth = false,
-    healthTimeout = 30000,
-    targetService = null
-  } = orchestratorConfig;
+  const { services, identities, config: orchestratorConfig = {} } = options;
+  const { noHealth = false, healthTimeout = 30000, targetService = null } = orchestratorConfig;
 
   const emitter = new EventEmitter();
-  const processes = new Map<string, ChildProcess>();       // name -> ChildProcess
-  const portMap: Record<string, number> = {};              // name -> port number
-  const statuses = new Map<string, ServiceStatus>();       // name -> status
+  const processes = new Map<string, ChildProcess>();
+  const portMap: Record<string, number> = {};
+  const statuses = new Map<string, ServiceStatus>();
   let stopping = false;
 
-  /**
-   * Determine which services to start (respecting --service flag).
-   */
   function getServicesToStart(): Record<string, NormalizedServiceConfig> {
     if (targetService) {
       const { deps, error } = resolveDependencies(targetService, services);
       if (error) throw new Error(error);
-      return Object.fromEntries(
-        [...deps].map(name => [name, services[name]])
-      );
+      return Object.fromEntries([...deps].map(name => [name, services[name]]));
     }
     return services;
   }
 
-  /**
-   * Claim a port from the daemon for a service.
-   */
   async function claimPort(name: string, identity: string, preferredPort: number | null): Promise<number> {
     const body: Record<string, unknown> = { id: identity };
     if (preferredPort) body.port = preferredPort;
-
     const res = await daemonRequest('POST', '/claim', body);
-
     if (!res.ok) {
-      const errorMsg = res.data && typeof res.data === 'object' && 'error' in res.data
-        ? String((res.data as Record<string, unknown>).error)
-        : 'unknown error';
+      const errorMsg = res.data && typeof res.data === 'object' && 'error' in res.data ? String((res.data as any).error) : 'unknown error';
       throw new Error(`Failed to claim port for ${name}: ${errorMsg}`);
     }
-
-    return (res.data as Record<string, unknown>)!.port as number;
+    return (res.data as any).port as number;
   }
 
-  /**
-   * Release a port back to the daemon.
-   */
   async function releasePort(identity: string): Promise<void> {
-    try {
-      await daemonRequest('DELETE', '/release', { id: identity });
-    } catch { /* best effort on shutdown */ }
+    try { await daemonRequest('DELETE', '/release', { id: identity }); } catch { }
   }
 
-  /**
-   * Spawn a service process.
-   */
-  function spawnService(
-    name: string,
-    svc: NormalizedServiceConfig,
-    env: Record<string, string>,
-    prefixer: PrefixerFactory | null
-  ): ChildProcess | null {
+  function spawnService(name: string, svc: NormalizedServiceConfig, env: Record<string, string>, prefixer: PrefixerFactory | null): ChildProcess | null {
     const cmd = svc.cmd;
     if (!cmd) {
       emitter.emit('error', { name, error: `No command defined for service "${name}"` });
       statuses.set(name, 'crashed');
       return null;
     }
-
-    // Replace ${PORT} in command string
     const resolvedCmd = cmd.replace(/\$\{PORT\}/g, String(portMap[name] || ''));
-    const [shell, shellFlag] = process.platform === 'win32'
-      ? ['cmd', '/c'] as const
-      : ['sh', '-c'] as const;
-
+    const [shell, shellFlag] = process.platform === 'win32' ? ['cmd', '/c'] as const : ['sh', '-c'] as const;
     const child = spawn(shell, [shellFlag, resolvedCmd], {
       cwd: svc.dir || process.cwd(),
       env: { ...process.env, ...env },
       stdio: ['ignore', 'pipe', 'pipe']
     });
-
-    // Pipe through prefixer
     if (prefixer && child.stdout && child.stderr) {
-      const stdoutPrefix = prefixer(name, 'stdout');
-      const stderrPrefix = prefixer(name, 'stderr');
-      child.stdout.pipe(stdoutPrefix).pipe(process.stdout, { end: false });
-      child.stderr.pipe(stderrPrefix).pipe(process.stderr, { end: false });
+      child.stdout.pipe(prefixer(name, 'stdout')).pipe(process.stdout, { end: false });
+      child.stderr.pipe(prefixer(name, 'stderr')).pipe(process.stderr, { end: false });
     }
-
-    // Track early crash: if process exits within 1.5s, it's a crash
     const startTime = Date.now();
-    child.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {
+    child.on('exit', (code, signal) => {
       if (stopping) return;
-
       const wasEarly = Date.now() - startTime < 1500;
       statuses.set(name, 'crashed');
       emitter.emit('exit', { name, code, signal, early: wasEarly });
     });
-
     processes.set(name, child);
     statuses.set(name, 'starting');
     return child;
   }
 
-  /**
-   * Poll health endpoint until healthy or timeout.
-   */
   async function waitForHealth(name: string, port: number, healthPath: string): Promise<boolean> {
     if (noHealth || !port) return true;
-
     const url = `http://localhost:${port}${healthPath}`;
     const deadline = Date.now() + healthTimeout;
-
     while (Date.now() < deadline) {
       if (statuses.get(name) === 'crashed') return false;
-
       try {
         const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
-        if (res.ok) {
-          statuses.set(name, 'healthy');
-          return true;
-        }
-      } catch { /* not ready yet */ }
-
+        if (res.ok) { statuses.set(name, 'healthy'); return true; }
+      } catch { }
       await new Promise(r => setTimeout(r, 500));
     }
-
     return false;
   }
 
-  /**
-   * Start all services in dependency order.
-   */
   async function start(): Promise<void> {
     const toStart = getServicesToStart();
-    const serviceNames = Object.keys(toStart);
-
-    // Filter out remote services (they don't get spawned)
-    const localServices = Object.entries(toStart).filter(([, svc]) => !svc.remote);
-    const remoteServices = Object.entries(toStart).filter(([, svc]) => svc.remote);
-
-    // Topological sort
     const { order, error } = topologicalSort(toStart);
     if (error) throw new Error(error);
 
-    // Claim ports for local services that need them
     for (const name of order) {
       const svc = toStart[name];
       if (svc.remote || svc.noPort) continue;
-
-      const identity = identities[name] || name;
-      const port = await claimPort(name, identity, svc.port);
-      portMap[name] = port;
+      portMap[name] = await claimPort(name, identities[name] || name, svc.port);
     }
 
-    // Build environment maps
     const envMaps = buildEnvMap(toStart, portMap);
-
-    // Create prefixer for all local services
-    const localNames = localServices.map(([name]) => name);
-    const prefixer: PrefixerFactory | null = localNames.length > 0 ? createPrefixer(localNames) : null;
+    const localNames = Object.keys(toStart).filter(n => !toStart[n].remote);
+    const prefixer = localNames.length > 0 ? createPrefixer(localNames) : null;
 
     emitter.emit('portsReady', { portMap: { ...portMap } });
 
-    // Spawn in topological order
     for (const name of order) {
       const svc = toStart[name];
-      if ((svc.remote || svc.noPort) && !svc.cmd) continue;
       if (!svc.cmd) continue;
-
       spawnService(name, svc, envMaps[name], prefixer);
-
-      // Wait for health before starting dependents
       if (!svc.noPort && portMap[name]) {
         const healthy = await waitForHealth(name, portMap[name], svc.healthPath || '/');
-        if (healthy) {
-          emitter.emit('healthy', { name, port: portMap[name] });
-        } else if (statuses.get(name) === 'crashed') {
-          emitter.emit('crash', { name, early: true });
-          throw new Error(`Service "${name}" crashed during startup`);
-        } else {
-          emitter.emit('healthTimeout', { name, port: portMap[name] });
-        }
+        if (healthy) emitter.emit('healthy', { name, port: portMap[name] });
+        else if (statuses.get(name) === 'crashed') throw new Error(`Service "${name}" crashed`);
+        else emitter.emit('healthTimeout', { name, port: portMap[name] });
       }
     }
-
-    emitter.emit('allStarted', {
-      services: serviceNames,
-      ports: { ...portMap }
-    });
+    emitter.emit('allStarted', { services: Object.keys(toStart), ports: { ...portMap } });
   }
 
-  /**
-   * Stop all services gracefully.
-   * SIGTERM in reverse order -> 5s grace -> SIGKILL survivors.
-   */
   async function stop(): Promise<void> {
     if (stopping) return;
     stopping = true;
-
     const names = [...processes.keys()].reverse();
-
-    // SIGTERM all
     for (const name of names) {
       const child = processes.get(name);
       if (child && !child.killed) {
-        try {
-          child.kill('SIGTERM');
-          statuses.set(name, 'stopped');
-        } catch { /* already dead */ }
+        child.kill('SIGTERM');
+        statuses.set(name, 'stopped');
       }
     }
-
-    // Wait up to 5s for graceful exit
     const deadline = Date.now() + 5000;
     while (Date.now() < deadline) {
-      const alive = names.filter(name => {
-        const child = processes.get(name);
-        return child && !child.killed && child.exitCode === null;
-      });
+      const alive = names.filter(n => { const c = processes.get(n); return c && !c.killed && c.exitCode === null; });
       if (alive.length === 0) break;
       await new Promise(r => setTimeout(r, 200));
     }
-
-    // SIGKILL survivors
     for (const name of names) {
       const child = processes.get(name);
-      if (child && child.exitCode === null) {
-        try {
-          child.kill('SIGKILL');
-        } catch { /* already dead */ }
-      }
+      if (child && child.exitCode === null) child.kill('SIGKILL');
     }
-
-    // Release all ports
-    for (const [name] of Object.entries(portMap)) {
-      const identity = identities[name] || name;
-      await releasePort(identity);
-    }
-
+    for (const name of Object.keys(portMap)) await releasePort(identities[name] || name);
     emitter.emit('stopped', { services: names });
   }
 
-  function getStatus(): OrchestratorStatus {
-    return {
-      services: Object.fromEntries(statuses) as Record<string, ServiceStatus>,
-      ports: { ...portMap },
-      stopping
-    };
+  return { start, stop, getStatus: () => ({ services: Object.fromEntries(statuses) as any, ports: { ...portMap }, stopping }), on: (e, f) => emitter.on(e, f) };
+}
+
+// =============================================================================
+// Reactive Orchestrator (Daemon Engine)
+// =============================================================================
+
+export interface OrchestratorRule {
+  id?: number;
+  name: string;
+  channelPattern: string;
+  condition?: string;
+  action: 'spawn' | 'exec';
+  payload: any;
+  enabled: boolean;
+}
+
+export function createReactiveOrchestrator(db: any, messaging: any, spawner: any) {
+  const events = new EventEmitter();
+  db.exec(`CREATE TABLE IF NOT EXISTS orchestrator_rules (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, channel_pattern TEXT NOT NULL, condition TEXT, action TEXT NOT NULL, payload TEXT NOT NULL, enabled INTEGER DEFAULT 1);`);
+  const stmts = {
+    insert: db.prepare(`INSERT INTO orchestrator_rules (name, channel_pattern, condition, action, payload, enabled) VALUES (?, ?, ?, ?, ?, ?)`),
+    list: db.prepare(`SELECT * FROM orchestrator_rules`),
+    delete: db.prepare(`DELETE FROM orchestrator_rules WHERE id = ?`)
+  };
+
+  function addRule(rule: OrchestratorRule) {
+    const result = stmts.insert.run(rule.name, rule.channelPattern, rule.condition || null, rule.action, JSON.stringify(rule.payload), rule.enabled ? 1 : 0);
+    return { success: true, id: result.lastInsertRowid };
   }
 
-  return {
-    start,
-    stop,
-    getStatus,
-    on: (event: string, fn: (...args: unknown[]) => void) => emitter.on(event, fn)
-  };
+  function listRules() {
+    return (stmts.list.all() as any[]).map(r => ({ ...r, channelPattern: r.channel_pattern, payload: JSON.parse(r.payload), enabled: Boolean(r.enabled) }));
+  }
+
+  messaging.subscribe('*', (msg: any) => {
+    for (const rule of listRules().filter(r => r.enabled)) {
+      if (matchesPattern(msg.channel, rule.channelPattern)) {
+        handleRule(rule, msg);
+      }
+    }
+  });
+
+  function matchesPattern(channel: string, pattern: string) {
+    if (pattern === '*') return true;
+    if (pattern.endsWith('*')) return channel.startsWith(pattern.slice(0, -1));
+    return channel === pattern;
+  }
+
+  async function handleRule(rule: any, msg: any) {
+    if (rule.condition) {
+      const p = typeof msg.payload === 'string' ? msg.payload : JSON.stringify(msg.payload);
+      if (!p.includes(rule.condition)) return;
+    }
+    try {
+      if (rule.action === 'spawn') {
+        const spec = { ...rule.payload };
+        if (typeof spec.task === 'string') spec.task = spec.task.replace('{{msg}}', JSON.stringify(msg.payload));
+        await spawner.spawn(spec);
+      } else if (rule.action === 'exec') {
+        const env = { ...process.env, PD_CHANNEL: msg.channel, PD_MESSAGE: JSON.stringify(msg.payload) };
+        const child = spawn(rule.payload.cmd, { shell: true, env });
+        child.stdout.on('data', (d) => console.log(`[orchestrator:${rule.name}] ${d}`));
+      }
+      events.emit('rule:fired', { ruleId: rule.id, channel: msg.channel });
+    } catch (err) { console.error(`Rule "${rule.name}" failed:`, err); }
+  }
+
+  return { addRule, listRules, on: events.on.bind(events) };
 }

@@ -7,15 +7,33 @@
 
 import { Router } from 'express';
 import type { Request, Response } from 'express';
+import {
+  canOpenConnection,
+  trackConnection,
+  untrackConnection,
+  connectionLimits
+} from '../shared/connection-tracking.js';
 
 interface ActivityRouteDeps {
-  logger: { error(msg: string, meta?: Record<string, unknown>): void };
+  logger: { 
+    info(msg: string, meta?: Record<string, unknown>): void;
+    error(msg: string, meta?: Record<string, unknown>): void;
+  };
   metrics: { errors: number };
   activityLog: {
-    getRecent(opts: { limit: number; type?: string; agentId?: string; targetPattern?: string }): unknown;
+    getRecent(opts: { limit: number; type?: string; agentId?: string; targetPattern?: string }): any;
     getByTimeRange(start: number, end: number, opts: { limit: number }): unknown;
     getSummary(since: number): unknown;
     getStats(): unknown;
+    subscribe(callback: (entry: any) => void): () => void;
+  };
+  sessions: any;
+  correlationEngine: {
+    getTimeline(options: { limit?: number; agentId?: string; sessionId?: string }): Promise<any[]>;
+  };
+  orchestrator: {
+    addRule(rule: any): { success: boolean; id: number | bigint };
+    listRules(): any[];
   };
 }
 
@@ -26,8 +44,107 @@ interface ActivityRouteDeps {
  * @returns Express router
  */
 export function createActivityRoutes(deps: ActivityRouteDeps): Router {
-  const { logger, metrics, activityLog } = deps;
+  const { logger, metrics, activityLog, correlationEngine, orchestrator } = deps;
   const router = Router();
+
+  // =========================================================================
+  // ORCHESTRATOR RULES
+  // =========================================================================
+  router.get('/orchestrator/rules', (_req: Request, res: Response) => {
+    try {
+      res.json(orchestrator.listRules());
+    } catch (error) {
+      res.status(500).json({ error: 'internal server error' });
+    }
+  });
+
+  router.post('/orchestrator/rules', (req: Request, res: Response) => {
+    try {
+      const result = orchestrator.addRule(req.body);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: 'internal server error' });
+    }
+  });
+
+  // =========================================================================
+  // GET /activity/timeline - Get unified timeline (activity + notes)
+  // =========================================================================
+  router.get('/activity/timeline', async (req: Request, res: Response) => {
+    try {
+      const { limit, agent, session } = req.query;
+      const result = await correlationEngine.getTimeline({
+        limit: limit ? parseInt(limit as string, 10) : 50,
+        agentId: agent as string | undefined,
+        sessionId: session as string | undefined
+      });
+      res.json(result);
+    } catch (error) {
+      metrics.errors++;
+      res.status(500).json({ error: 'internal server error' });
+    }
+  });
+
+  // =========================================================================
+  // GET /activity/subscribe - Subscribe to activity log (SSE)
+  // =========================================================================
+  router.get('/activity/subscribe', (req: Request, res: Response) => {
+    const clientIp: string = req.ip || 'unknown';
+
+    try {
+      // Security: Check connection limits
+      if (!canOpenConnection(clientIp, 'sse')) {
+        return res.status(429).json({ error: 'too many concurrent SSE connections' });
+      }
+
+      // Track connection
+      trackConnection(clientIp, 'sse', res);
+
+      // Set up SSE
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders();
+
+      // Subscribe to activity
+      const unsubscribe = activityLog.subscribe((entry: any) => {
+        res.write(`data: ${JSON.stringify(entry)}\n\n`);
+      });
+
+      // Send initial ping
+      res.write('event: connected\ndata: {"status":"streaming"}\n\n');
+
+      // Heartbeat
+      const heartbeat = setInterval(() => {
+        res.write(':heartbeat\n\n');
+      }, 30000);
+
+      // Security: Connection timeout
+      const connectionTimeout = setTimeout(() => {
+        clearInterval(heartbeat);
+        unsubscribe();
+        untrackConnection(clientIp, 'sse', res);
+        res.write('event: timeout\ndata: {"reason":"connection timeout"}\n\n');
+        res.end();
+      }, connectionLimits.sseTimeout);
+
+      // Cleanup on disconnect
+      req.on('close', () => {
+        clearInterval(heartbeat);
+        clearTimeout(connectionTimeout);
+        unsubscribe();
+        untrackConnection(clientIp, 'sse', res);
+        logger.info('activity_sse_disconnected', { ip: clientIp });
+      });
+
+      logger.info('activity_sse_connected', { ip: clientIp });
+
+    } catch (error) {
+      metrics.errors++;
+      logger.error('activity_subscribe_failed', { error: (error as Error).message });
+      res.status(500).json({ error: 'internal server error' });
+    }
+  });
 
   // =========================================================================
   // GET /activity - Get recent activity

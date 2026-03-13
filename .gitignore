@@ -28,7 +28,6 @@ coverage/
 .env.local
 
 # Internal: analysis, strategy, dev planning
-analyses/
 plans/
 .CLAUDE_LOCK
 .CLAUDE_NOTES.md
@@ -37,3 +36,14 @@ plans/
 *.strategy.md
 *.internal.md
 .claude/worktrees/
+PORT_DADDY_V3_VISION.md
+PORT_DADDY_V4_STRATEGY.md
+port-daddy-v3.5-execution-plan.md
+port-daddy-website-refresh-plan.md
+port-daddy-distribution-strategy.md
+port-daddy-distribution-analysis.md
+port-daddy-asciinema-skills-plan.md
+vite-output.log
+daemon-error.log
+*.cjs
+STRATEGY_private_gitignore/

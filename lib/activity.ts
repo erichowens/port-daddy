@@ -219,6 +219,9 @@ export function createActivityLog(db: Database.Database) {
     getNewestTimestamp: db.prepare('SELECT MAX(timestamp) as newest FROM activity_log'),
   };
 
+  // In-memory subscribers
+  const subscribers = new Set<(entry: ActivityEntryFormatted) => void>();
+
   /**
    * Log an activity
    */
@@ -233,7 +236,7 @@ export function createActivityLog(db: Database.Database) {
     const now = Date.now();
 
     try {
-      stmts.insert.run(
+      const result = stmts.insert.run(
         now,
         type,
         agentId,
@@ -242,10 +245,39 @@ export function createActivityLog(db: Database.Database) {
         metadata ? JSON.stringify(metadata) : null
       );
 
+      const entry: ActivityEntryFormatted = {
+        id: Number(result.lastInsertRowid),
+        timestamp: now,
+        type,
+        agentId,
+        targetId,
+        details,
+        metadata
+      };
+
+      // Notify subscribers
+      for (const callback of subscribers) {
+        try {
+          callback(entry);
+        } catch (err) {
+          console.error('Activity subscriber error:', err);
+        }
+      }
+
       return { success: true, timestamp: now };
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }
+  }
+
+  /**
+   * Subscribe to activity log (in-memory, for SSE)
+   */
+  function subscribe(callback: (entry: ActivityEntryFormatted) => void): () => void {
+    subscribers.add(callback);
+    return () => {
+      subscribers.delete(callback);
+    };
   }
 
   function formatEntry(e: ActivityRow): ActivityEntryFormatted {
@@ -421,6 +453,7 @@ export function createActivityLog(db: Database.Database) {
     getSummary,
     cleanup,
     getStats,
+    subscribe,
     logService,
     logLock,
     logAgent,

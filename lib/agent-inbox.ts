@@ -15,7 +15,8 @@ export interface InboxMessage {
   id: number;
   agentId: string;
   from: string | null;
-  content: string;
+  content: unknown;
+  contentType: string;
   type: string;
   read: boolean;
   createdAt: number;
@@ -26,6 +27,7 @@ interface InboxRow {
   agent_id: string;
   from_agent: string | null;
   content: string;
+  content_type: string;
   type: string;
   read: number;
   created_at: number;
@@ -34,6 +36,8 @@ interface InboxRow {
 interface SendOptions {
   from?: string;
   type?: string;
+  contentType?: 'text' | 'json' | 'binary';
+  signal?: string;
 }
 
 interface ListOptions {
@@ -44,7 +48,7 @@ interface ListOptions {
 
 const MAX_INBOX_MESSAGES = 1000;
 
-export function createAgentInbox(db: Database.Database) {
+export function createAgentInbox(db: Database.Database, onMessage?: (agentId: string, message: InboxMessage) => void) {
   // Schema
   db.exec(`
     CREATE TABLE IF NOT EXISTS agent_inbox (
@@ -52,18 +56,24 @@ export function createAgentInbox(db: Database.Database) {
       agent_id TEXT NOT NULL,
       from_agent TEXT,
       content TEXT NOT NULL,
+      content_type TEXT NOT NULL DEFAULT 'text',
       type TEXT NOT NULL DEFAULT 'message',
       read INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL
     )
   `);
+  
+  try {
+    db.exec('ALTER TABLE agent_inbox ADD COLUMN content_type TEXT NOT NULL DEFAULT "text"');
+  } catch { /* already exists */ }
+
   db.exec(`CREATE INDEX IF NOT EXISTS idx_agent_inbox_agent ON agent_inbox(agent_id, created_at)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_agent_inbox_unread ON agent_inbox(agent_id) WHERE read = 0`);
 
   const stmts = {
     send: db.prepare(`
-      INSERT INTO agent_inbox (agent_id, from_agent, content, type, read, created_at)
-      VALUES (?, ?, ?, ?, 0, ?)
+      INSERT INTO agent_inbox (agent_id, from_agent, content, content_type, type, read, created_at)
+      VALUES (?, ?, ?, ?, ?, 0, ?)
     `),
     list: db.prepare(`
       SELECT * FROM agent_inbox WHERE agent_id = ? ORDER BY created_at DESC LIMIT ?
@@ -92,11 +102,20 @@ export function createAgentInbox(db: Database.Database) {
       id: row.id,
       agentId: row.agent_id,
       from: row.from_agent,
-      content: row.content,
+      content: row.content_type === 'json' ? safeJsonParse(row.content) : row.content,
+      contentType: row.content_type,
       type: row.type,
       read: row.read === 1,
       createdAt: row.created_at,
     };
+  }
+
+  function safeJsonParse(value: string): unknown {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
   }
 
   return {
@@ -105,36 +124,61 @@ export function createAgentInbox(db: Database.Database) {
      * Anyone can send (you don't need to be registered).
      * If the inbox exceeds MAX_INBOX_MESSAGES (1000), the oldest messages are evicted.
      */
-    send(agentId: string, content: string, options: SendOptions = {}) {
-      if (!agentId || !content) {
+    send(agentId: string, content: unknown, options: SendOptions = {}) {
+      if (!agentId || content === undefined || content === null) {
         return { success: false, error: 'agentId and content required' };
       }
 
       // Enforce inbox size limit
       const currentCount = (stmts.count.get(agentId) as { count: number }).count;
       if (currentCount >= MAX_INBOX_MESSAGES) {
-        return {
-          success: false,
-          error: `Inbox full (${MAX_INBOX_MESSAGES} messages). Clear old messages first.`,
-          code: 'RESOURCE_LIMIT',
-        };
+        // Evict oldest messages if inbox is at capacity
+        const toDelete = currentCount - MAX_INBOX_MESSAGES + 1; // Make room for the new one
+        stmts.deleteOldestForAgent.run(agentId, toDelete);
       }
 
       const { from = null, type = 'message' } = options;
+      let { contentType } = options;
       const now = Date.now();
 
+      // Determine content type if not provided
+      if (!contentType) {
+        if (typeof content === 'string') contentType = 'text';
+        else if (Buffer.isBuffer(content)) contentType = 'binary';
+        else contentType = 'json';
+      }
+
+      let contentStr: string;
+      if (contentType === 'json') {
+        contentStr = typeof content === 'string' ? content : JSON.stringify(content);
+      } else if (contentType === 'binary') {
+        contentStr = Buffer.isBuffer(content) ? content.toString('base64') : String(content);
+      } else {
+        contentStr = String(content);
+      }
+
       try {
-        // Evict oldest messages if inbox is at capacity
-        const currentCount = (stmts.count.get(agentId) as { count: number }).count;
-        if (currentCount >= MAX_INBOX_MESSAGES) {
-          const toDelete = currentCount - MAX_INBOX_MESSAGES + 1; // Make room for the new one
-          stmts.deleteOldestForAgent.run(agentId, toDelete);
+        const result = stmts.send.run(agentId, from, contentStr, contentType, type, now);
+        const messageId = Number(result.lastInsertRowid);
+
+        const msg: InboxMessage = {
+          id: messageId,
+          agentId,
+          from,
+          content: contentType === 'json' ? safeJsonParse(contentStr) : contentStr,
+          contentType: contentType,
+          type,
+          read: false,
+          createdAt: now,
+        };
+
+        if (onMessage) {
+          onMessage(agentId, msg);
         }
 
-        const result = stmts.send.run(agentId, from, content, type, now);
         return {
           success: true,
-          messageId: Number(result.lastInsertRowid),
+          messageId,
           agentId,
         };
       } catch (err) {

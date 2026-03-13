@@ -21,6 +21,8 @@
   },
   "scripts": {
     "start": "tsx server.ts",
+    "daemon:start": "tsx server.ts",
+    "daemon:watch": "tsx bin/watchdog.ts",
     "dev": "tsx bin/port-daddy-cli.ts dev",
     "install-daemon": "tsx install-daemon.ts",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
@@ -39,7 +41,7 @@
     "url": "git+https://github.com/curiositech/port-daddy.git"
   },
   "author": "Curiositech LLC <hello@curiositech.ai> (https://curiositech.ai)",
-  "license": "MIT",
+  "license": "FSL-1.1-MIT",
   "bugs": {
     "url": "https://github.com/curiositech/port-daddy/issues"
   },
@@ -84,6 +86,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
     "better-sqlite3": "^12.6.2",
+    "chokidar": "^5.0.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "express-rate-limit": "^8.2.1",

@@ -71,7 +71,7 @@ export function createAgentsRoutes(deps: AgentsRouteDeps): Router {
   // ==========================================================================
   router.post('/agents', (req: Request, res: Response) => {
     try {
-      const { id, name, type, metadata, maxServices, maxLocks, identity, worktreeId, purpose } = req.body;
+      const { id, name, type, metadata, agentCard, maxServices, maxLocks, identity, worktreeId, purpose } = req.body;
 
       if (!id) {
         return res.status(400).json({ error: 'agent id required' });
@@ -88,6 +88,7 @@ export function createAgentsRoutes(deps: AgentsRouteDeps): Router {
         pid: parseInt(req.headers['x-pid'] as string, 10) || process.pid,
         type: type || 'cli',
         metadata,
+        agentCard,
         maxServices,
         maxLocks,
         // Context-aware salvage: semantic identity for project prefix filtering
@@ -250,10 +251,11 @@ export function createAgentsRoutes(deps: AgentsRouteDeps): Router {
         return res.status(400).json({ error: 'content required' });
       }
 
-      // Check if agent exists (optional: could allow messages to non-existent agents)
+      // Check if agent exists (optional: allow ad-hoc hailing for unregistered IDs)
       const agentResult = agents.get(agentId);
       if (!agentResult.success) {
-        return res.status(404).json({ error: 'agent not found' });
+        // We allow sending to unknown agents to support "hailing" in the wild west
+        logger.info('inbox_hail_sent', { agentId, from, note: 'Agent not in registry' });
       }
 
       const result = agentInbox.send(agentId, content, { from, type });
