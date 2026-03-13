@@ -11,7 +11,8 @@ import {
   Lock, Users, Terminal, Zap, AlertCircle, 
   Network, GitBranch, MessageSquare, 
   History, 
-  Skull, LifeBuoy, Anchor, Globe, Radio, Search, Activity, Cpu, Share2, ArrowRight, Layout
+  Skull, LifeBuoy, Anchor, Globe, Radio, Search, Activity, Cpu, Share2, ArrowRight, Layout,
+  Shield, RefreshCw
 } from 'lucide-react'
 import { Footer } from '@/components/layout/Footer'
 
@@ -83,7 +84,7 @@ function UnifiedTimeline() {
                      <motion.span className="text-[10px] font-black uppercase tracking-widest text-[var(--brand-primary)]">{item.identity || 'system'}</motion.span>
                      <motion.span className="text-[9px] font-mono opacity-40">{new Date(item.timestamp).toLocaleTimeString()}</motion.span>
                   </motion.div>
-                  <motion.p className="text-sm leading-relaxed opacity-70 m-0 group-hover:opacity-100 transition-opacity">{item.content}</motion.p>
+                  <motion.p className="text-sm leading-relaxed opacity-70 m-0 group-hover:opacity-100 transition-opacity">{item.details}</motion.p>
                </motion.div>
             </motion.div>
           ))
@@ -94,7 +95,7 @@ function UnifiedTimeline() {
 }
 
 export function DashboardPage() {
-  const { stats, loading } = useDaemonData()
+  const { data: stats } = useDaemonData<any>('/stats')
 
   return (
     <motion.div 

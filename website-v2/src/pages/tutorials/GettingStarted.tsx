@@ -2,7 +2,8 @@ import { motion } from 'framer-motion'
 import { TutorialLayout } from '@/components/tutorials/TutorialLayout'
 import { CodeBlock } from '@/components/ui/CodeBlock'
 import { Badge } from '@/components/ui/Badge'
-import { Zap, Globe, Shield, Cpu, Terminal, Sparkles } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Globe, Cpu, Terminal, Sparkles } from 'lucide-react'
 
 export function GettingStarted() {
   return (

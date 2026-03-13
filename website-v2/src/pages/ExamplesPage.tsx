@@ -1,8 +1,7 @@
 import * as React from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/Badge'
-import { Link } from 'react-router-dom'
-import { Code, Search, Network, Shield, Cpu, Zap, Share2, Terminal, ArrowRight, Sparkles, Box, Globe, MessageSquare, RefreshCw, Layers, FileText, DollarSign, Activity, Users, Database, Lock, Key } from 'lucide-react'
+import { Sparkles, Shield, RefreshCw, DollarSign, Database, Terminal, Layers, Anchor, Zap, Globe } from 'lucide-react'
 import { Footer } from '@/components/layout/Footer'
 
 interface Example {
@@ -278,7 +277,7 @@ export function ExamplesPage() {
               ].map((item, i) => (
                 <motion.div key={i} className="p-8 rounded-[40px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] flex flex-col items-center gap-4">
                    <item.icon size={24} className="text-[var(--brand-primary)]" />
-                   <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-60">{item.label}</motion.span>
+                   <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-60">{item.title}</motion.span>
                 </motion.div>
               ))}
            </motion.div>

@@ -1,8 +1,7 @@
 import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/Badge'
-import { Card, CardContent } from '@/components/ui/Card'
 import { Link } from 'react-router-dom'
-import { BookOpen, Clock, ChevronRight, Play, Zap, Shield, Globe, Terminal, Sparkles, Anchor, Activity, Share2, Layers, Cpu, Search, RefreshCw, Box, Lock, Activity as ActivityIcon, MessageSquare, History } from 'lucide-react'
+import { Clock, Play, Zap, Shield, Globe, Sparkles, Anchor, Share2, Layers, Cpu, Search, RefreshCw, Box, Activity as ActivityIcon, History, Network, Mail } from 'lucide-react'
 import { Footer } from '@/components/layout/Footer'
 
 interface Tutorial {
