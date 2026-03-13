@@ -1,136 +1,126 @@
 import { motion } from 'framer-motion'
+import { Badge } from '@/components/ui/Badge'
+import { Box, Code, Cpu, MessageSquare, Terminal, Zap, Layers, Share2, Shield, Globe } from 'lucide-react'
 
 interface AgentTool {
   name: string
   tagline: string
   how: string
+  icon: any
+  color: string
 }
 
 const TOOLS: AgentTool[] = [
-  { name: 'Claude Code', tagline: 'MCP native', how: 'pd mcp install → tools in every session' },
-  { name: 'Aider', tagline: 'git-native', how: 'pd begin wraps each coding session' },
-  { name: 'Ollama', tagline: 'local models', how: 'SDK registers agent, sends heartbeats' },
-  { name: 'Gemini CLI', tagline: 'Google AI', how: 'claim ports, use pub/sub for results' },
-  { name: 'Continue.dev', tagline: 'IDE agent', how: 'file claims prevent conflicts' },
-  { name: 'LangChain', tagline: 'Python / JS', how: 'REST API, any language supported' },
-  { name: 'CrewAI', tagline: 'multi-agent', how: 'one session per crew member' },
-  { name: 'Custom', tagline: 'your agent', how: 'HTTP REST → works from any runtime' },
-]
-
-// Simple colored initials "logos"
-const COLORS = [
-  'var(--p-teal-400)',
-  'var(--p-amber-400)',
-  'var(--p-navy-300)',
-  'var(--p-green-500)',
-  'var(--p-teal-300)',
-  'var(--p-amber-300)',
-  'var(--p-navy-200)',
-  'var(--border-strong)',
+  { name: 'Claude Code', tagline: 'MCP native', how: 'pd mcp install → tools in every session', icon: Cpu, color: 'var(--p-teal-400)' },
+  { name: 'LangChain', tagline: 'Unified Tools', how: 'Wrap identities in Tools for universal discovery', icon: Layers, color: 'var(--p-amber-400)' },
+  { name: 'CrewAI', tagline: 'Swarm Logic', how: 'Assign one Port Daddy session per crew member', icon: Share2, color: 'var(--p-blue-400)' },
+  { name: 'Gemini CLI', tagline: 'Google AI', how: 'Native extension for port & harbor control', icon: Zap, color: 'var(--p-purple-400)' },
+  { name: 'Aider', tagline: 'Git-Native', how: 'pd begin wraps every autonomous session', icon: Code, color: 'var(--p-green-400)' },
+  { name: 'Continue.dev', tagline: 'IDE Context', how: 'File claims prevent multi-agent collisions', icon: Terminal, color: 'var(--p-red-400)' },
 ]
 
 export function AgentEcosystem() {
   return (
-    <section
-      className="py-20 px-4 sm:px-6 lg:px-8"
-      style={{ background: 'var(--bg-base)', borderTop: '1px solid var(--border-subtle)' }}
+    <motion.section 
+      id="ecosystem" 
+      className="py-32 px-4 sm:px-6 lg:px-8 font-sans relative overflow-hidden"
+      style={{ background: 'var(--bg-base)' }}
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true }}
     >
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto relative z-10 font-sans">
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={{ opacity: 0, y: 32 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-12"
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center mb-32"
         >
-          <p className="text-sm font-medium uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>
-            Works with every AI agent
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            Language-agnostic. Framework-agnostic.
-          </h2>
-          <p className="mt-3 max-w-xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
-            Port Daddy is a local HTTP daemon. If your agent can make an HTTP request, it can coordinate.
-          </p>
+          <Badge variant="teal" className="mb-10 px-6 py-2 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">The Integration Layer</Badge>
+          <motion.h2 className="text-5xl sm:text-8xl font-bold font-display tracking-tight leading-[0.95] mb-10" style={{ color: 'var(--text-primary)' }}>
+            One protocol. <motion.span className="text-[var(--brand-primary)]">Any Agent.</motion.span>
+          </motion.h2>
+          <motion.p className="text-xl sm:text-2xl max-w-4xl mx-auto leading-relaxed opacity-70" style={{ color: 'var(--text-secondary)' }}>
+            Port Daddy is framework-agnostic. It provides the low-level primitives needed to make agents from different families work together in a single harbor.
+          </motion.p>
         </motion.div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {TOOLS.map((tool, i) => (
             <motion.div
               key={tool.name}
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.3, delay: i * 0.04 }}
+              transition={{ duration: 0.6, delay: i * 0.05 }}
+              className="group"
             >
-              <div
-                className="p-4 rounded-xl flex items-start gap-3 h-full group hover:border-[var(--border-strong)] transition-colors"
-                style={{
-                  background: 'var(--bg-surface)',
-                  border: '1px solid var(--border-subtle)',
-                }}
+              <motion.div 
+                className="h-full p-10 rounded-[48px] border transition-all duration-[var(--p-transition-spring)] flex flex-col items-start gap-8"
+                style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-surface)' }}
+                whileHover={{ y: -10, borderColor: tool.color, boxShadow: `0 32px 64px -12px ${tool.color}15` }}
               >
-                {/* Monogram */}
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0"
-                  style={{
-                    background: 'var(--bg-overlay)',
-                    color: COLORS[i % COLORS.length],
-                    border: `1px solid ${COLORS[i % COLORS.length]}40`,
-                  }}
+                <div 
+                  className="w-16 h-16 rounded-[24px] flex items-center justify-center border transition-all group-hover:scale-110"
+                  style={{ background: `${tool.color}10`, borderColor: `${tool.color}20` }}
                 >
-                  {tool.name.slice(0, 2).toUpperCase()}
+                  <tool.icon size={32} style={{ color: tool.color }} />
                 </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-                      {tool.name}
-                    </span>
-                    <span
-                      className="text-xs px-1.5 py-0.5 rounded"
-                      style={{
-                        background: 'var(--bg-overlay)',
-                        color: 'var(--text-muted)',
-                      }}
-                    >
-                      {tool.tagline}
-                    </span>
-                  </div>
-                  <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                    {tool.how}
-                  </p>
+
+                <div className="space-y-3 flex-1">
+                   <div className="flex items-center gap-3">
+                      <h3 className="m-0 text-2xl font-display font-black leading-tight" style={{ color: 'var(--text-primary)' }}>{tool.name}</h3>
+                      <Badge variant="neutral" className="text-[8px] font-black uppercase tracking-widest">{tool.tagline}</Badge>
+                   </div>
+                   <p className="m-0 text-base opacity-60 leading-relaxed group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-secondary)' }}>
+                     {tool.how}
+                   </p>
                 </div>
-              </div>
+
+                <div className="w-full flex items-center justify-between opacity-20 group-hover:opacity-100 transition-opacity">
+                   <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent to-[var(--border-strong)]" />
+                   <ChevronRight size={16} className="text-[var(--text-muted)] ml-4" />
+                </div>
+              </motion.div>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
 
-        {/* Call to action */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
+        {/* Multi-Agent Coordination Example */}
+        <motion.div 
+          className="mt-32 p-16 rounded-[60px] bg-[var(--bg-surface)] border border-[var(--border-strong)] relative overflow-hidden"
+          initial={{ opacity: 0, scale: 0.98 }}
+          whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="mt-10 text-center"
         >
-          <div
-            className="inline-flex items-center gap-3 px-6 py-3 rounded-xl text-sm"
-            style={{
-              background: 'var(--bg-overlay)',
-              border: '1px solid var(--border-default)',
-              color: 'var(--text-secondary)',
-            }}
-          >
-            <span style={{ color: 'var(--code-prompt)' }}>$</span>
-            <span style={{ color: 'var(--text-primary)' }}>
-              curl localhost:9876/claim/myapp:api -X POST
-            </span>
-            <span style={{ color: 'var(--code-comment)' }}>
-              {'# ← that\'s it'}
-            </span>
-          </div>
+           <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
+              <Globe size={400} className="text-[var(--brand-primary)]" />
+           </div>
+           
+           <div className="max-w-3xl relative z-10 space-y-10">
+              <Badge variant="amber" className="px-4 py-1.5 text-[10px] font-black uppercase tracking-widest">Coordination Pattern</Badge>
+              <h3 className="text-4xl sm:text-6xl font-display font-black leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
+                The <span className="text-[var(--p-amber-400)]">Lighthouse</span> Pattern.
+              </h3>
+              <p className="text-xl leading-relaxed opacity-70">
+                Teach your swarms to discover each other via a central daemon. One agent claims a semantic harbor, while others subscribe to its Swarm Radio channels for real-time state updates.
+              </p>
+              
+              <div className="grid gap-4">
+                 <div className="flex items-start gap-6 p-8 rounded-3xl bg-[var(--bg-overlay)] border border-[var(--border-subtle)]">
+                    <div className="w-10 h-10 rounded-full bg-[var(--p-teal-500)]/10 flex items-center justify-center shrink-0">
+                       <MessageSquare className="text-[var(--p-teal-400)]" size={20} />
+                    </div>
+                    <div className="space-y-2">
+                       <p className="font-bold m-0 text-lg">Cross-Framework Signaling</p>
+                       <p className="text-sm m-0 opacity-60 leading-relaxed">A LangChain agent can publish an event that a CrewAI task is waiting for, bridged instantly by the Port Daddy daemon.</p>
+                    </div>
+                 </div>
+              </div>
+           </div>
         </motion.div>
       </div>
-    </section>
+    </motion.section>
   )
 }
