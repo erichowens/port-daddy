@@ -81,7 +81,7 @@ function UnifiedTimeline() {
                </motion.div>
                <motion.div className="flex-1 space-y-2">
                   <motion.div className="flex items-center justify-between">
-                     <motion.span className="text-[10px] font-black uppercase tracking-widest text-[var(--brand-primary)]">{item.identity || 'system'}</motion.span>
+                     <motion.span className="text-[10px] font-black uppercase tracking-widest text-[var(--brand-primary)]">{item.agentId || 'system'}</motion.span>
                      <motion.span className="text-[9px] font-mono opacity-40">{new Date(item.timestamp).toLocaleTimeString()}</motion.span>
                   </motion.div>
                   <motion.p className="text-sm leading-relaxed opacity-70 m-0 group-hover:opacity-100 transition-opacity">{item.details}</motion.p>

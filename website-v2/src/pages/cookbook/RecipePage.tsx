@@ -118,7 +118,7 @@ export function RecipePage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.2 }}
               >
-                <ReactMarkdown>{recipe.content}</ReactMarkdown>
+                <ReactMarkdown>{recipe.body}</ReactMarkdown>
               </motion.article>
            </section>
 
