@@ -3,7 +3,7 @@ import { useParams, Link, Navigate } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
 import { CodeBlock } from '@/components/ui/CodeBlock'
 import { BLUEPRINTS } from '@/data/blueprints'
-import { ChevronLeft, Box, Zap, Shield, Rocket, Cpu, Terminal, Sparkles, Globe, MessageSquare, ArrowRight, Info, Activity, Users, Layers, Share2 } from 'lucide-react'
+import { ChevronLeft, Box, Zap, Shield, Rocket, Terminal, Info, Activity, Users, Layers } from 'lucide-react'
 import { Footer } from '@/components/layout/Footer'
 
 export function TemplatePage() {

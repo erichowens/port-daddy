@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/Badge'
 import { PRODUCT_FEATURES } from '@/data/product'
 import { 
   Shield, History, Radio, 
-  Anchor, Code, Cpu, Share2, Terminal, Sparkles, Globe, Zap
+  Anchor, Code, Cpu, Share2, Terminal, Sparkles
 } from 'lucide-react'
 
 const ICON_MAP: Record<string, any> = {

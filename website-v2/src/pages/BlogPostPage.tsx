@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import { blogPosts } from '@/data/blogData'
 import { Mermaid } from '@/components/ui/Mermaid'
 import { Badge } from '@/components/ui/Badge'
-import { Calendar, User, ArrowLeft, Share2, Clock, BookOpen, ShieldCheck } from 'lucide-react'
+import { Calendar, User, ArrowLeft, Share2, ShieldCheck } from 'lucide-react'
 import { Footer } from '@/components/layout/Footer'
 
 export function BlogPostPage() {

@@ -37,23 +37,19 @@ impl HarborCardVerifier {
         Ok(Self { public_key })
     }
 
-    // INTERNAL WRAPPER FOR STUBBING
     fn internal_pk_from_bytes(bytes: [u8; 32]) -> Result<VerifyingKey, HarborError> {
         VerifyingKey::from_bytes(&bytes).map_err(|_| HarborError::InvalidEncoding)
     }
 
-    // INTERNAL WRAPPER FOR STUBBING
     fn internal_decode_b64(input: &str) -> Result<Vec<u8>, HarborError> {
         URL_SAFE_NO_PAD.decode(input).map_err(|_| HarborError::InvalidEncoding)
     }
 
-    // INTERNAL WRAPPER FOR STUBBING
     fn internal_verify_sig(&self, msg: &[u8], sig_bytes: &[u8]) -> Result<(), HarborError> {
         let signature = Signature::from_slice(sig_bytes).map_err(|_| HarborError::InvalidSignature)?;
         self.public_key.verify(msg, &signature).map_err(|_| HarborError::InvalidSignature)
     }
 
-    /// Constant-time byte comparison to mitigate timing side-channels.
     pub fn constant_time_compare(a: &[u8], b: &[u8]) -> bool {
         if a.len() != b.len() {
             return false;
@@ -65,8 +61,6 @@ impl HarborCardVerifier {
         result == 0
     }
 
-    /// Formal Enforcer: Ensures sub_caps is a strict subset of root_caps.
-    /// Used by the Arbiter to prevent privilege escalation during delegation.
     pub fn verify_capability_subset(root_caps: &[String], sub_caps: &[String]) -> bool {
         for sub in sub_caps {
             if !root_caps.contains(sub) {
@@ -75,21 +69,6 @@ impl HarborCardVerifier {
         }
         true
     }
-...
-#[cfg(kani)]
-#[kani::proof]
-fn proof_capability_attenuation() {
-    // Prove that an agent cannot magically gain a capability through subset check.
-    let root = vec!["read".to_string(), "write".to_string()];
-    let mut sub = vec!["read".to_string()];
-    
-    // Check initial state
-    assert!(HarborCardVerifier::verify_capability_subset(&root, &sub));
-    
-    // Attacker attempts to add "admin"
-    sub.push("admin".to_string());
-    assert!(!HarborCardVerifier::verify_capability_subset(&root, &sub));
-}
 
     pub fn verify(&self, token: &str, now_ts: i64) -> Result<HarborCardClaims, HarborError> {
         let parts: Vec<&str> = token.split('.').collect();
@@ -158,6 +137,15 @@ fn proof_verify_logic_only() {
 fn proof_constant_time_behavior() {
     let a: [u8; 16] = kani::any();
     let b: [u8; 16] = kani::any();
-    // Kani verifies this function is branch-free regarding byte content
     let _ = HarborCardVerifier::constant_time_compare(&a, &b);
+}
+
+#[cfg(kani)]
+#[kani::proof]
+fn proof_capability_attenuation() {
+    let root = vec!["read".to_string(), "write".to_string()];
+    let mut sub = vec!["read".to_string()];
+    assert!(HarborCardVerifier::verify_capability_subset(&root, &sub));
+    sub.push("admin".to_string());
+    assert!(!HarborCardVerifier::verify_capability_subset(&root, &sub));
 }

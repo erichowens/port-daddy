@@ -22,7 +22,6 @@ export function TutorialLayout({
   title,
   description,
   number,
-  total,
   level,
   readTime,
   children,

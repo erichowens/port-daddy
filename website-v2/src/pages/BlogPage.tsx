@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { blogPosts } from '@/data/blogData'
 import { Badge } from '@/components/ui/Badge'
-import { Calendar, User, ArrowRight, BookOpen, ShieldCheck, Zap, Activity } from 'lucide-react'
+import { Calendar, User, ArrowRight, ShieldCheck, Zap, Activity } from 'lucide-react'
 import { Footer } from '@/components/layout/Footer'
 
 export function BlogPage() {

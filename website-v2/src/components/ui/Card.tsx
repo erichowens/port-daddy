@@ -1,5 +1,4 @@
-import { motion, HTMLMotionProps } from 'framer-motion';
-import * as React from 'react'
+import { motion, type HTMLMotionProps } from 'framer-motion';
 import { cn } from '@/lib/utils'
 
 type CardVariant = 'default' | 'glass' | 'elevated'

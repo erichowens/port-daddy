@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/Badge'
-import { Card, CardContent } from '@/components/ui/Card'
 import { Link } from 'react-router-dom'
 import { Book, Shield, Activity, Zap, MessageSquare, UserMinus, ChevronRight, Share2, Anchor, Cpu, Search, RefreshCw, Layers } from 'lucide-react'
 import { COOKBOOK_RECIPES } from '@/data/cookbook'
