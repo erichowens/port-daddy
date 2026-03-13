@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use ed25519_dalek::{VerifyingKey, Signature, Verifier};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use thiserror::Error;
+use zeroize::Zeroize;
 
 #[derive(Error, Debug)]
 pub enum HarborError {
@@ -81,12 +82,15 @@ impl HarborCardVerifier {
         let signature_b64 = parts[2];
 
         let msg = format!("{}.{}", header_b64, payload_b64);
-        let sig_bytes = Self::internal_decode_b64(signature_b64)?;
+        let mut sig_bytes = Self::internal_decode_b64(signature_b64)?;
         
-        self.internal_verify_sig(msg.as_bytes(), &sig_bytes)?;
+        let sig_result = self.internal_verify_sig(msg.as_bytes(), &sig_bytes);
+        sig_bytes.zeroize();
+        sig_result?;
 
-        let payload_bytes = Self::internal_decode_b64(payload_b64)?;
+        let mut payload_bytes = Self::internal_decode_b64(payload_b64)?;
         let claims: HarborCardClaims = serde_json::from_slice(&payload_bytes)?;
+        payload_bytes.zeroize();
 
         if claims.exp < now_ts {
             return Err(HarborError::Expired);
@@ -163,9 +167,14 @@ pub extern "C" fn harbor_constant_time_compare(
     b: *const u8, 
     b_len: usize
 ) -> bool {
-    if a.is_null() || b.is_null() {
+    if a.is_null() || b.is_null() || a_len == 0 || b_len == 0 {
         return false;
     }
+    // Prevent pathological sizes from causing out-of-memory or massive hangs
+    if a_len > 1024 || b_len > 1024 {
+        return false; 
+    }
+    
     let a_slice = unsafe { std::slice::from_raw_parts(a, a_len) };
     let b_slice = unsafe { std::slice::from_raw_parts(b, b_len) };
     HarborCardVerifier::constant_time_compare(a_slice, b_slice)
