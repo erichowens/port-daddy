@@ -44,7 +44,7 @@ export function BlogPostPage() {
           style={{ background: 'radial-gradient(circle, var(--brand-primary) 0%, transparent 70%)' }} 
         />
         
-        <div className="max-w-4xl mx-auto relative z-10 flex flex-col items-center text-center gap-10">
+        <motion.div className="max-w-4xl mx-auto relative z-10 flex flex-col items-center text-center gap-10">
            <Link to="/blog" className="no-underline group">
               <motion.div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.25em] opacity-40 group-hover:opacity-100 group-hover:text-[var(--brand-primary)] transition-all">
                  <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
@@ -52,17 +52,17 @@ export function BlogPostPage() {
               </motion.div>
            </Link>
 
-           <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-[0.2em] opacity-40 font-mono">
-              <div className="flex items-center gap-2">
+           <motion.div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-[0.2em] opacity-40 font-mono">
+              <motion.div className="flex items-center gap-2">
                  <Calendar size={14} className="text-[var(--brand-primary)]" />
                  {post.date}
-              </div>
-              <div className="h-1 w-1 rounded-full bg-[var(--border-strong)]" />
-              <div className="flex items-center gap-2">
+              </motion.div>
+              <motion.div className="h-1 w-1 rounded-full bg-[var(--border-strong)]" />
+              <motion.div className="flex items-center gap-2">
                  <User size={14} className="text-[var(--p-teal-400)]" />
                  {post.author}
-              </div>
-           </div>
+              </motion.div>
+           </motion.div>
 
            <motion.h1 
              className="text-5xl sm:text-7xl font-black tracking-tighter font-display leading-[1.05]"
@@ -73,12 +73,12 @@ export function BlogPostPage() {
              {post.title}
            </motion.h1>
 
-           <div className="flex flex-wrap justify-center gap-3">
+           <motion.div className="flex flex-wrap justify-center gap-3">
               {post.tags.map(tag => (
                 <Badge key={tag} variant="neutral" className="px-4 py-1.5 text-[8px] font-black uppercase tracking-widest bg-[var(--bg-overlay)]">{tag}</Badge>
               ))}
-           </div>
-        </div>
+           </motion.div>
+        </motion.div>
       </motion.header>
 
       {/* Main Content */}
@@ -124,25 +124,25 @@ export function BlogPostPage() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
         >
-           <div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
+           <motion.div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
               <ShieldCheck size={600} />
-           </div>
+           </motion.div>
            
-           <div className="space-y-6 max-w-3xl relative z-10">
+           <motion.div className="space-y-6 max-w-3xl relative z-10">
               <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-widest shadow-xl">Protocol Safety</Badge>
-              <h3 className="text-4xl sm:text-7xl font-display font-black tracking-tight leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
-                Soundness is <span className="text-[var(--p-teal-400)]">Mandatory.</span>
-              </h3>
-              <p className="text-2xl leading-relaxed opacity-70">
+              <motion.h3 className="text-4xl sm:text-7xl font-display font-black tracking-tight leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
+                Soundness is <motion.span className="text-[var(--p-teal-400)]">Mandatory.</motion.span>
+              </motion.h3>
+              <motion.p className="text-2xl leading-relaxed opacity-70">
                 This engineering post was produced as part of our commitment to transparency and mathematical rigor. We believe the future of AI coordination must be built on a foundation of formal methods and verified protocols.
-              </p>
-              <div className="flex flex-wrap justify-center gap-6 pt-4">
-                 <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+              </motion.p>
+              <motion.div className="flex flex-wrap justify-center gap-6 pt-4">
+                 <motion.div className="flex items-center gap-3 px-6 py-3 rounded-full bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
                     <Share2 size={16} className="text-[var(--brand-primary)]" />
-                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60 text-[var(--text-primary)]">Share Protocol Insights</span>
-                 </div>
-              </div>
-           </div>
+                    <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-60 text-[var(--text-primary)]">Share Protocol Insights</motion.span>
+                 </motion.div>
+              </motion.div>
+           </motion.div>
         </motion.div>
       </motion.main>
 

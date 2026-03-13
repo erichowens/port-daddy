@@ -58,7 +58,7 @@ export function RecipePage() {
           style={{ background: 'radial-gradient(circle, var(--p-amber-500) 0%, transparent 70%)' }} 
         />
         
-        <div className="max-w-4xl mx-auto relative z-10 flex flex-col items-center text-center gap-10">
+        <motion.div className="max-w-4xl mx-auto relative z-10 flex flex-col items-center text-center gap-10">
            <Link to="/cookbook" className="no-underline group">
               <motion.div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.25em] opacity-40 group-hover:opacity-100 group-hover:text-[var(--p-amber-400)] transition-all">
                  <ChevronLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
@@ -66,13 +66,13 @@ export function RecipePage() {
               </motion.div>
            </Link>
 
-           <div className="flex items-center gap-6">
-              <div className="w-24 h-24 rounded-[32px] bg-[var(--bg-overlay)] flex items-center justify-center border border-[var(--p-amber-400)] shadow-2xl shadow-[var(--p-amber-400)]/10">
+           <motion.div className="flex items-center gap-6">
+              <motion.div className="w-24 h-24 rounded-[32px] bg-[var(--bg-overlay)] flex items-center justify-center border border-[var(--p-amber-400)] shadow-2xl shadow-[var(--p-amber-400)]/10">
                  <Icon size={48} className="text-[var(--p-amber-400)]" />
-              </div>
-           </div>
+              </motion.div>
+           </motion.div>
 
-           <div className="space-y-4">
+           <motion.div className="space-y-4">
               <Badge variant={recipe.difficulty === 'advanced' ? 'neutral' : 'teal'} className="px-4 py-1.5 text-[8px] font-black uppercase tracking-widest">{recipe.difficulty} Pattern</Badge>
               <motion.h1 
                 className="text-5xl sm:text-7xl font-black tracking-tighter font-display leading-[1.05]"
@@ -82,7 +82,7 @@ export function RecipePage() {
               >
                 {recipe.title}
               </motion.h1>
-           </div>
+           </motion.div>
 
            <motion.p 
              className="text-2xl leading-relaxed opacity-70 font-medium max-w-2xl"
@@ -92,21 +92,21 @@ export function RecipePage() {
            >
              {recipe.description}
            </motion.p>
-        </div>
+        </motion.div>
       </motion.header>
 
       {/* Main Content */}
       <motion.main className="flex-1 py-24 px-6 sm:px-8 lg:px-10 max-w-4xl mx-auto w-full font-sans">
-        <div className="space-y-24">
+        <motion.div className="space-y-24">
            
            {/* Detailed Pattern */}
            <section className="space-y-12">
-              <div className="flex items-center gap-4 border-b border-[var(--border-subtle)] pb-8">
-                 <div className="w-10 h-10 rounded-xl bg-[var(--p-amber-500)]/10 flex items-center justify-center border border-[var(--p-amber-500)]/20">
+              <motion.div className="flex items-center gap-4 border-b border-[var(--border-subtle)] pb-8">
+                 <motion.div className="w-10 h-10 rounded-xl bg-[var(--p-amber-500)]/10 flex items-center justify-center border border-[var(--p-amber-500)]/20">
                     <BookOpen size={20} className="text-[var(--p-amber-400)]" />
-                 </div>
-                 <h2 className="text-3xl font-display font-black m-0">The Coordination Recipe</h2>
-              </div>
+                 </motion.div>
+                 <motion.h2 className="text-3xl font-display font-black m-0">The Coordination Recipe</motion.h2>
+              </motion.div>
               
               <motion.article 
                 className="prose prose-invert prose-lg max-w-none 
@@ -127,20 +127,20 @@ export function RecipePage() {
              className="p-16 rounded-[60px] border border-dashed border-[var(--p-amber-400)] bg-[var(--bg-overlay)] flex flex-col items-center text-center gap-8 relative overflow-hidden"
              whileHover={{ scale: 1.01 }}
            >
-              <div className="absolute top-0 right-0 p-10 opacity-[0.03] pointer-events-none">
+              <motion.div className="absolute top-0 right-0 p-10 opacity-[0.03] pointer-events-none">
                  <Shield size={400} />
-              </div>
+              </motion.div>
               <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-widest shadow-xl">State Verification</Badge>
-              <h3 className="text-4xl font-display font-black m-0" style={{ color: 'var(--text-primary)' }}>Pattern Soundness.</h3>
-              <p className="text-xl max-w-xl opacity-70">
+              <motion.h3 className="text-4xl font-display font-black m-0" style={{ color: 'var(--text-primary)' }}>Pattern Soundness.</motion.h3>
+              <motion.p className="text-xl max-w-xl opacity-70">
                 This recipe has been verified against the Port Daddy v3.7 state machine. We ensure that following these handoff steps results in a deterministic and resilient harbor state.
-              </p>
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--p-amber-400)]">
+              </motion.p>
+              <motion.div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--p-amber-400)]">
                  <Activity size={14} className="animate-pulse" />
                  Swarm Radio Protocol v4 Active
-              </div>
+              </motion.div>
            </motion.div>
-        </div>
+        </motion.div>
       </motion.main>
 
       <Footer />

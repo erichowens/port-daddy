@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 
@@ -22,7 +23,7 @@ export function CodeBlock({ children, language, filename, className, copyable = 
   }
 
   return (
-    <div
+    <motion.div
       className={cn(
         'bg-[var(--codeblock-bg)] border border-[var(--codeblock-border)]',
         'rounded-[var(--codeblock-radius)]',
@@ -31,23 +32,23 @@ export function CodeBlock({ children, language, filename, className, copyable = 
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[var(--codeblock-header-bg)] border-b border-[var(--border-subtle)]">
-        <div className="flex items-center gap-3">
+      <motion.div className="flex items-center justify-between px-4 py-2 bg-[var(--codeblock-header-bg)] border-b border-[var(--border-subtle)]">
+        <motion.div className="flex items-center gap-3">
           {/* Traffic lights */}
-          <div className="flex gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-[var(--p-red-500)] opacity-70" />
-            <span className="w-3 h-3 rounded-full bg-[var(--p-amber-500)] opacity-70" />
-            <span className="w-3 h-3 rounded-full bg-[var(--p-green-500)] opacity-70" />
-          </div>
+          <motion.div className="flex gap-1.5">
+            <motion.span className="w-3 h-3 rounded-full bg-[var(--p-red-500)] opacity-70" />
+            <motion.span className="w-3 h-3 rounded-full bg-[var(--p-amber-500)] opacity-70" />
+            <motion.span className="w-3 h-3 rounded-full bg-[var(--p-green-500)] opacity-70" />
+          </motion.div>
           {filename && (
-            <span className="text-xs text-[var(--text-muted)] font-mono">{filename}</span>
+            <motion.span className="text-xs text-[var(--text-muted)] font-mono">{filename}</motion.span>
           )}
           {language && !filename && (
-            <span className="text-xs text-[var(--text-muted)] font-mono uppercase tracking-wider">
+            <motion.span className="text-xs text-[var(--text-muted)] font-mono uppercase tracking-wider">
               {language}
-            </span>
+            </motion.span>
           )}
-        </div>
+        </motion.div>
         {copyable && (
           <button
             onClick={handleCopy}
@@ -57,13 +58,13 @@ export function CodeBlock({ children, language, filename, className, copyable = 
             {copied ? 'Copied!' : 'Copy'}
           </button>
         )}
-      </div>
+      </motion.div>
 
       {/* Code body */}
       <pre className="overflow-x-auto p-4 m-0 text-sm leading-relaxed">
         <code className="text-[var(--code-output)] font-mono">{children}</code>
       </pre>
-    </div>
+    </motion.div>
   )
 }
 
@@ -76,16 +77,16 @@ interface TerminalLineProps {
 
 export function TerminalLine({ prompt = '$', command, output, className }: TerminalLineProps) {
   return (
-    <div className={cn('font-mono text-sm leading-relaxed', className)}>
+    <motion.div className={cn('font-mono text-sm leading-relaxed', className)}>
       {command !== undefined && (
-        <div>
-          <span className="text-[var(--code-prompt)]">{prompt} </span>
-          <span className="text-[var(--text-primary)]">{command}</span>
-        </div>
+        <motion.div>
+          <motion.span className="text-[var(--code-prompt)]">{prompt} </motion.span>
+          <motion.span className="text-[var(--text-primary)]">{command}</motion.span>
+        </motion.div>
       )}
       {output !== undefined && (
-        <div className="text-[var(--code-output)] pl-4">{output}</div>
+        <motion.div className="text-[var(--code-output)] pl-4">{output}</motion.div>
       )}
-    </div>
+    </motion.div>
   )
 }

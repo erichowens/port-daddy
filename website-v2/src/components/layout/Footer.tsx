@@ -92,7 +92,7 @@ export function Footer() {
                  The definitive control plane for high-fidelity multi-agent orchestration.
                </motion.p>
                
-               <div className="flex items-center gap-4">
+               <motion.div className="flex items-center gap-4">
                   <a href="https://github.com/erichowens/port-daddy" target="_blank" className="w-10 h-10 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-center hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all">
                      <Github size={18} />
                   </a>
@@ -100,16 +100,16 @@ export function Footer() {
                      <Twitter size={18} />
                   </a>
                   <Badge variant="teal" className="px-3 py-1 text-[8px] font-black uppercase tracking-widest">v3.7.0 STABLE</Badge>
-               </div>
+               </motion.div>
             </motion.div>
           </motion.div>
 
           {/* Navigation Sections */}
           {sections.map((section) => (
-            <div key={section.title} className="space-y-8">
-              <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-[var(--brand-primary)]">
+            <motion.div key={section.title} className="space-y-8">
+              <motion.h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-[var(--brand-primary)]">
                 {section.title}
-              </h4>
+              </motion.h4>
               <ul className="space-y-4 list-none p-0 m-0">
                 {section.links.map((link) => (
                   <li key={link.label}>
@@ -122,7 +122,7 @@ export function Footer() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </motion.div>
           ))}
         </motion.div>
 
@@ -130,27 +130,27 @@ export function Footer() {
         <motion.div 
           className="pt-12 border-t border-[var(--border-subtle)] flex flex-col md:flex-row items-center justify-between gap-8 font-sans opacity-40 hover:opacity-100 transition-opacity duration-500"
         >
-          <div className="flex flex-col md:flex-row items-center gap-8">
-             <span className="text-sm font-bold tracking-tight">© {currentYear} Port Daddy Project</span>
-             <div className="flex items-center gap-2 text-sm font-medium">
+          <motion.div className="flex flex-col md:flex-row items-center gap-8">
+             <motion.span className="text-sm font-bold tracking-tight">© {currentYear} Port Daddy Project</motion.span>
+             <motion.div className="flex items-center gap-2 text-sm font-medium">
                 <ShieldCheck size={14} className="text-[var(--p-teal-400)]" />
-                <span>Anchor Protocol Verified</span>
-             </div>
-             <div className="flex items-center gap-2 text-sm font-medium">
+                <motion.span>Anchor Protocol Verified</motion.span>
+             </motion.div>
+             <motion.div className="flex items-center gap-2 text-sm font-medium">
                 <Globe size={14} className="text-[var(--p-blue-400)]" />
-                <span>Distributed by Homebrew</span>
-             </div>
-          </div>
+                <motion.span>Distributed by Homebrew</motion.span>
+             </motion.div>
+          </motion.div>
 
-          <div className="flex items-center gap-6">
-             <div className="flex items-center gap-2 text-sm font-bold">
-                <span>Built by Erich Owens</span>
+          <motion.div className="flex items-center gap-6">
+             <motion.div className="flex items-center gap-2 text-sm font-bold">
+                <motion.span>Built by Erich Owens</motion.span>
                 <Heart size={14} className="text-[var(--p-red-500)] fill-[var(--p-red-500)] animate-pulse" />
-             </div>
-             <div className="h-4 w-[1px] bg-[var(--border-strong)]" />
+             </motion.div>
+             <motion.div className="h-4 w-[1px] bg-[var(--border-strong)]" />
              <a href="#" className="text-sm font-bold hover:text-[var(--brand-primary)] transition-colors no-underline">Terms</a>
              <a href="#" className="text-sm font-bold hover:text-[var(--brand-primary)] transition-colors no-underline">Privacy</a>
-          </div>
+          </motion.div>
         </motion.div>
       </motion.div>
     </motion.footer>

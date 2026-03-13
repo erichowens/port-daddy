@@ -29,7 +29,7 @@ export function CTABanner() {
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         className="relative max-w-5xl mx-auto text-center flex flex-col items-center gap-12"
       >
-        <div className="flex flex-col items-center gap-6">
+        <motion.div className="flex flex-col items-center gap-6">
            <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">The Departure</Badge>
            <motion.div 
              className="w-20 h-20 rounded-[32px] bg-[var(--interactive-active)] flex items-center justify-center border border-[var(--brand-primary)] shadow-[0_0_32px_rgba(58,173,173,0.3)]"
@@ -38,20 +38,20 @@ export function CTABanner() {
            >
               <Anchor className="text-[var(--brand-primary)]" size={40} />
            </motion.div>
-        </div>
+        </motion.div>
 
-        <div className="space-y-6">
-           <h2 className="text-5xl sm:text-8xl font-display font-black tracking-tight leading-[0.9]" style={{ color: 'var(--text-primary)' }}>
+        <motion.div className="space-y-6">
+           <motion.h2 className="text-5xl sm:text-8xl font-display font-black tracking-tight leading-[0.9]" style={{ color: 'var(--text-primary)' }}>
              Your agents deserve a <br />
-             <span className="text-[var(--brand-primary)]">harbormaster.</span>
-           </h2>
+             <motion.span className="text-[var(--brand-primary)]">harbormaster.</motion.span>
+           </motion.h2>
 
-           <p className="text-xl sm:text-2xl max-w-2xl mx-auto leading-relaxed opacity-70 font-sans">
+           <motion.p className="text-xl sm:text-2xl max-w-2xl mx-auto leading-relaxed opacity-70 font-sans">
              The era of wobbly scripts and port conflicts is over. Build swarms that are resilient, cryptographically secure, and always-on.
-           </p>
-        </div>
+           </motion.p>
+        </motion.div>
 
-        <div className="flex flex-wrap gap-6 justify-center items-center">
+        <motion.div className="flex flex-wrap gap-6 justify-center items-center">
           <motion.button 
             className="px-12 py-6 rounded-full bg-[var(--brand-primary)] text-[var(--bg-base)] font-black text-xl shadow-[0_24px_48px_rgba(58,173,173,0.3)] flex items-center gap-3 transition-all"
             whileHover={{ scale: 1.05, y: -4, boxShadow: '0 32px 64px rgba(58,173,173,0.4)' }}
@@ -72,15 +72,15 @@ export function CTABanner() {
               LEARN THE PROTOCOL
             </motion.button>
           </Link>
-        </div>
+        </motion.div>
 
-        <div className="pt-12 flex flex-col items-center gap-4">
-           <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-[var(--bg-overlay)] border border-[var(--border-subtle)] font-mono text-[10px] font-black uppercase tracking-widest opacity-60">
+        <motion.div className="pt-12 flex flex-col items-center gap-4">
+           <motion.div className="flex items-center gap-3 px-6 py-3 rounded-full bg-[var(--bg-overlay)] border border-[var(--border-subtle)] font-mono text-[10px] font-black uppercase tracking-widest opacity-60">
               <Terminal size={14} className="text-[var(--brand-primary)]" />
               brew install erichowens/port-daddy
-           </div>
-           <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 m-0">Free · Open Source · MIT License</p>
-        </div>
+           </motion.div>
+           <motion.p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 m-0">Free · Open Source · MIT License</motion.p>
+        </motion.div>
       </motion.div>
     </motion.section>
   )

@@ -49,7 +49,7 @@ export function LiveOrchestrationGraph({
   ];
 
   return (
-    <div ref={containerRef} className="w-full h-full relative cursor-grab active:cursor-grabbing font-sans">
+    <motion.div ref={containerRef} className="w-full h-full relative cursor-grab active:cursor-grabbing font-sans">
       <svg width={dimensions.width} height={dimensions.height} className="absolute inset-0 pointer-events-none">
         <defs>
           <radialGradient id="meshGradient" cx="50%" cy="50%" r="50%">
@@ -97,9 +97,9 @@ export function LiveOrchestrationGraph({
         transition={{ type: 'spring', stiffness: 260, damping: 20 }}
       >
         <Anchor className="text-[var(--brand-primary)]" size={32} />
-        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
-           <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">pd-daemon</span>
-        </div>
+        <motion.div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
+           <motion.span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">pd-daemon</motion.span>
+        </motion.div>
       </motion.div>
 
       {/* Agent Nodes */}
@@ -119,10 +119,10 @@ export function LiveOrchestrationGraph({
             whileHover={{ scale: 1.1 }}
             onClick={() => onSelectAgent?.(agent.id)}
           >
-            <div className="relative">
-               <div className={`w-16 h-16 rounded-full bg-[var(--bg-overlay)] border-2 flex items-center justify-center shadow-xl transition-colors duration-300 ${agent.status === 'active' ? 'border-[var(--p-teal-500)] bg-[var(--p-teal-500)]/5' : 'border-[var(--border-subtle)]'}`}>
+            <motion.div className="relative">
+               <motion.div className={`w-16 h-16 rounded-full bg-[var(--bg-overlay)] border-2 flex items-center justify-center shadow-xl transition-colors duration-300 ${agent.status === 'active' ? 'border-[var(--p-teal-500)] bg-[var(--p-teal-500)]/5' : 'border-[var(--border-subtle)]'}`}>
                   <SailorAgent size={32} />
-               </div>
+               </motion.div>
                
                {agent.status === 'active' && (
                  <motion.div 
@@ -132,11 +132,11 @@ export function LiveOrchestrationGraph({
                  />
                )}
 
-               <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)]">{agent.label}</span>
-                  <span className="text-[8px] font-bold opacity-40 uppercase tracking-widest">{agent.status}</span>
-               </div>
-            </div>
+               <motion.div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center">
+                  <motion.span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)]">{agent.label}</motion.span>
+                  <motion.span className="text-[8px] font-bold opacity-40 uppercase tracking-widest">{agent.status}</motion.span>
+               </motion.div>
+            </motion.div>
           </motion.div>
         );
       })}
@@ -156,15 +156,15 @@ export function LiveOrchestrationGraph({
             animate={{ opacity: 0.6, scale: 1 }}
             transition={{ delay: 0.5 + i * 0.1 }}
           >
-            <div className="w-12 h-12 rounded-xl bg-[var(--bg-overlay)] border border-dashed border-[var(--p-blue-500)]/40 flex items-center justify-center">
+            <motion.div className="w-12 h-12 rounded-xl bg-[var(--bg-overlay)] border border-dashed border-[var(--p-blue-500)]/40 flex items-center justify-center">
                <Cpu size={20} className="text-[var(--p-blue-400)]" />
-               <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[8px] font-black uppercase tracking-widest opacity-40">
+               <motion.div className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[8px] font-black uppercase tracking-widest opacity-40">
                   {service.label}
-               </div>
-            </div>
+               </motion.div>
+            </motion.div>
           </motion.div>
         );
       })}
-    </div>
+    </motion.div>
   )
 }

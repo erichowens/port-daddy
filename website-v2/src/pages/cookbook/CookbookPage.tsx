@@ -62,7 +62,7 @@ export function CookbookPage() {
 
       {/* Grid Section */}
       <motion.main className="flex-1 max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-32 font-sans">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-2 gap-12">
+        <motion.div className="grid sm:grid-cols-2 lg:grid-cols-2 gap-12">
           {COOKBOOK_RECIPES.map((recipe, i) => {
             const Icon = ICON_MAP[recipe.icon] || Book
             return (
@@ -80,40 +80,40 @@ export function CookbookPage() {
                     style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-surface)' }}
                     whileHover={{ y: -12, borderColor: 'var(--p-amber-400)', boxShadow: '0 40px 80px -20px rgba(251,191,36,0.15)' }}
                   >
-                    <div className="w-full flex justify-between items-start">
-                       <div className="w-20 h-20 rounded-[32px] bg-[var(--p-amber-400)]/10 flex items-center justify-center border border-[var(--p-amber-400)]/20 group-hover:scale-110 transition-transform shadow-xl">
+                    <motion.div className="w-full flex justify-between items-start">
+                       <motion.div className="w-20 h-20 rounded-[32px] bg-[var(--p-amber-400)]/10 flex items-center justify-center border border-[var(--p-amber-400)]/20 group-hover:scale-110 transition-transform shadow-xl">
                           <Icon size={40} className="text-[var(--p-amber-400)]" />
-                       </div>
+                       </motion.div>
                        <Badge variant={recipe.difficulty === 'advanced' ? 'neutral' : 'teal'} className="text-[8px] font-black uppercase tracking-widest px-3 py-1">
                           {recipe.difficulty}
                        </Badge>
-                    </div>
+                    </motion.div>
 
-                    <div className="space-y-4 flex-1">
-                      <h3 className="m-0 text-3xl sm:text-4xl font-display font-black leading-tight text-[var(--text-primary)] group-hover:text-[var(--p-amber-400)] transition-colors">
+                    <motion.div className="space-y-4 flex-1">
+                      <motion.h3 className="m-0 text-3xl sm:text-4xl font-display font-black leading-tight text-[var(--text-primary)] group-hover:text-[var(--p-amber-400)] transition-colors">
                         {recipe.title}
-                      </h3>
-                      <p className="m-0 text-xl opacity-60 leading-relaxed text-[var(--text-secondary)] group-hover:opacity-100 transition-opacity">
+                      </motion.h3>
+                      <motion.p className="m-0 text-xl opacity-60 leading-relaxed text-[var(--text-secondary)] group-hover:opacity-100 transition-opacity">
                         {recipe.description}
-                      </p>
-                    </div>
+                      </motion.p>
+                    </motion.div>
 
-                    <div className="w-full flex items-center justify-between pt-8 border-t border-[var(--border-subtle)] group-hover:border-[var(--p-amber-400)]/20 transition-colors">
-                       <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 rounded-full bg-[var(--status-success)] pulse-active" />
-                          <span className="text-[10px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-60">Verified Recipe</span>
-                       </div>
-                       <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--p-amber-400)] group-hover:gap-4 transition-all">
+                    <motion.div className="w-full flex items-center justify-between pt-8 border-t border-[var(--border-subtle)] group-hover:border-[var(--p-amber-400)]/20 transition-colors">
+                       <motion.div className="flex items-center gap-3">
+                          <motion.div className="w-2 h-2 rounded-full bg-[var(--status-success)] pulse-active" />
+                          <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-60">Verified Recipe</motion.span>
+                       </motion.div>
+                       <motion.div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--p-amber-400)] group-hover:gap-4 transition-all">
                           Read Pattern
                           <ChevronRight size={14} />
-                       </div>
-                    </div>
+                       </motion.div>
+                    </motion.div>
                   </motion.div>
                 </Link>
               </motion.div>
             )
           })}
-        </div>
+        </motion.div>
 
         {/* Vision Callout */}
         <motion.div 
@@ -122,33 +122,33 @@ export function CookbookPage() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
         >
-           <div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
+           <motion.div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
               <RefreshCw size={600} />
-           </div>
+           </motion.div>
            
-           <div className="space-y-6 max-w-3xl relative z-10">
+           <motion.div className="space-y-6 max-w-3xl relative z-10">
               <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-widest shadow-xl">High-Fidelity Swarms</Badge>
-              <h3 className="text-4xl sm:text-7xl font-display font-black tracking-tight leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
-                Soundness by <span className="text-[var(--p-teal-400)]">Pattern.</span>
-              </h3>
-              <p className="text-2xl leading-relaxed opacity-70">
+              <motion.h3 className="text-4xl sm:text-7xl font-display font-black tracking-tight leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
+                Soundness by <motion.span className="text-[var(--p-teal-400)]">Pattern.</motion.span>
+              </motion.h3>
+              <motion.p className="text-2xl leading-relaxed opacity-70">
                 The Cookbook isn't just a list of commands—it's a library of **proven state machines**. Every recipe is designed to converge your swarm on a result while maintaining the absolute integrity of your harbor.
-              </p>
-           </div>
+              </motion.p>
+           </motion.div>
 
-           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full max-w-5xl">
+           <motion.div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full max-w-5xl">
               {[
                 { label: 'Self-Healing', icon: RefreshCw },
                 { label: 'Always-On', icon: Cpu },
                 { label: 'Atomic Locks', icon: Anchor },
                 { label: 'Secure Radio', icon: Zap }
               ].map((item, i) => (
-                <div key={i} className="p-8 rounded-[40px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] flex flex-col items-center gap-4">
+                <motion.div key={i} className="p-8 rounded-[40px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] flex flex-col items-center gap-4">
                    <item.icon size={24} className="text-[var(--p-amber-400)]" />
-                   <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{item.label}</span>
-                </div>
+                   <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-60">{item.label}</motion.span>
+                </motion.div>
               ))}
-           </div>
+           </motion.div>
         </motion.div>
       </motion.main>
 

@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import React, { useEffect, useRef } from 'react'
 import mermaid from 'mermaid'
 
@@ -37,7 +38,7 @@ export const Mermaid: React.FC<MermaidProps> = ({ chart }) => {
   }, [chart])
 
   return (
-    <div 
+    <motion.div 
       className="mermaid-container my-8 flex justify-center p-6 rounded-xl border" 
       style={{ background: 'var(--bg-overlay)', borderColor: 'var(--border-subtle)' }}
       ref={ref} 

@@ -32,7 +32,7 @@ export function Nav() {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
     >
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
+      <motion.div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
         <motion.div 
           className={`rounded-[32px] border transition-all duration-500 px-8 py-4 flex items-center justify-between shadow-2xl relative overflow-hidden ${scrolled ? 'bg-[var(--bg-surface)]/80 backdrop-blur-xl border-[var(--border-subtle)]' : 'bg-transparent border-transparent shadow-none'}`}
         >
@@ -47,11 +47,11 @@ export function Nav() {
                 className="h-6 w-auto"
               />
             </motion.div>
-            <span className="font-black text-xl tracking-tighter text-[var(--text-primary)]">port-daddy.</span>
+            <motion.span className="font-black text-xl tracking-tighter text-[var(--text-primary)]">port-daddy.</motion.span>
           </Link>
 
           {/* Desktop Links */}
-          <div className="hidden md:flex items-center gap-2">
+          <motion.div className="hidden md:flex items-center gap-2">
             {NAV_LINKS.map((link) => (
               <Link 
                 key={link.label} 
@@ -62,10 +62,10 @@ export function Nav() {
                 {link.label}
               </Link>
             ))}
-          </div>
+          </motion.div>
 
           {/* Actions */}
-          <div className="flex items-center gap-4 relative z-10">
+          <motion.div className="flex items-center gap-4 relative z-10">
             <motion.button
               onClick={toggle}
               className="p-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-overlay)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--brand-primary)] transition-all"
@@ -90,9 +90,9 @@ export function Nav() {
             >
               {mobileOpen ? <X size={18} /> : <Menu size={18} />}
             </motion.button>
-          </div>
+          </motion.div>
         </motion.div>
-      </div>
+      </motion.div>
 
       {/* Mobile Menu */}
       <AnimatePresence>
@@ -103,7 +103,7 @@ export function Nav() {
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] overflow-hidden font-sans"
           >
-            <div className="px-6 py-10 space-y-4">
+            <motion.div className="px-6 py-10 space-y-4">
               {NAV_LINKS.map((link) => (
                 <Link
                   key={link.label}
@@ -115,7 +115,7 @@ export function Nav() {
                   {link.label}
                 </Link>
               ))}
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

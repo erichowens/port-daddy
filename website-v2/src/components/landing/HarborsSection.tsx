@@ -26,18 +26,18 @@ function HarborCard({ name, capabilities, delay = 0 }: { name: string; capabilit
         className="absolute top-0 right-0 w-32 h-32 bg-[var(--brand-primary)] opacity-[0.03] blur-3xl group-hover:opacity-[0.08] transition-opacity"
       />
       <motion.div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 rounded-2xl bg-[var(--interactive-active)] flex items-center justify-center border border-[var(--border-subtle)]">
+        <motion.div className="w-12 h-12 rounded-2xl bg-[var(--interactive-active)] flex items-center justify-center border border-[var(--border-subtle)]">
           <Anchor className="text-[var(--brand-primary)]" size={24} />
-        </div>
-        <div className="flex flex-col">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Namespace</span>
-          <span className="text-xl font-display font-black text-[var(--text-primary)]">{name}</span>
-        </div>
+        </motion.div>
+        <motion.div className="flex flex-col">
+          <motion.span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Namespace</motion.span>
+          <motion.span className="text-xl font-display font-black text-[var(--text-primary)]">{name}</motion.span>
+        </motion.div>
       </motion.div>
 
-      <div className="space-y-3">
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 mb-2 block">Signed Capabilities</span>
-        <div className="flex flex-wrap gap-2">
+      <motion.div className="space-y-3">
+        <motion.span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 mb-2 block">Signed Capabilities</motion.span>
+        <motion.div className="flex flex-wrap gap-2">
           {capabilities.map((cap, i) => {
             const config = CAPABILITIES.find(c => c.cap === cap) || CAPABILITIES[0]
             return (
@@ -50,16 +50,16 @@ function HarborCard({ name, capabilities, delay = 0 }: { name: string; capabilit
               </motion.div>
             )
           })}
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      <div className="mt-8 pt-6 border-t border-[var(--border-subtle)] flex items-center justify-between">
-         <div className="flex items-center gap-2">
+      <motion.div className="mt-8 pt-6 border-t border-[var(--border-subtle)] flex items-center justify-between">
+         <motion.div className="flex items-center gap-2">
             <Key size={12} className="text-[var(--p-amber-400)]" />
-            <span className="text-[10px] font-mono opacity-40">HMAC-SHA256</span>
-         </div>
+            <motion.span className="text-[10px] font-mono opacity-40">HMAC-SHA256</motion.span>
+         </motion.div>
          <Badge variant="teal" className="text-[8px] font-black uppercase tracking-widest">Valid</Badge>
-      </div>
+      </motion.div>
     </motion.div>
   )
 }
@@ -90,42 +90,42 @@ export function HarborsSection() {
               Stop running agents with root access. Harbors allow you to define strictly scoped permission namespaces for every process in your swarm.
             </motion.p>
 
-            <div className="grid sm:grid-cols-2 gap-8">
-               <div className="space-y-4 p-8 rounded-[32px] bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
-                  <div className="w-10 h-10 rounded-xl bg-[var(--p-teal-500)]/10 flex items-center justify-center">
+            <motion.div className="grid sm:grid-cols-2 gap-8">
+               <motion.div className="space-y-4 p-8 rounded-[32px] bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+                  <motion.div className="w-10 h-10 rounded-xl bg-[var(--p-teal-500)]/10 flex items-center justify-center">
                      <Shield className="text-[var(--p-teal-400)]" size={20} />
-                  </div>
-                  <h3 className="text-xl font-display font-bold m-0 text-[var(--text-primary)]">Always-On Avatars</h3>
-                  <p className="text-sm opacity-60 m-0">Persistent, backgrounded processes that maintain harbor-scoped state across sessions.</p>
-               </div>
-               <div className="space-y-4 p-8 rounded-[32px] bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
-                  <div className="w-10 h-10 rounded-xl bg-[var(--p-amber-500)]/10 flex items-center justify-center">
+                  </motion.div>
+                  <motion.h3 className="text-xl font-display font-bold m-0 text-[var(--text-primary)]">Always-On Avatars</motion.h3>
+                  <motion.p className="text-sm opacity-60 m-0">Persistent, backgrounded processes that maintain harbor-scoped state across sessions.</motion.p>
+               </motion.div>
+               <motion.div className="space-y-4 p-8 rounded-[32px] bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+                  <motion.div className="w-10 h-10 rounded-xl bg-[var(--p-amber-500)]/10 flex items-center justify-center">
                      <Users className="text-[var(--p-amber-400)]" size={20} />
-                  </div>
-                  <h3 className="text-xl font-display font-bold m-0 text-[var(--text-primary)]">Background Teams</h3>
-                  <p className="text-sm opacity-60 m-0">Orchestrate groups of agents that coordinate inside a single harbor to solve complex infra tasks.</p>
-               </div>
-            </div>
+                  </motion.div>
+                  <motion.h3 className="text-xl font-display font-bold m-0 text-[var(--text-primary)]">Background Teams</motion.h3>
+                  <motion.p className="text-sm opacity-60 m-0">Orchestrate groups of agents that coordinate inside a single harbor to solve complex infra tasks.</motion.p>
+               </motion.div>
+            </motion.div>
           </motion.div>
 
-          <div className="relative">
-             <div className="absolute inset-0 bg-[var(--brand-primary)] opacity-[0.05] blur-[120px] rounded-full" />
-             <div className="relative space-y-6">
+          <motion.div className="relative">
+             <motion.div className="absolute inset-0 bg-[var(--brand-primary)] opacity-[0.05] blur-[120px] rounded-full" />
+             <motion.div className="relative space-y-6">
                 <HarborCard 
                   name="frontend-harbor" 
                   capabilities={['msg:publish', 'file:claim']} 
                   delay={0.1}
                 />
                 <motion.div className="flex justify-center">
-                   <div className="h-12 w-[2px] bg-gradient-to-b from-[var(--brand-primary)] to-transparent opacity-20" />
+                   <motion.div className="h-12 w-[2px] bg-gradient-to-b from-[var(--brand-primary)] to-transparent opacity-20" />
                 </motion.div>
                 <HarborCard 
                   name="system-architect" 
                   capabilities={['code:read', 'notes:write', 'tunnel:create']} 
                   delay={0.2}
                 />
-             </div>
-          </div>
+             </motion.div>
+          </motion.div>
         </motion.div>
       </motion.div>
     </motion.section>

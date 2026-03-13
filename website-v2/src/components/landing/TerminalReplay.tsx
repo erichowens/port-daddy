@@ -106,7 +106,7 @@ export function TerminalReplay() {
   }
 
   return (
-    <div
+    <motion.div
       className="rounded-xl overflow-hidden border"
       style={{
         background: 'var(--codeblock-bg)',
@@ -115,23 +115,23 @@ export function TerminalReplay() {
       }}
     >
       {/* Terminal header */}
-      <div
+      <motion.div
         className="flex items-center justify-between px-4 py-3"
         style={{
           background: 'var(--codeblock-header-bg)',
           borderBottom: '1px solid var(--border-subtle)',
         }}
       >
-        <div className="flex items-center gap-3">
-          <div className="flex gap-1.5">
-            <span className="w-3 h-3 rounded-full" style={{ background: 'var(--p-red-500)', opacity: 0.7 }} />
-            <span className="w-3 h-3 rounded-full" style={{ background: 'var(--p-amber-500)', opacity: 0.7 }} />
-            <span className="w-3 h-3 rounded-full" style={{ background: 'var(--p-green-500)', opacity: 0.7 }} />
-          </div>
-          <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+        <motion.div className="flex items-center gap-3">
+          <motion.div className="flex gap-1.5">
+            <motion.span className="w-3 h-3 rounded-full" style={{ background: 'var(--p-red-500)', opacity: 0.7 }} />
+            <motion.span className="w-3 h-3 rounded-full" style={{ background: 'var(--p-amber-500)', opacity: 0.7 }} />
+            <motion.span className="w-3 h-3 rounded-full" style={{ background: 'var(--p-green-500)', opacity: 0.7 }} />
+          </motion.div>
+          <motion.span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
             zsh — port-daddy demo
-          </span>
-        </div>
+          </motion.span>
+        </motion.div>
         {done && (
           <button
             onClick={restart}
@@ -141,10 +141,10 @@ export function TerminalReplay() {
             Replay
           </button>
         )}
-      </div>
+      </motion.div>
 
       {/* Terminal body */}
-      <div
+      <motion.div
         ref={scrollRef}
         className="overflow-y-auto p-4 font-mono text-sm leading-relaxed"
         style={{ minHeight: '320px', maxHeight: '420px', color: 'var(--code-output)' }}
@@ -164,49 +164,49 @@ export function TerminalReplay() {
 
         {/* Cursor when not typing a command */}
         {!isTyping && !done && (
-          <div className="flex items-center gap-2">
-            <span style={{ color: 'var(--code-prompt)' }}>$</span>
+          <motion.div className="flex items-center gap-2">
+            <motion.span style={{ color: 'var(--code-prompt)' }}>$</motion.span>
             <BlinkCursor />
-          </div>
+          </motion.div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
 function TerminalLine({ step, text, isLast }: { step: ReplayStep; text: string; isLast: boolean }) {
-  if (step.type === 'blank') return <div className="h-3" />
+  if (step.type === 'blank') return <motion.div className="h-3" />
 
   if (step.type === 'comment') {
     return (
-      <div style={{ color: 'var(--code-comment)' }} className="select-none">
+      <motion.div style={{ color: 'var(--code-comment)' }} className="select-none">
         {text}
-      </div>
+      </motion.div>
     )
   }
 
   if (step.type === 'command') {
     return (
-      <div className="flex items-start gap-2">
-        <span style={{ color: 'var(--code-prompt)', flexShrink: 0 }}>$</span>
-        <span style={{ color: 'var(--text-primary)' }}>
+      <motion.div className="flex items-start gap-2">
+        <motion.span style={{ color: 'var(--code-prompt)', flexShrink: 0 }}>$</motion.span>
+        <motion.span style={{ color: 'var(--text-primary)' }}>
           {text}
           {isLast && <BlinkCursor />}
-        </span>
-      </div>
+        </motion.span>
+      </motion.div>
     )
   }
 
   // output
   return (
-    <div
+    <motion.div
       style={{ color: 'var(--code-output)' }}
       className={cn('pl-4', text.includes('⚠') ? '' : '')}
     >
-      <span style={text.includes('⚠') ? { color: 'var(--status-warning)' } : {}}>
+      <motion.span style={text.includes('⚠') ? { color: 'var(--status-warning)' } : {}}>
         {text}
-      </span>
-    </div>
+      </motion.span>
+    </motion.div>
   )
 }
 

@@ -167,7 +167,7 @@ export function TutorialLayout({
                 <motion.h4 className="m-0 text-2xl font-display font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>{prev.title}</motion.h4>
               </motion.div>
             </Link>
-          ) : <div />}
+          ) : <motion.div />}
 
           {next ? (
             <Link to={next.href} className="group no-underline block">

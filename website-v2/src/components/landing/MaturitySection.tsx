@@ -90,7 +90,7 @@ export function MaturitySection() {
           </motion.p>
         </motion.div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-10">
+        <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-10">
           {MATURITY_FEATURES.map((feature, i) => (
             <motion.div
               key={feature.title}
@@ -105,32 +105,32 @@ export function MaturitySection() {
                 style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}
                 whileHover={{ y: -12, borderColor: feature.color, boxShadow: `0 40px 80px -20px ${feature.color}15` }}
               >
-                <div 
+                <motion.div 
                   className="w-20 h-20 rounded-[32px] flex items-center justify-center border transition-all group-hover:scale-110"
                   style={{ background: `${feature.color}10`, borderColor: `${feature.color}20` }}
                 >
                   <feature.icon size={40} style={{ color: feature.color }} />
-                </div>
+                </motion.div>
 
-                <div className="space-y-4 flex-1">
-                  <h3 className="m-0 text-3xl font-display font-black leading-tight text-[var(--text-primary)]">
+                <motion.div className="space-y-4 flex-1">
+                  <motion.h3 className="m-0 text-3xl font-display font-black leading-tight text-[var(--text-primary)]">
                     {feature.title}
-                  </h3>
-                  <p className="m-0 text-lg opacity-60 leading-relaxed text-[var(--text-secondary)] group-hover:opacity-100 transition-opacity">
+                  </motion.h3>
+                  <motion.p className="m-0 text-lg opacity-60 leading-relaxed text-[var(--text-secondary)] group-hover:opacity-100 transition-opacity">
                     {feature.description}
-                  </p>
-                </div>
+                  </motion.p>
+                </motion.div>
 
-                <div className="w-full flex items-center justify-between pt-8 border-t border-[var(--border-subtle)] group-hover:border-transparent transition-colors">
-                   <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full opacity-20 group-hover:opacity-100 transition-opacity" style={{ background: feature.color }} />
-                      <span className="text-[9px] font-black uppercase tracking-widest opacity-30 group-hover:opacity-60">V4 Specs Included</span>
-                   </div>
-                </div>
+                <motion.div className="w-full flex items-center justify-between pt-8 border-t border-[var(--border-subtle)] group-hover:border-transparent transition-colors">
+                   <motion.div className="flex items-center gap-3">
+                      <motion.div className="w-2 h-2 rounded-full opacity-20 group-hover:opacity-100 transition-opacity" style={{ background: feature.color }} />
+                      <motion.span className="text-[9px] font-black uppercase tracking-widest opacity-30 group-hover:opacity-60">V4 Specs Included</motion.span>
+                   </motion.div>
+                </motion.div>
               </motion.div>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {/* Impressively long call to stability */}
         <motion.div 
@@ -139,29 +139,29 @@ export function MaturitySection() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
         >
-           <div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
+           <motion.div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
               <ShieldCheck size={600} />
-           </div>
+           </motion.div>
 
-           <div className="flex-1 space-y-8 relative z-10">
+           <motion.div className="flex-1 space-y-8 relative z-10">
               <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-widest">Formal Verification</Badge>
-              <h3 className="text-4xl sm:text-7xl font-display font-black tracking-tight leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
-                Soundness by <span className="text-[var(--p-teal-400)]">Design.</span>
-              </h3>
-              <p className="text-2xl leading-relaxed opacity-70">
+              <motion.h3 className="text-4xl sm:text-7xl font-display font-black tracking-tight leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
+                Soundness by <motion.span className="text-[var(--p-teal-400)]">Design.</motion.span>
+              </motion.h3>
+              <motion.p className="text-2xl leading-relaxed opacity-70">
                 We are formally verifying the Anchor Protocol using ProVerif to ensure zero "executable attack paths" in the harbor handshake. Your swarm's security isn't an afterthought—it's mathematically proven.
-              </p>
-              <div className="flex flex-wrap gap-6 pt-4">
-                 <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+              </motion.p>
+              <motion.div className="flex flex-wrap gap-6 pt-4">
+                 <motion.div className="flex items-center gap-3 px-6 py-3 rounded-full bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
                     <Zap size={16} className="text-[var(--p-amber-400)]" />
-                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60 text-[var(--text-primary)]">ProVerif 2.05 Validated</span>
-                 </div>
-                 <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+                    <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-60 text-[var(--text-primary)]">ProVerif 2.05 Validated</motion.span>
+                 </motion.div>
+                 <motion.div className="flex items-center gap-3 px-6 py-3 rounded-full bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
                     <Activity size={16} className="text-[var(--p-teal-400)]" />
-                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60 text-[var(--text-primary)]">HS256 Enforced</span>
-                 </div>
-              </div>
-           </div>
+                    <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-60 text-[var(--text-primary)]">HS256 Enforced</motion.span>
+                 </motion.div>
+              </motion.div>
+           </motion.div>
         </motion.div>
       </motion.div>
     </motion.section>

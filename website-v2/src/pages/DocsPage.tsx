@@ -72,19 +72,19 @@ function CommandCard({ cmd, desc, example, color }: { cmd: string; desc: string;
       className="p-8 rounded-[40px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-6 group hover:border-[var(--border-strong)] transition-all shadow-xl"
       whileHover={{ y: -4 }}
     >
-       <div className="space-y-2">
+       <motion.div className="space-y-2">
           <code className="text-xl font-bold font-mono" style={{ color }}>{cmd}</code>
-          <p className="text-sm opacity-60 leading-relaxed m-0 font-medium">{desc}</p>
-       </div>
+          <motion.p className="text-sm opacity-60 leading-relaxed m-0 font-medium">{desc}</motion.p>
+       </motion.div>
        
-       <div className="relative rounded-2xl bg-[var(--bg-overlay)] p-6 font-mono text-xs overflow-hidden group-hover:bg-[var(--interactive-active)] transition-colors">
-          <div className="flex items-center justify-between gap-4">
-             <span className="opacity-40 truncate">{example}</span>
+       <motion.div className="relative rounded-2xl bg-[var(--bg-overlay)] p-6 font-mono text-xs overflow-hidden group-hover:bg-[var(--interactive-active)] transition-colors">
+          <motion.div className="flex items-center justify-between gap-4">
+             <motion.span className="opacity-40 truncate">{example}</motion.span>
              <button onClick={handleCopy} className="shrink-0 text-[var(--brand-primary)] opacity-40 hover:opacity-100 transition-opacity">
                 {copied ? <Check size={14} /> : <Copy size={14} />}
              </button>
-          </div>
-       </div>
+          </motion.div>
+       </motion.div>
     </motion.div>
   )
 }
@@ -115,7 +115,7 @@ export default function DocsPage() {
           style={{ background: 'radial-gradient(circle, var(--brand-primary) 0%, transparent 70%)' }} 
         />
         
-        <div className="max-w-7xl mx-auto text-center relative z-10 flex flex-col items-center gap-10">
+        <motion.div className="max-w-7xl mx-auto text-center relative z-10 flex flex-col items-center gap-10">
            <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">Protocol Reference</Badge>
            <motion.h1 
              className="text-6xl sm:text-9xl font-black tracking-tighter font-display leading-[0.9]"
@@ -123,7 +123,7 @@ export default function DocsPage() {
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
            >
-             The <span className="text-[var(--brand-primary)]">SDK Manual.</span>
+             The <motion.span className="text-[var(--brand-primary)]">SDK Manual.</motion.span>
            </motion.h1>
            <motion.p 
              className="text-2xl sm:text-3xl max-w-3xl leading-relaxed opacity-70 font-medium"
@@ -133,12 +133,12 @@ export default function DocsPage() {
            >
              Comprehensive enumeration of the Port Daddy primitives. Built for developers, agents, and architects.
            </motion.p>
-        </div>
+        </motion.div>
       </motion.section>
 
       {/* Main Content */}
       <motion.main className="flex-1 py-24 px-6 sm:px-8 lg:px-10 max-w-7xl mx-auto w-full font-sans">
-        <div className="space-y-32">
+        <motion.div className="space-y-32">
           {SECTIONS.map((section, i) => (
             <motion.section 
               key={section.id}
@@ -149,32 +149,32 @@ export default function DocsPage() {
               id={section.id}
               className="space-y-12"
             >
-               <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-[var(--border-subtle)] pb-12">
-                  <div className="max-w-2xl space-y-6">
-                     <div className="flex items-center gap-4">
-                        <div 
+               <motion.div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-[var(--border-subtle)] pb-12">
+                  <motion.div className="max-w-2xl space-y-6">
+                     <motion.div className="flex items-center gap-4">
+                        <motion.div 
                           className="w-14 h-14 rounded-2xl flex items-center justify-center border shadow-lg"
                           style={{ background: `${section.color}10`, borderColor: `${section.color}20` }}
                         >
                            <section.icon size={28} style={{ color: section.color }} />
-                        </div>
-                        <h2 className="text-4xl sm:text-6xl font-display font-black tracking-tight m-0">{section.title}</h2>
-                     </div>
-                     <p className="text-xl leading-relaxed opacity-60 m-0 font-medium">
+                        </motion.div>
+                        <motion.h2 className="text-4xl sm:text-6xl font-display font-black tracking-tight m-0">{section.title}</motion.h2>
+                     </motion.div>
+                     <motion.p className="text-xl leading-relaxed opacity-60 m-0 font-medium">
                         {section.description}
-                     </p>
-                  </div>
+                     </motion.p>
+                  </motion.div>
                   <Badge variant="neutral" className="px-4 py-1.5 text-[8px] font-black uppercase tracking-widest bg-[var(--bg-overlay)]">Core Primitive</Badge>
-               </div>
+               </motion.div>
 
-               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+               <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
                   {section.commands.map((cmd, j) => (
                     <CommandCard key={j} {...cmd} color={section.color} />
                   ))}
-               </div>
+               </motion.div>
             </motion.section>
           ))}
-        </div>
+        </motion.div>
 
         {/* Impressively long additional info */}
         <motion.div 
@@ -183,33 +183,33 @@ export default function DocsPage() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
         >
-           <div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
+           <motion.div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
               <Share2 size={600} />
-           </div>
+           </motion.div>
            
-           <div className="space-y-6 max-w-3xl relative z-10">
+           <motion.div className="space-y-6 max-w-3xl relative z-10">
               <Badge variant="amber" className="px-6 py-2 text-[10px] font-black uppercase tracking-widest shadow-xl">Architectural Integrity</Badge>
-              <h3 className="text-4xl sm:text-7xl font-display font-black tracking-tight leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
-                System <span className="text-[var(--p-amber-400)]">Soundness.</span>
-              </h3>
-              <p className="text-2xl leading-relaxed opacity-70">
+              <motion.h3 className="text-4xl sm:text-7xl font-display font-black tracking-tight leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
+                System <motion.span className="text-[var(--p-amber-400)]">Soundness.</motion.span>
+              </motion.h3>
+              <motion.p className="text-2xl leading-relaxed opacity-70">
                 Port Daddy is built on a foundation of formal verification. We ensure that every command follows strictly defined state transitions, preventing "zombie" processes and unauthorized port claims across your entire swarm.
-              </p>
-           </div>
+              </motion.p>
+           </motion.div>
 
-           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full">
+           <motion.div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full">
               {[
                 { label: 'Unix Socket Native', icon: Zap },
                 { label: 'HMAC Handshake', icon: Shield },
                 { label: 'SQLite Persistent', icon: Box },
                 { label: 'Formal Verified', icon: ShieldCheck }
               ].map((item, i) => (
-                <div key={i} className="p-8 rounded-[40px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] flex flex-col items-center gap-4">
+                <motion.div key={i} className="p-8 rounded-[40px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] flex flex-col items-center gap-4">
                    <item.icon size={24} className="text-[var(--brand-primary)]" />
-                   <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{item.label}</span>
-                </div>
+                   <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-60">{item.label}</motion.span>
+                </motion.div>
               ))}
-           </div>
+           </motion.div>
         </motion.div>
       </motion.main>
 

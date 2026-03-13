@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 
@@ -30,38 +31,38 @@ const variantClasses: Record<CardVariant, string> = {
 
 export function Card({ variant = 'default', className, children, ...props }: CardProps) {
   return (
-    <div
+    <motion.div
       className={cn(variantClasses[variant], 'overflow-hidden', className)}
       {...props}
     >
       {children}
-    </div>
+    </motion.div>
   )
 }
 
 export function CardHeader({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('px-6 py-4 border-b border-[var(--border-subtle)]', className)} {...props}>
+    <motion.div className={cn('px-6 py-4 border-b border-[var(--border-subtle)]', className)} {...props}>
       {children}
-    </div>
+    </motion.div>
   )
 }
 
 export function CardContent({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('px-6 py-4', className)} {...props}>
+    <motion.div className={cn('px-6 py-4', className)} {...props}>
       {children}
-    </div>
+    </motion.div>
   )
 }
 
 export function CardFooter({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div
+    <motion.div
       className={cn('px-6 py-4 border-t border-[var(--border-subtle)]', className)}
       {...props}
     >
       {children}
-    </div>
+    </motion.div>
   )
 }

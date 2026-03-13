@@ -159,7 +159,7 @@ export function ExamplesPage() {
           style={{ background: 'radial-gradient(circle, var(--brand-primary) 0%, transparent 70%)' }} 
         />
         
-        <div className="max-w-7xl mx-auto text-center relative z-10 flex flex-col items-center gap-10">
+        <motion.div className="max-w-7xl mx-auto text-center relative z-10 flex flex-col items-center gap-10">
            <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">The Coordination Library</Badge>
            <motion.h1 
              className="text-6xl sm:text-9xl font-black tracking-tighter font-display leading-[0.9]"
@@ -168,7 +168,7 @@ export function ExamplesPage() {
              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
            >
              Proven <br />
-             <span className="text-[var(--brand-primary)]">Patterns.</span>
+             <motion.span className="text-[var(--brand-primary)]">Patterns.</motion.span>
            </motion.h1>
            <motion.p 
              className="text-2xl sm:text-3xl max-w-3xl leading-relaxed opacity-70 font-medium"
@@ -178,12 +178,12 @@ export function ExamplesPage() {
            >
              Stop reinventing discovery. Use these production-grade coordination blueprints for LangChain, CrewAI, and beyond.
            </motion.p>
-        </div>
+        </motion.div>
       </motion.section>
 
       {/* Examples Grid */}
       <motion.main className="flex-1 py-32 px-6 sm:px-8 lg:px-10 max-w-7xl mx-auto w-full font-sans">
-        <div className="grid gap-20">
+        <motion.div className="grid gap-20">
           {EXAMPLES.map((ex, i) => (
             <motion.div
               key={ex.id}
@@ -198,55 +198,55 @@ export function ExamplesPage() {
                 style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-surface)' }}
                 whileHover={{ borderColor: ex.color, boxShadow: `0 40px 80px -20px ${ex.color}10` }}
               >
-                <div className="flex-1 space-y-10">
-                   <div className="flex items-center gap-6">
-                      <div 
+                <motion.div className="flex-1 space-y-10">
+                   <motion.div className="flex items-center gap-6">
+                      <motion.div 
                         className="w-20 h-20 rounded-[32px] flex items-center justify-center border transition-transform group-hover:scale-110 duration-500"
                         style={{ background: `${ex.color}10`, borderColor: `${ex.color}20` }}
                       >
                         <ex.icon size={40} style={{ color: ex.color }} />
-                      </div>
-                      <div className="space-y-2">
-                         <div className="flex items-center gap-3">
+                      </motion.div>
+                      <motion.div className="space-y-2">
+                         <motion.div className="flex items-center gap-3">
                             <Badge variant="neutral" className="text-[8px] font-black uppercase tracking-widest">{ex.category}</Badge>
-                            <div className="h-1 w-1 rounded-full bg-[var(--border-strong)]" />
-                            <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{ex.difficulty}</span>
-                         </div>
-                         <h2 className="m-0 text-4xl font-display font-black leading-tight text-[var(--text-primary)]">{ex.title}</h2>
-                      </div>
-                   </div>
+                            <motion.div className="h-1 w-1 rounded-full bg-[var(--border-strong)]" />
+                            <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-40">{ex.difficulty}</motion.span>
+                         </motion.div>
+                         <motion.h2 className="m-0 text-4xl font-display font-black leading-tight text-[var(--text-primary)]">{ex.title}</motion.h2>
+                      </motion.div>
+                   </motion.div>
 
-                   <p className="text-xl leading-relaxed opacity-70 m-0">{ex.description}</p>
+                   <motion.p className="text-xl leading-relaxed opacity-70 m-0">{ex.description}</motion.p>
 
-                   <div className="grid sm:grid-cols-2 gap-6">
+                   <motion.div className="grid sm:grid-cols-2 gap-6">
                       {ex.what.map((point, j) => (
-                        <div key={j} className="flex items-start gap-3">
-                           <div className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: ex.color }} />
-                           <p className="text-sm opacity-60 m-0 leading-relaxed font-medium">{point}</p>
-                        </div>
+                        <motion.div key={j} className="flex items-start gap-3">
+                           <motion.div className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: ex.color }} />
+                           <motion.p className="text-sm opacity-60 m-0 leading-relaxed font-medium">{point}</motion.p>
+                        </motion.div>
                       ))}
-                   </div>
-                </div>
+                   </motion.div>
+                </motion.div>
 
-                <div className="flex-1 w-full relative">
-                   <div className="absolute inset-0 blur-3xl opacity-[0.03] pointer-events-none" style={{ background: ex.color }} />
-                   <div className="relative p-10 rounded-[48px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] group-hover:border-[var(--border-strong)] transition-colors shadow-2xl font-mono text-sm leading-relaxed overflow-hidden">
-                      <div className="absolute top-0 right-0 p-6 opacity-10">
+                <motion.div className="flex-1 w-full relative">
+                   <motion.div className="absolute inset-0 blur-3xl opacity-[0.03] pointer-events-none" style={{ background: ex.color }} />
+                   <motion.div className="relative p-10 rounded-[48px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] group-hover:border-[var(--border-strong)] transition-colors shadow-2xl font-mono text-sm leading-relaxed overflow-hidden">
+                      <motion.div className="absolute top-0 right-0 p-6 opacity-10">
                          <Terminal size={20} />
-                      </div>
+                      </motion.div>
                       {ex.code.map((line, j) => (
-                        <div key={j} className={line.startsWith('#') ? 'text-[var(--code-comment)] mb-2' : line.startsWith('pd') || line.startsWith('curl') ? 'text-[var(--text-primary)] font-bold mb-1' : 'opacity-40'}>
+                        <motion.div key={j} className={line.startsWith('#') ? 'text-[var(--code-comment)] mb-2' : line.startsWith('pd') || line.startsWith('curl') ? 'text-[var(--text-primary)] font-bold mb-1' : 'opacity-40'}>
                           {line.startsWith('pd') || line.startsWith('curl') ? (
-                            <span><span style={{ color: 'var(--brand-primary)' }}>$</span> {line}</span>
+                            <motion.span><motion.span style={{ color: 'var(--brand-primary)' }}>$</motion.span> {line}</motion.span>
                           ) : line}
-                        </div>
+                        </motion.div>
                       ))}
-                   </div>
-                </div>
+                   </motion.div>
+                </motion.div>
               </motion.div>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {/* Vision Callout */}
         <motion.div 
@@ -255,33 +255,33 @@ export function ExamplesPage() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
         >
-           <div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
+           <motion.div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
               <Layers size={600} />
-           </div>
+           </motion.div>
            
-           <div className="space-y-6 max-w-3xl relative z-10">
+           <motion.div className="space-y-6 max-w-3xl relative z-10">
               <Badge variant="amber" className="px-6 py-2 text-[10px] font-black uppercase tracking-widest shadow-xl">Architectural Integrity</Badge>
-              <h3 className="text-4xl sm:text-7xl font-display font-black tracking-tight leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
-                One Mesh. <span className="text-[var(--p-amber-400)]">Infinite Logic.</span>
-              </h3>
-              <p className="text-2xl leading-relaxed opacity-70">
+              <motion.h3 className="text-4xl sm:text-7xl font-display font-black tracking-tight leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
+                One Mesh. <motion.span className="text-[var(--p-amber-400)]">Infinite Logic.</motion.span>
+              </motion.h3>
+              <motion.p className="text-2xl leading-relaxed opacity-70">
                 Port Daddy doesn't care about the intelligence of your agent. It cares about the **reliability of the mesh**. These patterns provide the hard infrastructure that allows soft logic to flourish.
-              </p>
-           </div>
+              </motion.p>
+           </motion.div>
 
-           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full max-w-6xl">
+           <motion.div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full max-w-6xl">
               {[
                 { title: 'Atomic Identity', icon: Anchor },
                 { title: 'Swarm Radio', icon: Zap },
                 { title: 'Harbor Scopes', icon: Shield },
                 { title: 'P2P Tunneling', icon: Globe }
               ].map((item, i) => (
-                <div key={i} className="p-8 rounded-[40px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] flex flex-col items-center gap-4">
+                <motion.div key={i} className="p-8 rounded-[40px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] flex flex-col items-center gap-4">
                    <item.icon size={24} className="text-[var(--brand-primary)]" />
-                   <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{item.label}</span>
-                </div>
+                   <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-60">{item.label}</motion.span>
+                </motion.div>
               ))}
-           </div>
+           </motion.div>
         </motion.div>
       </motion.main>
 

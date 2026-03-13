@@ -71,35 +71,35 @@ function ToolCard({ tool }: { tool: any }) {
       className="p-10 rounded-[56px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-10 group hover:border-[var(--border-strong)] transition-all shadow-2xl relative overflow-hidden"
       whileHover={{ y: -8 }}
     >
-       <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
+       <motion.div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
           <tool.icon size={120} />
-       </div>
+       </motion.div>
 
-       <div className="flex items-center gap-6 relative z-10">
-          <div 
+       <motion.div className="flex items-center gap-6 relative z-10">
+          <motion.div 
             className="w-16 h-16 rounded-[24px] flex items-center justify-center border shadow-lg"
             style={{ background: `${tool.color}10`, borderColor: `${tool.color}20` }}
           >
              <tool.icon size={32} style={{ color: tool.color }} />
-          </div>
-          <div className="space-y-1">
+          </motion.div>
+          <motion.div className="space-y-1">
              <code className="text-xl font-black font-mono" style={{ color: tool.color }}>{tool.name}</code>
              <Badge variant="teal" className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5">Essential</Badge>
-          </div>
-       </div>
+          </motion.div>
+       </motion.div>
 
-       <p className="text-xl leading-relaxed opacity-70 m-0 relative z-10 font-medium max-w-sm">
+       <motion.p className="text-xl leading-relaxed opacity-70 m-0 relative z-10 font-medium max-w-sm">
           {tool.description}
-       </p>
+       </motion.p>
        
-       <div className="relative rounded-[32px] bg-[var(--bg-overlay)] p-8 font-mono text-xs overflow-hidden group-hover:bg-[var(--interactive-active)] transition-colors border border-[var(--border-subtle)]">
-          <div className="flex items-start justify-between gap-6">
+       <motion.div className="relative rounded-[32px] bg-[var(--bg-overlay)] p-8 font-mono text-xs overflow-hidden group-hover:bg-[var(--interactive-active)] transition-colors border border-[var(--border-subtle)]">
+          <motion.div className="flex items-start justify-between gap-6">
              <pre className="opacity-60 m-0 leading-relaxed overflow-x-auto whitespace-pre-wrap">{tool.example}</pre>
              <button onClick={handleCopy} className="shrink-0 text-[var(--brand-primary)] opacity-40 hover:opacity-100 transition-opacity pt-1">
                 {copied ? <Check size={16} /> : <Copy size={16} />}
              </button>
-          </div>
-       </div>
+          </motion.div>
+       </motion.div>
     </motion.div>
   )
 }
@@ -130,7 +130,7 @@ export default function MCPPage() {
           style={{ background: 'radial-gradient(circle, var(--brand-primary) 0%, transparent 70%)' }} 
         />
         
-        <div className="max-w-7xl mx-auto text-center relative z-10 flex flex-col items-center gap-10">
+        <motion.div className="max-w-7xl mx-auto text-center relative z-10 flex flex-col items-center gap-10">
            <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">Model Context Protocol</Badge>
            <motion.h1 
              className="text-6xl sm:text-9xl font-black tracking-tighter font-display leading-[0.9]"
@@ -138,7 +138,7 @@ export default function MCPPage() {
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
            >
-             Context is <span className="text-[var(--brand-primary)]">Coordination.</span>
+             Context is <motion.span className="text-[var(--brand-primary)]">Coordination.</motion.span>
            </motion.h1>
            <motion.p 
              className="text-2xl sm:text-3xl max-w-3xl leading-relaxed opacity-70 font-medium"
@@ -149,16 +149,16 @@ export default function MCPPage() {
              60+ production-grade tools across 17 categories. One install command to give your agents the infrastructure they deserve.
            </motion.p>
 
-           <div className="flex flex-col items-center gap-6 pt-10">
-              <div className="inline-flex items-center gap-4 px-10 py-6 rounded-full bg-[var(--bg-overlay)] border border-[var(--border-strong)] font-mono text-lg shadow-2xl">
+           <motion.div className="flex flex-col items-center gap-6 pt-10">
+              <motion.div className="inline-flex items-center gap-4 px-10 py-6 rounded-full bg-[var(--bg-overlay)] border border-[var(--border-strong)] font-mono text-lg shadow-2xl">
                  <Terminal size={24} className="text-[var(--brand-primary)]" />
-                 <span className="font-bold">pd mcp install</span>
-                 <div className="h-6 w-[1px] bg-[var(--border-strong)]" />
-                 <span className="text-xs font-black uppercase tracking-widest opacity-40">One Command</span>
-              </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40">Supports Claude Code, Cursor, and Continue.dev</p>
-           </div>
-        </div>
+                 <motion.span className="font-bold">pd mcp install</motion.span>
+                 <motion.div className="h-6 w-[1px] bg-[var(--border-strong)]" />
+                 <motion.span className="text-xs font-black uppercase tracking-widest opacity-40">One Command</motion.span>
+              </motion.div>
+              <motion.p className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40">Supports Claude Code, Cursor, and Continue.dev</motion.p>
+           </motion.div>
+        </motion.div>
       </motion.section>
 
       {/* Main Content */}
@@ -166,22 +166,22 @@ export default function MCPPage() {
         
         {/* Progressive Disclosure */}
         <section className="mb-48 space-y-16">
-           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-[var(--border-subtle)] pb-12">
-              <div className="max-w-2xl space-y-6">
-                 <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center border shadow-lg bg-[var(--p-teal-500)]/10 border-[var(--p-teal-500)]/20">
+           <motion.div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-[var(--border-subtle)] pb-12">
+              <motion.div className="max-w-2xl space-y-6">
+                 <motion.div className="flex items-center gap-4">
+                    <motion.div className="w-14 h-14 rounded-2xl flex items-center justify-center border shadow-lg bg-[var(--p-teal-500)]/10 border-[var(--p-teal-500)]/20">
                        <Layers size={28} className="text-[var(--p-teal-400)]" />
-                    </div>
-                    <h2 className="text-4xl sm:text-6xl font-display font-black tracking-tight m-0">Progressive Disclosure.</h2>
-                 </div>
-                 <p className="text-xl leading-relaxed opacity-60 m-0 font-medium">
+                    </motion.div>
+                    <motion.h2 className="text-4xl sm:text-6xl font-display font-black tracking-tight m-0">Progressive Disclosure.</motion.h2>
+                 </motion.div>
+                 <motion.p className="text-xl leading-relaxed opacity-60 m-0 font-medium">
                     Agents shouldn't be overwhelmed by complexity. Port Daddy exposes <strong>8 essential tools</strong> by default. Call <code>pd_discover()</code> to unlock advanced categories as the task requires.
-                 </p>
-              </div>
+                 </motion.p>
+              </motion.div>
               <Badge variant="neutral" className="px-4 py-1.5 text-[8px] font-black uppercase tracking-widest bg-[var(--bg-overlay)]">Agent Experience (AX)</Badge>
-           </div>
+           </motion.div>
 
-           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+           <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {CATEGORIES.map((cat, i) => (
                 <motion.div 
                   key={cat.id}
@@ -191,39 +191,39 @@ export default function MCPPage() {
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.05 }}
                 >
-                   <div className="flex items-center justify-between">
-                      <div className="w-12 h-12 rounded-2xl bg-[var(--bg-overlay)] flex items-center justify-center border border-[var(--border-subtle)] group-hover:scale-110 transition-transform">
+                   <motion.div className="flex items-center justify-between">
+                      <motion.div className="w-12 h-12 rounded-2xl bg-[var(--bg-overlay)] flex items-center justify-center border border-[var(--border-subtle)] group-hover:scale-110 transition-transform">
                          <cat.icon size={24} className="text-[var(--brand-primary)] opacity-40 group-hover:opacity-100 transition-opacity" />
-                      </div>
+                      </motion.div>
                       <Badge variant="neutral" className="text-[8px] font-black uppercase tracking-widest opacity-40">{cat.count} Tools</Badge>
-                   </div>
-                   <h3 className="m-0 text-xl font-display font-black">{cat.label}</h3>
+                   </motion.div>
+                   <motion.h3 className="m-0 text-xl font-display font-black">{cat.label}</motion.h3>
                 </motion.div>
               ))}
-           </div>
+           </motion.div>
         </section>
 
         {/* Essential 8 Tools */}
         <section className="space-y-16">
-           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-[var(--border-subtle)] pb-12">
-              <div className="max-w-2xl space-y-6">
-                 <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center border shadow-lg bg-[var(--brand-primary)]/10 border-[var(--brand-primary)]/20">
+           <motion.div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-[var(--border-subtle)] pb-12">
+              <motion.div className="max-w-2xl space-y-6">
+                 <motion.div className="flex items-center gap-4">
+                    <motion.div className="w-14 h-14 rounded-2xl flex items-center justify-center border shadow-lg bg-[var(--brand-primary)]/10 border-[var(--brand-primary)]/20">
                        <Zap size={28} className="text-[var(--brand-primary)]" />
-                    </div>
-                    <h2 className="text-4xl sm:text-6xl font-display font-black tracking-tight m-0">The Essential Set.</h2>
-                 </div>
-                 <p className="text-xl leading-relaxed opacity-60 m-0 font-medium">
+                    </motion.div>
+                    <motion.h2 className="text-4xl sm:text-6xl font-display font-black tracking-tight m-0">The Essential Set.</motion.h2>
+                 </motion.div>
+                 <motion.p className="text-xl leading-relaxed opacity-60 m-0 font-medium">
                     The primitives every agent needs to be a productive member of the swarm. Optimized for context window efficiency and low latency.
-                 </p>
-              </div>
-           </div>
+                 </motion.p>
+              </motion.div>
+           </motion.div>
 
-           <div className="grid lg:grid-cols-2 gap-10">
+           <motion.div className="grid lg:grid-cols-2 gap-10">
               {ESSENTIAL_TOOLS.map((tool, i) => (
                 <ToolCard key={tool.name} tool={tool} />
               ))}
-           </div>
+           </motion.div>
         </section>
 
         {/* Vision Callout */}
@@ -233,33 +233,33 @@ export default function MCPPage() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
         >
-           <div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
+           <motion.div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
               <Cpu size={600} />
-           </div>
+           </motion.div>
            
-           <div className="space-y-6 max-w-3xl relative z-10">
+           <motion.div className="space-y-6 max-w-3xl relative z-10">
               <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-widest shadow-xl">Model Optimization</Badge>
-              <h3 className="text-4xl sm:text-7xl font-display font-black tracking-tight leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
-                Built for <span className="text-[var(--p-teal-400)]">Intelligence.</span>
-              </h3>
-              <p className="text-2xl leading-relaxed opacity-70">
+              <motion.h3 className="text-4xl sm:text-7xl font-display font-black tracking-tight leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
+                Built for <motion.span className="text-[var(--p-teal-400)]">Intelligence.</motion.span>
+              </motion.h3>
+              <motion.p className="text-2xl leading-relaxed opacity-70">
                 The Port Daddy MCP server isn't just a collection of APIs. It's a structured ontology designed to teach your models how to coordinate. We use precise descriptions and high-fidelity examples to ensure the model chooses the right primitive every time.
-              </p>
-           </div>
+              </motion.p>
+           </motion.div>
 
-           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full">
+           <motion.div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full">
               {[
                 { label: 'Sub-50ms Latency', icon: Zap },
                 { label: 'Token Efficient', icon: Shield },
                 { label: 'Auto-Discovery', icon: Search },
                 { label: 'Secure Handshake', icon: Lock }
               ].map((item, i) => (
-                <div key={i} className="p-8 rounded-[40px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] flex flex-col items-center gap-4">
+                <motion.div key={i} className="p-8 rounded-[40px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] flex flex-col items-center gap-4">
                    <item.icon size={24} className="text-[var(--brand-primary)]" />
-                   <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{item.label}</span>
-                </div>
+                   <motion.span className="text-[10px] font-black uppercase tracking-widest opacity-60">{item.label}</motion.span>
+                </motion.div>
               ))}
-           </div>
+           </motion.div>
         </motion.div>
       </motion.main>
 

@@ -48,7 +48,7 @@ export function HarborViz() {
   ]
 
   return (
-    <div className="relative flex items-center justify-center">
+    <motion.div className="relative flex items-center justify-center">
       <svg
         viewBox="0 0 440 440"
         className="w-full max-w-sm"
@@ -194,23 +194,23 @@ export function HarborViz() {
       </svg>
 
       {/* Legend */}
-      <div
+      <motion.div
         className="absolute bottom-2 right-2 text-xs font-mono flex flex-col gap-1"
         style={{ color: 'var(--text-muted)' }}
       >
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full inline-block" style={{ background: STATUS_COLORS.active }} />
+        <motion.div className="flex items-center gap-1.5">
+          <motion.span className="w-2 h-2 rounded-full inline-block" style={{ background: STATUS_COLORS.active }} />
           active
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full inline-block" style={{ background: STATUS_COLORS.idle }} />
+        </motion.div>
+        <motion.div className="flex items-center gap-1.5">
+          <motion.span className="w-2 h-2 rounded-full inline-block" style={{ background: STATUS_COLORS.idle }} />
           idle
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full inline-block" style={{ background: STATUS_COLORS.dead }} />
+        </motion.div>
+        <motion.div className="flex items-center gap-1.5">
+          <motion.span className="w-2 h-2 rounded-full inline-block" style={{ background: STATUS_COLORS.dead }} />
           dead → salvage
-        </div>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </motion.div>
   )
 }

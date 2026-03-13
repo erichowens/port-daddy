@@ -66,7 +66,7 @@ export function HowItWorks() {
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}
     >
-      <div className="max-w-7xl mx-auto font-sans">
+      <motion.div className="max-w-7xl mx-auto font-sans">
         <motion.div
           initial={{ opacity: 0, y: 32 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -84,7 +84,7 @@ export function HowItWorks() {
           </motion.p>
         </motion.div>
 
-        <div className="grid lg:grid-cols-3 gap-12">
+        <motion.div className="grid lg:grid-cols-3 gap-12">
           {STEPS.map((step, i) => (
             <motion.div
               key={step.number}
@@ -94,48 +94,48 @@ export function HowItWorks() {
               transition={{ duration: 0.6, delay: i * 0.1 }}
               className="relative group"
             >
-              <div className="space-y-10">
-                <div className="flex items-center justify-between">
-                   <div 
+              <motion.div className="space-y-10">
+                <motion.div className="flex items-center justify-between">
+                   <motion.div 
                      className="w-20 h-20 rounded-[32px] flex items-center justify-center border transition-all duration-500 group-hover:scale-110"
                      style={{ background: `${step.color}10`, borderColor: `${step.color}20` }}
                    >
                      <step.icon size={40} style={{ color: step.color }} />
-                   </div>
-                   <span className="text-6xl font-display font-black opacity-10 group-hover:opacity-20 transition-opacity" style={{ color: step.color }}>
+                   </motion.div>
+                   <motion.span className="text-6xl font-display font-black opacity-10 group-hover:opacity-20 transition-opacity" style={{ color: step.color }}>
                      {step.number}
-                   </span>
-                </div>
+                   </motion.span>
+                </motion.div>
 
-                <div className="space-y-4">
-                   <h3 className="text-3xl font-display font-black m-0" style={{ color: 'var(--text-primary)' }}>{step.title}</h3>
-                   <p className="text-lg leading-relaxed opacity-60 m-0 group-hover:opacity-100 transition-opacity">
+                <motion.div className="space-y-4">
+                   <motion.h3 className="text-3xl font-display font-black m-0" style={{ color: 'var(--text-primary)' }}>{step.title}</motion.h3>
+                   <motion.p className="text-lg leading-relaxed opacity-60 m-0 group-hover:opacity-100 transition-opacity">
                      {step.description}
-                   </p>
-                </div>
+                   </motion.p>
+                </motion.div>
 
-                <div 
+                <motion.div 
                   className="p-8 rounded-[40px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] font-mono text-sm leading-relaxed relative overflow-hidden group-hover:border-[var(--border-strong)] transition-all shadow-xl"
                 >
-                   <div className="absolute top-0 right-0 p-4 opacity-10">
+                   <motion.div className="absolute top-0 right-0 p-4 opacity-10">
                       <Terminal size={16} />
-                   </div>
+                   </motion.div>
                    {step.code.map((line, j) => (
-                     <div key={j} className={line.startsWith('$') ? 'text-[var(--brand-primary)] font-bold mb-1' : 'opacity-60'}>
+                     <motion.div key={j} className={line.startsWith('$') ? 'text-[var(--brand-primary)] font-bold mb-1' : 'opacity-60'}>
                        {line}
-                     </div>
+                     </motion.div>
                    ))}
-                </div>
-              </div>
+                </motion.div>
+              </motion.div>
               
               {i < STEPS.length - 1 && (
-                <div className="hidden lg:block absolute top-10 -right-6 z-20">
+                <motion.div className="hidden lg:block absolute top-10 -right-6 z-20">
                    <ArrowRight size={24} className="opacity-20" />
-                </div>
+                </motion.div>
               )}
             </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {/* Self-Healing / Always-On Highlight */}
         <motion.div 
@@ -144,53 +144,53 @@ export function HowItWorks() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
         >
-           <div className="flex-1 space-y-8 relative z-10">
+           <motion.div className="flex-1 space-y-8 relative z-10">
               <Badge variant="teal" className="px-4 py-1.5 text-[10px] font-black uppercase tracking-widest shadow-2xl">Autonomous Resilience</Badge>
-              <h3 className="text-4xl sm:text-6xl font-display font-black leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
-                The <span className="text-[var(--p-teal-400)]">Self-Healing</span> Swarm.
-              </h3>
-              <p className="text-xl leading-relaxed opacity-70 max-w-xl">
+              <motion.h3 className="text-4xl sm:text-6xl font-display font-black leading-[0.95]" style={{ color: 'var(--text-primary)' }}>
+                The <motion.span className="text-[var(--p-teal-400)]">Self-Healing</motion.span> Swarm.
+              </motion.h3>
+              <motion.p className="text-xl leading-relaxed opacity-70 max-w-xl">
                 Port Daddy doesn't just manage ports—it manages <strong>resilience</strong>. If a critical background agent dies, its state, file claims, and notes are held in an escrow harbor until a replacement is spawned to take its place.
-              </p>
-              <div className="flex items-center gap-6 pt-4">
-                 <div className="flex -space-x-4">
+              </motion.p>
+              <motion.div className="flex items-center gap-6 pt-4">
+                 <motion.div className="flex -space-x-4">
                     {[1,2,3].map(i => (
-                      <div key={i} className="w-12 h-12 rounded-full border-4 border-[var(--bg-surface)] bg-[var(--p-teal-500)]/20 flex items-center justify-center">
+                      <motion.div key={i} className="w-12 h-12 rounded-full border-4 border-[var(--bg-surface)] bg-[var(--p-teal-500)]/20 flex items-center justify-center">
                          <Cpu size={20} className="text-[var(--p-teal-400)]" />
-                      </div>
+                      </motion.div>
                     ))}
-                 </div>
-                 <p className="text-sm font-black uppercase tracking-widest opacity-40">3 Active Background Avatars</p>
-              </div>
-           </div>
+                 </motion.div>
+                 <motion.p className="text-sm font-black uppercase tracking-widest opacity-40">3 Active Background Avatars</motion.p>
+              </motion.div>
+           </motion.div>
            
-           <div className="flex-1 w-full relative">
-              <div className="absolute inset-0 bg-[var(--brand-primary)] opacity-[0.05] blur-[100px] rounded-full" />
-              <div className="relative p-10 rounded-[48px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] shadow-2xl space-y-6">
-                 <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Resurrection Queue</span>
+           <motion.div className="flex-1 w-full relative">
+              <motion.div className="absolute inset-0 bg-[var(--brand-primary)] opacity-[0.05] blur-[100px] rounded-full" />
+              <motion.div className="relative p-10 rounded-[48px] bg-[var(--bg-overlay)] border border-[var(--border-subtle)] shadow-2xl space-y-6">
+                 <motion.div className="flex items-center justify-between">
+                    <motion.span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Resurrection Queue</motion.span>
                     <Badge variant="teal">Escrow Active</Badge>
-                 </div>
-                 <div className="space-y-4">
-                    <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--p-teal-500)]/20 flex items-center justify-between">
-                       <div className="flex items-center gap-4">
+                 </motion.div>
+                 <motion.div className="space-y-4">
+                    <motion.div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--p-teal-500)]/20 flex items-center justify-between">
+                       <motion.div className="flex items-center gap-4">
                           <RefreshCw size={16} className="text-[var(--p-teal-400)] animate-spin-slow" />
-                          <span className="text-sm font-bold">Refactor-Agent state preserved</span>
-                       </div>
-                       <span className="text-[10px] font-mono opacity-40">2m ago</span>
-                    </div>
-                    <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-transparent opacity-40 flex items-center justify-between">
-                       <div className="flex items-center gap-4">
+                          <motion.span className="text-sm font-bold">Refactor-Agent state preserved</motion.span>
+                       </motion.div>
+                       <motion.span className="text-[10px] font-mono opacity-40">2m ago</motion.span>
+                    </motion.div>
+                    <motion.div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-transparent opacity-40 flex items-center justify-between">
+                       <motion.div className="flex items-center gap-4">
                           <Shield size={16} />
-                          <span className="text-sm font-bold">Harbor tokens locked</span>
-                       </div>
-                       <span className="text-[10px] font-mono opacity-40">Active</span>
-                    </div>
-                 </div>
-              </div>
-           </div>
+                          <motion.span className="text-sm font-bold">Harbor tokens locked</motion.span>
+                       </motion.div>
+                       <motion.span className="text-[10px] font-mono opacity-40">Active</motion.span>
+                    </motion.div>
+                 </motion.div>
+              </motion.div>
+           </motion.div>
         </motion.div>
-      </div>
+      </motion.div>
     </motion.section>
   )
 }
