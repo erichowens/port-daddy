@@ -1,83 +1,87 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
+import { ArrowRight, Github, Terminal, Sparkles, Anchor } from 'lucide-react'
 
 export function CTABanner() {
   return (
-    <section className="py-14 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Glow */}
-      <div
+    <motion.section 
+      className="py-32 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans"
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true }}
+    >
+      {/* Background glow effects */}
+      <motion.div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background:
-            'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(30,107,107,0.2) 0%, transparent 70%)',
+          background: 'radial-gradient(circle at 50% 50%, var(--brand-primary) 0%, transparent 70%)',
         }}
+        animate={{ opacity: [0.05, 0.1, 0.05], scale: [1, 1.1, 1] }}
+        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
       />
 
       <motion.div
-        initial={{ opacity: 0, y: 24 }}
+        initial={{ opacity: 0, y: 32 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.5 }}
-        className="relative max-w-3xl mx-auto text-center flex flex-col items-center gap-8"
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="relative max-w-5xl mx-auto text-center flex flex-col items-center gap-12"
       >
-        <div
-          className="font-mono text-sm px-4 py-1.5 rounded-full"
-          style={{
-            background: 'var(--badge-teal-bg)',
-            color: 'var(--badge-teal-text)',
-            border: '1px solid var(--badge-teal-border)',
-          }}
-        >
-          Free · Open Source · MIT License
+        <div className="flex flex-col items-center gap-6">
+           <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">The Departure</Badge>
+           <motion.div 
+             className="w-20 h-20 rounded-[32px] bg-[var(--interactive-active)] flex items-center justify-center border border-[var(--brand-primary)] shadow-[0_0_32px_rgba(58,173,173,0.3)]"
+             animate={{ y: [0, -8, 0] }}
+             transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+           >
+              <Anchor className="text-[var(--brand-primary)]" size={40} />
+           </motion.div>
         </div>
 
-        <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: 'var(--text-primary)', lineHeight: 1.1 }}>
-          Your agents are waiting for a
-          <br />
-          <span style={{ color: 'var(--brand-primary)' }}>harbormaster</span>
-        </h2>
+        <div className="space-y-6">
+           <h2 className="text-5xl sm:text-8xl font-display font-black tracking-tight leading-[0.9]" style={{ color: 'var(--text-primary)' }}>
+             Your agents deserve a <br />
+             <span className="text-[var(--brand-primary)]">harbormaster.</span>
+           </h2>
 
-        <p className="text-xl max-w-xl" style={{ color: 'var(--text-secondary)' }}>
-          One daemon install. All your agents coordinated.
-          Port collisions, dead-agent work loss, and race conditions — gone.
-        </p>
+           <p className="text-xl sm:text-2xl max-w-2xl mx-auto leading-relaxed opacity-70 font-sans">
+             The era of wobbly scripts and port conflicts is over. Build swarms that are resilient, cryptographically secure, and always-on.
+           </p>
+        </div>
 
-        <div className="flex flex-wrap gap-4 justify-center">
-          <Button size="lg">
-            brew install port-daddy
-          </Button>
-          <Link to="/docs" style={{ textDecoration: 'none' }}>
-            <Button variant="outline" size="lg">
-              Read the Docs
-            </Button>
+        <div className="flex flex-wrap gap-6 justify-center items-center">
+          <motion.button 
+            className="px-12 py-6 rounded-full bg-[var(--brand-primary)] text-[var(--bg-base)] font-black text-xl shadow-[0_24px_48px_rgba(58,173,173,0.3)] flex items-center gap-3 transition-all"
+            whileHover={{ scale: 1.05, y: -4, boxShadow: '0 32px 64px rgba(58,173,173,0.4)' }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => window.open('https://github.com/erichowens/port-daddy', '_blank')}
+          >
+            <Github size={24} />
+            STAR ON GITHUB
+          </motion.button>
+          
+          <Link to="/tutorials/getting-started" className="no-underline">
+            <motion.button 
+              className="px-12 py-6 rounded-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-strong)] font-black text-xl flex items-center gap-3 transition-all"
+              whileHover={{ scale: 1.05, y: -4, background: 'var(--interactive-hover)' }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Sparkles size={24} className="text-[var(--p-amber-400)]" />
+              LEARN THE PROTOCOL
+            </motion.button>
           </Link>
         </div>
 
-        {/* Quick terminal snippet */}
-        <div
-          className="font-mono text-sm px-6 py-4 rounded-xl text-left w-full max-w-sm"
-          style={{
-            background: 'var(--codeblock-bg)',
-            border: '1px solid var(--border-default)',
-          }}
-        >
-          <div>
-            <span style={{ color: 'var(--code-prompt)' }}>$ </span>
-            <span style={{ color: 'var(--text-primary)' }}>brew install port-daddy</span>
-          </div>
-          <div className="mt-1" style={{ color: 'var(--code-output)' }}>
-            ✓ port-daddy 3.7.0 installed
-          </div>
-          <div className="mt-1">
-            <span style={{ color: 'var(--code-prompt)' }}>$ </span>
-            <span style={{ color: 'var(--text-primary)' }}>pd</span>
-          </div>
-          <div style={{ color: 'var(--code-output)' }}>
-            [pd] Port Daddy v3.7.0 — all clear
-          </div>
+        <div className="pt-12 flex flex-col items-center gap-4">
+           <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-[var(--bg-overlay)] border border-[var(--border-subtle)] font-mono text-[10px] font-black uppercase tracking-widest opacity-60">
+              <Terminal size={14} className="text-[var(--brand-primary)]" />
+              brew install erichowens/port-daddy
+           </div>
+           <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 m-0">Free · Open Source · MIT License</p>
         </div>
       </motion.div>
-    </section>
+    </motion.section>
   )
 }
