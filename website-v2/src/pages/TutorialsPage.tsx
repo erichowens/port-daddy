@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Link } from 'react-router-dom'
-import { BookOpen, Clock, ChevronRight, Play, Zap, Shield, Globe, Terminal, Sparkles, Anchor, Activity, Share2, Layers, Cpu, Search, RefreshCw, Box, Lock, Activity as ActivityIcon } from 'lucide-react'
+import { BookOpen, Clock, ChevronRight, Play, Zap, Shield, Globe, Terminal, Sparkles, Anchor, Activity, Share2, Layers, Cpu, Search, RefreshCw, Box, Lock, Activity as ActivityIcon, MessageSquare, History } from 'lucide-react'
 import { Footer } from '@/components/layout/Footer'
 
 interface Tutorial {
@@ -32,8 +32,8 @@ const TUTORIALS: Tutorial[] = [
   {
     slug: 'multi-agent',
     number: '02',
-    title: 'Multi-Agent Orchestration',
-    description: 'Coordinate two agents on the same project. File claims, conflict detection, and real-time signaling.',
+    title: 'Multi-Agent Flow',
+    description: 'Coordinate multiple agents on the same project. Advisory locks, file claims, and signaling.',
     level: 'intermediate',
     time: '12 min',
     tags: ['Sessions', 'Radio', 'Files'],
@@ -44,7 +44,7 @@ const TUTORIALS: Tutorial[] = [
     slug: 'harbors',
     number: '03',
     title: 'Secure Harbors',
-    description: 'Define cryptographic permission boundaries and issue HMAC-signed capability tokens to your agents.',
+    description: 'Define cryptographic permission boundaries and issue HMAC-signed tokens to your swarms.',
     level: 'advanced',
     time: '15 min',
     tags: ['Security', 'JWT', 'Harbors'],
@@ -55,10 +55,10 @@ const TUTORIALS: Tutorial[] = [
     slug: 'monorepo',
     number: '04',
     title: 'Fleet Management',
-    description: 'Scan your entire monorepo, assign ports atomically, and start the full service mesh with one command.',
+    description: 'Scan your monorepo, assign ports atomically, and orchestrate a full mesh with one command.',
     level: 'intermediate',
     time: '10 min',
-    tags: ['Scan', 'Orchestration', 'Mesh'],
+    tags: ['Monorepo', 'Mesh', 'Scan'],
     href: '/tutorials/monorepo',
     icon: Box
   },
@@ -66,7 +66,7 @@ const TUTORIALS: Tutorial[] = [
     slug: 'debugging',
     number: '05',
     title: 'Conflict Detection',
-    description: 'Diagnose 2am EADDRINUSE errors in seconds using the semantic port registry.',
+    description: 'Turn 2am EADDRINUSE errors into 5-second diagnoses using the semantic registry.',
     level: 'intermediate',
     time: '14 min',
     tags: ['Health', 'Audit', 'Registry'],
@@ -77,10 +77,10 @@ const TUTORIALS: Tutorial[] = [
     slug: 'tunnel',
     number: '06',
     title: 'P2P Tunnels',
-    description: 'Link two daemons across the internet to create a secure, shared service mesh using Noise Protocol.',
+    description: 'Link two daemons across the internet to create a shared service mesh using Noise Protocol.',
     level: 'advanced',
     time: '20 min',
-    tags: ['Network', 'P2P', 'Noise'],
+    tags: ['P2P', 'Noise', 'Global'],
     href: '/tutorials/tunnel',
     icon: Globe
   },
@@ -102,7 +102,7 @@ const TUTORIALS: Tutorial[] = [
     description: 'Turn your harbor into an event-driven DAG. Auto-spawn agents based on swarm signals.',
     level: 'advanced',
     time: '12 min',
-    tags: ['Automation', 'DAG', 'Signals'],
+    tags: ['DAG', 'Automation', 'Signals'],
     href: '/tutorials/pipelines',
     icon: Layers
   },
@@ -132,7 +132,7 @@ const TUTORIALS: Tutorial[] = [
     slug: 'inbox',
     number: '11',
     title: 'Agent Inboxes',
-    description: 'Direct agent-to-agent messaging with structured JSON payloads and real-time streams.',
+    description: 'Direct agent-to-agent messaging with structured payloads and real-time streams.',
     level: 'intermediate',
     time: '10 min',
     tags: ['Inbox', 'Messaging', 'SSE'],
@@ -143,7 +143,7 @@ const TUTORIALS: Tutorial[] = [
     slug: 'spawn',
     number: '12',
     title: 'Swarm Bootstrapping',
-    description: 'Launch agent fleets with Port Daddy coordination auto-wired. Heartbeats and telemetry included.',
+    description: 'Launch agent fleets with Port Daddy coordination auto-wired. Heartbeats included.',
     level: 'advanced',
     time: '15 min',
     tags: ['Spawn', 'Fleet', 'Telemetry'],
@@ -157,14 +157,14 @@ const TUTORIALS: Tutorial[] = [
     description: 'Deploy persistent background processes that respond to global signals 24/7.',
     level: 'intermediate',
     time: '10 min',
-    tags: ['Avatars', 'Processes', 'BG'],
+    tags: ['Avatars', 'BG', 'Persistence'],
     href: '/tutorials/always-on',
     icon: RefreshCw
   },
   {
     slug: 'session-phases',
     number: '14',
-    title: 'Session State Machine',
+    title: 'The State Machine',
     description: 'Drive agents through planning -> coding -> reviewing with phase-aware handoffs.',
     level: 'advanced',
     time: '15 min',
@@ -179,7 +179,7 @@ const TUTORIALS: Tutorial[] = [
     description: 'Learn the high-level wrappers that make coordination invisible and friction-free.',
     level: 'beginner',
     time: '5 min',
-    tags: ['CLI', 'Wrappers', 'Productivity'],
+    tags: ['CLI', 'Productivity', 'UX'],
     href: '/tutorials/sugar',
     icon: Zap
   },
@@ -190,7 +190,7 @@ const TUTORIALS: Tutorial[] = [
     description: 'Link remote agent clusters and GPU-powered harbors across the global mesh.',
     level: 'advanced',
     time: '15 min',
-    tags: ['Global', 'Mesh', 'GPU'],
+    tags: ['Mesh', 'Global', 'GPU'],
     href: '/tutorials/remote-harbors',
     icon: Globe
   }
@@ -214,7 +214,7 @@ export default function TutorialsPage() {
         />
         
         <div className="max-w-7xl mx-auto text-center relative z-10 flex flex-col items-center gap-10">
-           <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">Port Daddy Academy</Badge>
+           <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">Academy of Coordination</Badge>
            <motion.h1 
              className="text-6xl sm:text-9xl font-black tracking-tighter font-display leading-[0.9]"
              initial={{ opacity: 0, y: 32 }}
@@ -222,7 +222,7 @@ export default function TutorialsPage() {
              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
            >
              Master the <br />
-             <span className="text-[var(--brand-primary)]">Swarm Protocol.</span>
+             <span className="text-[var(--brand-primary)]">Swarm Logic.</span>
            </motion.h1>
            <motion.p 
              className="text-2xl sm:text-3xl max-w-3xl leading-relaxed opacity-70 font-medium"
