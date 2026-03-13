@@ -108,7 +108,7 @@ export default function DocsPage() {
       />
 
       {/* Hero Section */}
-      <motion.section className="py-32 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+      <motion.section className="py-20 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
         <motion.div 
           className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full blur-[140px] opacity-[0.1] pointer-events-none" 
           style={{ background: 'radial-gradient(circle, var(--brand-primary) 0%, transparent 70%)' }} 

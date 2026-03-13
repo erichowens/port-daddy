@@ -67,7 +67,7 @@ export function HarborsSection() {
   return (
     <motion.section 
       id="harbors" 
-      className="py-48 px-6 sm:px-8 lg:px-10 font-sans relative overflow-hidden"
+      className="py-24 px-6 sm:px-8 lg:px-10 font-sans relative overflow-hidden"
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}

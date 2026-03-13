@@ -21,7 +21,7 @@ body {
   color: var(--text-primary);
   font-family: var(--p-font-sans);
   font-size: var(--p-text-base);
-  line-height: 1.6;
+  line-height: 1.5; /* Tighter line height */
   min-height: 100vh;
   overflow-x: hidden;
 }
@@ -34,20 +34,25 @@ body {
 }
 
 /* ─── Typography defaults (Strict Unification) ─────────────────────────────── */
+:root {
+  --baseline: 1.5rem;
+}
+
 h1, h2, h3, .font-display {
   font-family: var(--p-font-display) !important;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.05;
   margin: 0;
   color: var(--text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
 }
 
 h4, h5, h6, .uppercase-label, .font-sans-bold {
   font-family: var(--p-font-sans) !important;
-  font-weight: 900;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.1em;
   margin: 0;
   color: var(--text-primary);
 }
@@ -56,6 +61,13 @@ p, li, span, button, .font-sans {
   font-family: var(--p-font-sans) !important;
   margin: 0;
   color: var(--text-secondary);
+}
+
+@media (prefers-color-scheme: dark) {
+  /* Text appears lighter on dark backgrounds - compensate with weight */
+  body, p, li, span, button, .font-sans {
+    font-weight: 450;
+  }
 }
 
 a {
@@ -75,7 +87,7 @@ code, pre, kbd, .font-mono {
 
 /* ─── Custom Scrollbar ───────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -84,9 +96,8 @@ code, pre, kbd, .font-mono {
 
 ::-webkit-scrollbar-thumb {
   background: var(--border-subtle);
-  border: 3px solid var(--bg-base);
+  border: 2px solid var(--bg-base);
   border-radius: 10px;
-  transition: background 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -96,28 +107,15 @@ code, pre, kbd, .font-mono {
 /* ─── Glassmorphism ────────────────────────────────────────────────────────── */
 .glass {
   background: var(--bg-glass);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
   border: 1px solid var(--border-subtle);
-}
-
-.glass-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.glass-card:hover {
-  border-color: var(--brand-primary);
-  box-shadow: 0 10px 40px rgba(58, 173, 173, 0.1);
-  transform: translateY(-4px);
 }
 
 /* ─── Selection ────────────────────────────────────────────────────────────── */
 ::selection {
-  background: var(--brand-primary);
-  color: white;
+  background-color: var(--brand-primary);
+  color: var(--p-navy-950);
 }
 
 /* ─── Focus visible ─────────────────────────────────────────────────────────── */
@@ -127,12 +125,21 @@ code, pre, kbd, .font-mono {
 }
 
 /* ─── Animations ───────────────────────────────────────────────────────────── */
-@keyframes pulse-teal {
-  0% { box-shadow: 0 0 0 0 rgba(58, 173, 173, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(58, 173, 173, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(58, 173, 173, 0); }
+@keyframes pulse-active {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.4; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .pulse-active {
-  animation: pulse-teal 2s infinite;
+  animation: pulse-active 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
 }

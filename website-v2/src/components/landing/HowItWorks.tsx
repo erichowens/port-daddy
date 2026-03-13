@@ -61,7 +61,7 @@ export function HowItWorks() {
   return (
     <motion.section 
       id="how-it-works" 
-      className="py-48 px-6 sm:px-8 lg:px-10 font-sans relative bg-[var(--bg-base)]"
+      className="py-24 px-6 sm:px-8 lg:px-10 font-sans relative bg-[var(--bg-base)]"
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}
@@ -72,7 +72,7 @@ export function HowItWorks() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center mb-40 flex flex-col items-center gap-12"
+          className="text-center mb-16 flex flex-col items-center gap-12"
         >
           <Badge variant="teal" className="mb-10 px-6 py-2 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">The Lifecycle</Badge>
           <motion.h2 className="text-6xl sm:text-9xl font-bold font-display tracking-tight leading-[0.9] mb-10" style={{ color: 'var(--text-primary)' }}>
@@ -140,7 +140,7 @@ export function HowItWorks() {
 
         {/* Self-Healing / Always-On Highlight */}
         <motion.div 
-          className="mt-48 p-16 sm:p-24 rounded-[100px] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-base)] border border-[var(--border-strong)] relative overflow-hidden flex flex-col lg:flex-row items-center gap-24 shadow-2xl w-full"
+          className="mt-24 p-16 sm:p-24 rounded-[100px] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-base)] border border-[var(--border-strong)] relative overflow-hidden flex flex-col lg:flex-row items-center gap-24 shadow-2xl w-full"
           initial={{ opacity: 0, scale: 0.98 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}

@@ -14,12 +14,15 @@
 const IDENTITY_REGEX = /^[a-zA-Z0-9._*-]+$/;
 const MAX_SEGMENT_LENGTH = 64;
 
+// Branded Type for validated identities
+export type SemanticIdentity = string & { readonly __brand: 'SemanticIdentity' };
+
 export interface ParsedIdentityValid {
   valid: true;
   project: string;
   stack: string | null;
   context: string | null;
-  full: string;
+  full: SemanticIdentity;
   normalized: string;
   hasWildcard: boolean;
 }

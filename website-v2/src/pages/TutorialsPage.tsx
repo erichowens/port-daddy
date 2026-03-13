@@ -204,7 +204,7 @@ export function TutorialsPage() {
     >
       {/* Hero Section */}
       <motion.section 
-        className="py-48 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden flex flex-col items-center justify-center text-center" 
+        className="py-24 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden flex flex-col items-center justify-center text-center" 
         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
       >
         <motion.div 
@@ -235,7 +235,7 @@ export function TutorialsPage() {
       </motion.section>
 
       {/* Tutorials Grid */}
-      <motion.main className="flex-1 py-48 px-6 sm:px-8 lg:px-10 max-w-7xl mx-auto w-full font-sans flex flex-col items-center">
+      <motion.main className="flex-1 py-24 px-6 sm:px-8 lg:px-10 max-w-7xl mx-auto w-full font-sans flex flex-col items-center">
         <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-16 w-full">
           {TUTORIALS.map((tutorial, i) => (
             <motion.div
@@ -296,7 +296,7 @@ export function TutorialsPage() {
 
         {/* Vision Callout */}
         <motion.div 
-          className="mt-48 p-24 rounded-[100px] border border-dashed border-[var(--border-strong)] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-base)] flex flex-col items-center text-center gap-12 relative overflow-hidden w-full shadow-2xl"
+          className="mt-24 p-24 rounded-[100px] border border-dashed border-[var(--border-strong)] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-base)] flex flex-col items-center text-center gap-12 relative overflow-hidden w-full shadow-2xl"
           initial={{ opacity: 0, scale: 0.98 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}

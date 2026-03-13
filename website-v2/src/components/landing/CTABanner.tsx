@@ -6,7 +6,7 @@ import { Github, Terminal, Sparkles, Anchor, Zap } from 'lucide-react'
 export function CTABanner() {
   return (
     <motion.section 
-      className="py-48 px-6 sm:px-8 lg:px-10 relative overflow-hidden font-sans bg-[var(--bg-base)]"
+      className="py-24 px-6 sm:px-8 lg:px-10 relative overflow-hidden font-sans bg-[var(--bg-base)]"
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}

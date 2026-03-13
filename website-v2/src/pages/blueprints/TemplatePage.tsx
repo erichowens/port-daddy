@@ -32,7 +32,7 @@ export function TemplatePage() {
 
       {/* Hero Section */}
       <motion.header 
-        className="py-32 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden" 
+        className="py-20 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden" 
         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
       >
         <motion.div 

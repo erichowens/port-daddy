@@ -50,7 +50,7 @@ export function TutorialLayout({
 
       {/* Hero Section */}
       <motion.section
-        className="py-32 px-4 sm:px-6 lg:px-8 border-b relative overflow-hidden shrink-0"
+        className="py-20 px-4 sm:px-6 lg:px-8 border-b relative overflow-hidden shrink-0"
         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
       >
         {/* Abstract background shapes */}

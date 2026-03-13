@@ -54,7 +54,7 @@ export function DemoGallery() {
   return (
     <motion.section 
       id="demo" 
-      className="py-48 px-6 sm:px-8 lg:px-10 font-sans relative overflow-hidden bg-[var(--bg-base)]"
+      className="py-24 px-6 sm:px-8 lg:px-10 font-sans relative overflow-hidden bg-[var(--bg-base)]"
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}
@@ -65,7 +65,7 @@ export function DemoGallery() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center mb-40 flex flex-col items-center gap-12"
+          className="text-center mb-16 flex flex-col items-center gap-12"
         >
           <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">The Evidence</Badge>
           <motion.h2 className="text-6xl sm:text-9xl font-bold font-display tracking-tight leading-[0.9] m-0" style={{ color: 'var(--text-primary)' }}>

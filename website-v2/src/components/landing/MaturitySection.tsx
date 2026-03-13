@@ -44,7 +44,7 @@ const MATURITY_FEATURES = [
 export function MaturitySection() {
   return (
     <motion.section 
-      className="py-48 px-6 sm:px-8 lg:px-10 bg-[var(--bg-surface)] border-t border-b border-[var(--border-subtle)] relative overflow-hidden font-sans selection:bg-[var(--brand-primary)] selection:text-white"
+      className="py-24 px-6 sm:px-8 lg:px-10 bg-[var(--bg-surface)] border-t border-b border-[var(--border-subtle)] relative overflow-hidden font-sans selection:bg-[var(--brand-primary)] selection:text-white"
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}
@@ -134,7 +134,7 @@ export function MaturitySection() {
 
         {/* Call to stability */}
         <motion.div 
-          className="mt-48 p-20 rounded-[80px] border border-dashed border-[var(--border-strong)] bg-[var(--bg-overlay)] flex flex-col items-center text-center gap-12 relative overflow-hidden w-full"
+          className="mt-24 p-20 rounded-[80px] border border-dashed border-[var(--border-strong)] bg-[var(--bg-overlay)] flex flex-col items-center text-center gap-12 relative overflow-hidden w-full"
           initial={{ opacity: 0, scale: 0.98 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}

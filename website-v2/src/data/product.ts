@@ -7,7 +7,7 @@ export interface Feature {
   status: 'core' | 'new' | 'preview';
 }
 
-export const PRODUCT_FEATURES: Feature[] = [
+export const PRODUCT_FEATURES = [
   {
     id: 'atomic-ports',
     title: 'Atomic Port Assignment',
@@ -80,4 +80,4 @@ export const PRODUCT_FEATURES: Feature[] = [
     cli: 'pd doctor',
     status: 'new'
   }
-];
+] satisfies Feature[];

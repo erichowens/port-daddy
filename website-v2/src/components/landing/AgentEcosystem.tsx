@@ -23,7 +23,7 @@ export function AgentEcosystem() {
   return (
     <motion.section 
       id="ecosystem" 
-      className="py-48 px-6 sm:px-8 lg:px-10 font-sans relative overflow-hidden"
+      className="py-24 px-6 sm:px-8 lg:px-10 font-sans relative overflow-hidden"
       style={{ background: 'var(--bg-base)' }}
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
@@ -35,7 +35,7 @@ export function AgentEcosystem() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center mb-40 flex flex-col items-center gap-12"
+          className="text-center mb-16 flex flex-col items-center gap-12"
         >
           <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">The Integration Layer</Badge>
           <motion.h2 className="text-6xl sm:text-9xl font-bold font-display tracking-tight leading-[0.9] mb-10" style={{ color: 'var(--text-primary)' }}>
@@ -91,7 +91,7 @@ export function AgentEcosystem() {
 
         {/* Multi-Agent Coordination Example */}
         <motion.div 
-          className="mt-48 p-20 rounded-[80px] bg-[var(--bg-overlay)] border border-[var(--border-strong)] relative overflow-hidden shadow-2xl w-full flex flex-col items-center text-center"
+          className="mt-24 p-20 rounded-[80px] bg-[var(--bg-overlay)] border border-[var(--border-strong)] relative overflow-hidden shadow-2xl w-full flex flex-col items-center text-center"
           initial={{ opacity: 0, scale: 0.98 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}

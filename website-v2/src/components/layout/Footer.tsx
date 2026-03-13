@@ -51,7 +51,7 @@ export function Footer() {
   return (
     <motion.footer
       {...footerMotion}
-      className="py-32 px-6 sm:px-8 lg:px-10 border-t relative overflow-hidden font-sans selection:bg-[var(--brand-primary)] selection:text-white"
+      className="py-20 px-6 sm:px-8 lg:px-10 border-t relative overflow-hidden font-sans selection:bg-[var(--brand-primary)] selection:text-white"
       style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-base)' }}
     >
       {/* Decorative background art */}

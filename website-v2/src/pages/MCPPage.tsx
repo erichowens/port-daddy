@@ -125,7 +125,7 @@ export default function MCPPage() {
 
       {/* Hero Section */}
       <motion.section 
-        className="py-48 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden flex flex-col items-center justify-center text-center" 
+        className="py-24 px-6 sm:px-8 lg:px-10 border-b relative overflow-hidden flex flex-col items-center justify-center text-center" 
         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
       >
         <motion.div 
@@ -172,7 +172,7 @@ export default function MCPPage() {
       </motion.section>
 
       {/* Main Content */}
-      <motion.main className="flex-1 py-48 px-6 sm:px-8 lg:px-10 max-w-7xl mx-auto w-full font-sans flex flex-col items-center">
+      <motion.main className="flex-1 py-24 px-6 sm:px-8 lg:px-10 max-w-7xl mx-auto w-full font-sans flex flex-col items-center">
         
         {/* Progressive Disclosure */}
         <section className="mb-64 space-y-24 w-full flex flex-col items-center">

@@ -16,7 +16,7 @@ const ICON_MAP: Record<string, any> = {
 export function BlueprintsSection() {
   return (
     <motion.section 
-      className="py-32 px-4 sm:px-6 lg:px-8 bg-[var(--bg-base)] font-sans relative overflow-hidden"
+      className="py-20 px-4 sm:px-6 lg:px-8 bg-[var(--bg-base)] font-sans relative overflow-hidden"
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}

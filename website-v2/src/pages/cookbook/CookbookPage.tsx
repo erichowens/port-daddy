@@ -29,7 +29,7 @@ export function CookbookPage() {
     >
       {/* Hero Section */}
       <motion.section 
-        className="py-32 px-4 sm:px-6 lg:px-8 border-b relative overflow-hidden" 
+        className="py-20 px-4 sm:px-6 lg:px-8 border-b relative overflow-hidden" 
         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
       >
         <motion.div 
@@ -60,7 +60,7 @@ export function CookbookPage() {
       </motion.section>
 
       {/* Grid Section */}
-      <motion.main className="flex-1 max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-32 font-sans">
+      <motion.main className="flex-1 max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-20 font-sans">
         <motion.div className="grid sm:grid-cols-2 lg:grid-cols-2 gap-12">
           {COOKBOOK_RECIPES.map((recipe, i) => {
             const Icon = ICON_MAP[recipe.icon] || Book
