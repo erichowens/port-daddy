@@ -1,53 +1,144 @@
 import { motion } from 'framer-motion'
 import { TutorialLayout } from '@/components/tutorials/TutorialLayout'
 import { CodeBlock } from '@/components/ui/CodeBlock'
+import { Badge } from '@/components/ui/Badge'
+import { Layout, Activity, Zap, Terminal, Shield, Globe, Share2, Search, Heart } from 'lucide-react'
 
 export function Dashboard() {
   return (
     <TutorialLayout
-      title="Live Dashboard"
-      description="Visualize your swarm. Real-time network graphs, lock contention, and system health metrics."
-      number="13"
+      title="Visual Control Plane"
+      description="Coordination is hard to visualize in a terminal. Learn to use the Port Daddy HUD to monitor network graphs, lock contention, and real-time swarm telemetry."
+      number="08"
       total="16"
       level="Beginner"
       readTime="5 min read"
-      prev={{ title: 'Harbor Tokens', href: '/tutorials/harbors' }}
-      next={{ title: 'Reactive Pipelines', href: '/tutorials/pipelines' }}
+      prev={{ title: 'Reactive Pipelines', href: '/tutorials/pipelines' }}
+      next={{ title: 'Identity Discovery', href: '/tutorials/dns' }}
     >
-      <motion.div className="font-sans">
-        <motion.p className="text-lg leading-relaxed font-sans mb-8" style={{ color: 'var(--text-secondary)' }}>
-          The Port Daddy HUD (Heads-Up Display) is a high-fidelity control plane for your local machine.
-        </motion.p>
+      <motion.div className="space-y-16">
+        {/* Intro Section */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-12 h-12 rounded-2xl bg-[var(--interactive-active)] flex items-center justify-center border border-[var(--brand-primary)]">
+              <Layout className="text-[var(--brand-primary)]" size={24} />
+            </div>
+            <h2 className="m-0">The Swarm HUD</h2>
+          </div>
+          <p>
+            The **Port Daddy Dashboard** (Heads-Up Display) provides a high-fidelity visual interface for your local daemon. It allows you to see the relationships between your agents, services, and harbors in real-time.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-8 pt-4">
+             <div className="p-8 rounded-[32px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-4">
+                <div className="w-10 h-10 rounded-xl bg-[var(--p-teal-500)]/10 flex items-center justify-center">
+                   <Share2 size={20} className="text-[var(--p-teal-400)]" />
+                </div>
+                <h3 className="text-xl font-display font-black m-0">Live Network Map</h3>
+                <p className="text-sm opacity-60 m-0">A 2D force-directed graph showing which agents are connected to which harbors and tunnels.</p>
+             </div>
+             <div className="p-8 rounded-[32px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-4">
+                <div className="w-10 h-10 rounded-xl bg-[var(--p-amber-500)]/10 flex items-center justify-center">
+                   <Activity size={20} className="text-[var(--p-amber-400)]" />
+                </div>
+                <h3 className="text-xl font-display font-black m-0">Swarm Radio Feed</h3>
+                <p className="text-sm opacity-60 m-0">A unified chronological stream of every message, port claim, and session note across the mesh.</p>
+             </div>
+          </div>
+        </section>
 
-        <motion.h2 className="text-3xl font-bold mt-12 mb-6 font-display" style={{ color: 'var(--text-primary)' }}>Launching the HUD</motion.h2>
-        <CodeBlock language="bash">
-          {`pd dashboard`}
-        </CodeBlock>
-        <motion.p className="mt-8 font-sans">
-          This opens your browser to <motion.code className="font-mono bg-[var(--bg-overlay)] px-1.5 py-0.5 rounded font-mono">http://localhost:3144/dashboard</motion.code>.
-        </motion.p>
+        {/* Step 1: Launching */}
+        <section className="space-y-8">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-[var(--interactive-active)] flex items-center justify-center border border-[var(--brand-primary)]">
+              <Zap className="text-[var(--brand-primary)]" size={24} />
+            </div>
+            <h2 className="m-0">1. Summon the HUD</h2>
+          </div>
+          
+          <p>
+            Launch the dashboard from your terminal. It runs as a local web app served directly from the daemon.
+          </p>
 
-        <motion.h2 className="text-3xl font-bold mt-16 mb-6 font-display" style={{ color: 'var(--text-primary)' }}>Key Features</motion.h2>
-        <motion.ul className="space-y-3 list-none p-0 mb-8 font-sans">
-          <motion.li className="flex gap-3 font-sans">
-            <motion.span className="text-[var(--brand-primary)] font-sans">✓</motion.span> 
-            <motion.span className="font-sans"><motion.strong className="font-sans" style={{ color: 'var(--text-primary)' }}>Network Map</motion.strong> -- A 2D visualization of active services and agents.</motion.span>
-          </motion.li>
-          <motion.li className="flex gap-3 font-sans">
-            <motion.span className="text-[var(--brand-primary)] font-sans">✓</motion.span> 
-            <motion.span className="font-sans"><motion.strong className="font-sans" style={{ color: 'var(--text-primary)' }}>Swarm Radio</motion.strong> -- A real-time timeline of all traffic and notes.</motion.span>
-          </motion.li>
-          <motion.li className="flex gap-3 font-sans">
-            <motion.span className="text-[var(--brand-primary)] font-sans">✓</motion.span> 
-            <motion.span className="font-sans"><motion.strong className="font-sans" style={{ color: 'var(--text-primary)' }}>Lock HUD</motion.strong> -- See exactly which agent is holding a lock.</motion.span>
-          </motion.li>
-        </motion.ul>
+          <CodeBlock language="bash">
+            {`$ pd dashboard\n\n✓ Dashboard active at http://localhost:3144/dashboard`}
+          </CodeBlock>
 
-        <motion.div className="mt-12 p-10 rounded-[40px] font-sans shadow-xl border border-dashed" style={{ borderColor: 'var(--brand-primary)', background: 'var(--bg-overlay)' }}>
-          <motion.h3 className="m-0 mb-4 font-display text-2xl" style={{ color: 'var(--text-primary)' }}>Observer Effect</motion.h3>
-          <motion.p className="mb-0 text-lg font-sans">
-            The dashboard doesn't just show state — it facilitates coordination. You can manually trigger pipeline rules or clear stale ports directly from the UI.
-          </motion.p>
+          <blockquote className="bg-[var(--bg-overlay)] p-8 rounded-3xl border-l-4 border-[var(--brand-primary)]">
+             <p className="m-0 text-sm italic opacity-60 font-medium">
+               The dashboard uses **WebSockets** to ensure that any signal published to Swarm Radio appears on your screen with sub-50ms latency.
+             </p>
+          </blockquote>
+        </section>
+
+        {/* Step 2: Interaction */}
+        <section className="space-y-8">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-[var(--interactive-active)] flex items-center justify-center border border-[var(--p-blue-400)]">
+              <Terminal className="text-[var(--p-blue-400)]" size={24} />
+            </div>
+            <h2 className="m-0">2. Real-time Intervention</h2>
+          </div>
+
+          <p>
+            The HUD isn't just for observation. You can manually eject rogue agents, clear stale port claims, and trigger pipeline rules directly from the interface.
+          </p>
+
+          <div className="bg-[var(--bg-surface)] p-10 rounded-[48px] border border-[var(--border-subtle)] space-y-8 shadow-2xl relative overflow-hidden">
+             <div className="absolute inset-0 bg-gradient-to-tr from-[var(--p-teal-500)]/5 to-transparent" />
+             <p className="text-sm font-black uppercase tracking-widest opacity-40 m-0">Visual Telemetry</p>
+             
+             <div className="grid sm:grid-cols-2 gap-6">
+                <div className="p-6 rounded-2xl bg-[var(--bg-overlay)] border border-[var(--border-subtle)] space-y-4">
+                   <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase opacity-40">Lock Status</span>
+                      <Badge variant="amber">Contested</Badge>
+                   </div>
+                   <p className="text-xs font-bold">db-migration-lock</p>
+                   <div className="h-1 w-full bg-[var(--border-subtle)] rounded-full overflow-hidden">
+                      <motion.div 
+                        className="h-full bg-[var(--p-amber-400)]" 
+                        animate={{ width: ['20%', '80%', '40%'] }}
+                        transition={{ duration: 4, repeat: Infinity }}
+                      />
+                   </div>
+                </div>
+                <div className="p-6 rounded-2xl bg-[var(--bg-overlay)] border border-[var(--border-subtle)] space-y-4">
+                   <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase opacity-40">Radio Traffic</span>
+                      <Badge variant="teal">High</Badge>
+                   </div>
+                   <div className="flex items-end gap-1 h-8">
+                      {[1,2,3,4,5,6].map(i => (
+                        <motion.div 
+                          key={i} 
+                          className="flex-1 bg-[var(--brand-primary)] rounded-t-sm" 
+                          animate={{ height: [10, 30, 15, 25, 10][i%5] }}
+                          transition={{ duration: 1, delay: i * 0.1, repeat: Infinity }}
+                        />
+                      ))}
+                   </div>
+                </div>
+             </div>
+          </div>
+        </section>
+
+        {/* Vision Callout */}
+        <motion.div 
+          className="p-16 rounded-[60px] border border-dashed border-[var(--brand-primary)] bg-[var(--bg-overlay)] flex flex-col items-center text-center gap-8 relative overflow-hidden"
+          whileHover={{ scale: 1.01 }}
+        >
+           <div className="absolute top-0 right-0 p-10 opacity-[0.03] pointer-events-none">
+              <Heart size={400} />
+           </div>
+           <Badge variant="teal" className="px-6 py-2 text-[10px] font-black uppercase tracking-widest">Visual Maturity</Badge>
+           <h3 className="text-4xl font-display font-black m-0" style={{ color: 'var(--text-primary)' }}>See Your Swarm.</h3>
+           <p className="text-xl max-w-xl opacity-70">
+             Multi-agent coordination is often a "black box." The HUD turns that box transparent, allowing you to debug complex social dynamics between agents just as easily as you debug code.
+           </p>
+           <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--brand-primary)]">
+              <Globe size={14} className="animate-spin-slow" />
+              Unified Control Plane Active
+           </div>
         </motion.div>
       </motion.div>
     </TutorialLayout>
