@@ -1,10 +1,10 @@
-import { motion } from 'framer-motion';
+import { motion, HTMLMotionProps } from 'framer-motion';
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 type CardVariant = 'default' | 'glass' | 'elevated'
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CardProps extends HTMLMotionProps<'div'> {
   variant?: CardVariant
 }
 
@@ -40,7 +40,7 @@ export function Card({ variant = 'default', className, children, ...props }: Car
   )
 }
 
-export function CardHeader({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+export function CardHeader({ className, children, ...props }: HTMLMotionProps<'div'>) {
   return (
     <motion.div className={cn('px-6 py-4 border-b border-[var(--border-subtle)]', className)} {...props}>
       {children}
@@ -48,7 +48,7 @@ export function CardHeader({ className, children, ...props }: React.HTMLAttribut
   )
 }
 
-export function CardContent({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+export function CardContent({ className, children, ...props }: HTMLMotionProps<'div'>) {
   return (
     <motion.div className={cn('px-6 py-4', className)} {...props}>
       {children}
@@ -56,7 +56,7 @@ export function CardContent({ className, children, ...props }: React.HTMLAttribu
   )
 }
 
-export function CardFooter({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+export function CardFooter({ className, children, ...props }: HTMLMotionProps<'div'>) {
   return (
     <motion.div
       className={cn('px-6 py-4 border-t border-[var(--border-subtle)]', className)}

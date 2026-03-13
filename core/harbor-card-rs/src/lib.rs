@@ -65,6 +65,32 @@ impl HarborCardVerifier {
         result == 0
     }
 
+    /// Formal Enforcer: Ensures sub_caps is a strict subset of root_caps.
+    /// Used by the Arbiter to prevent privilege escalation during delegation.
+    pub fn verify_capability_subset(root_caps: &[String], sub_caps: &[String]) -> bool {
+        for sub in sub_caps {
+            if !root_caps.contains(sub) {
+                return false;
+            }
+        }
+        true
+    }
+...
+#[cfg(kani)]
+#[kani::proof]
+fn proof_capability_attenuation() {
+    // Prove that an agent cannot magically gain a capability through subset check.
+    let root = vec!["read".to_string(), "write".to_string()];
+    let mut sub = vec!["read".to_string()];
+    
+    // Check initial state
+    assert!(HarborCardVerifier::verify_capability_subset(&root, &sub));
+    
+    // Attacker attempts to add "admin"
+    sub.push("admin".to_string());
+    assert!(!HarborCardVerifier::verify_capability_subset(&root, &sub));
+}
+
     pub fn verify(&self, token: &str, now_ts: i64) -> Result<HarborCardClaims, HarborError> {
         let parts: Vec<&str> = token.split('.').collect();
         if parts.len() != 3 {

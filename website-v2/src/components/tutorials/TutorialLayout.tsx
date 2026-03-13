@@ -10,6 +10,7 @@ interface TutorialLayoutProps {
   title: string
   description: string
   number: string
+  total?: string
   level: 'Beginner' | 'Intermediate' | 'Advanced'
   readTime: string
   children: React.ReactNode
@@ -21,6 +22,7 @@ export function TutorialLayout({
   title,
   description,
   number,
+  total,
   level,
   readTime,
   children,
